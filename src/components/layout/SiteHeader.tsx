@@ -43,15 +43,15 @@ export default function SiteHeader() {
   return (
     <header
       className={cn(
-        "fixed inset-x-0 top-0 z-50 transition-shadow",
+        "fixed inset-x-0 top-0 z-50 border-b border-border bg-background/95 backdrop-blur transition-shadow",
         scrolled ? "shadow-sm" : "shadow-none",
       )}
     >
-      <div className="uudam-navy-surface">
+      <div>
         <div className="uudam-container flex h-16 items-center gap-4">
           <button
             type="button"
-            className="inline-flex items-center justify-center rounded-lg p-2 text-white/90 hover:bg-white/10 lg:hidden"
+            className="inline-flex items-center justify-center rounded-lg p-2 text-foreground/80 hover:bg-secondary lg:hidden"
             onClick={() => setMobileOpen(true)}
             aria-label="Цэс нээх"
           >
@@ -68,8 +68,8 @@ export default function SiteHeader() {
               priority
             />
             <span className="hidden flex-col leading-none sm:flex">
-              <span className="text-[15px] font-extrabold tracking-wide text-white">UUDAM</span>
-              <span className="uudam-eyebrow mt-0.5 text-[9px]">Travel Agency</span>
+              <span className="text-[15px] font-extrabold tracking-wide text-foreground">UUDAM</span>
+              <span className="uudam-eyebrow mt-0.5 text-[9px] text-muted-foreground">Travel Agency</span>
             </span>
           </Link>
 
@@ -83,8 +83,8 @@ export default function SiteHeader() {
                   className={cn(
                     "rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                     active
-                      ? "bg-white/15 text-white"
-                      : "text-white/80 hover:bg-white/10 hover:text-white",
+                      ? "bg-secondary text-primary"
+                      : "text-muted-foreground hover:bg-secondary hover:text-foreground",
                   )}
                 >
                   {item.label}
@@ -96,7 +96,7 @@ export default function SiteHeader() {
           <div className="ml-auto flex items-center gap-1">
             <Link
               href={`${base}/trips`}
-              className="inline-flex items-center justify-center rounded-lg p-2 text-white/90 hover:bg-white/10"
+              className="inline-flex items-center justify-center rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"
               aria-label="Аялал хайх"
             >
               <Search className="h-5 w-5" />
@@ -110,7 +110,7 @@ export default function SiteHeader() {
             {hasLink(CONTACT.phone) && (
               <a
                 href={CONTACT.phoneHref}
-                className="ml-1 inline-flex items-center gap-2 rounded-lg bg-gold px-3 py-2 text-sm font-bold text-navy-deep transition-opacity hover:opacity-90"
+                className="ml-1 inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
               >
                 <Phone className="h-4 w-4" />
                 <span className="hidden sm:inline">{CONTACT.phone}</span>
@@ -146,9 +146,23 @@ export default function SiteHeader() {
         <SheetContent side="left" className="w-[300px] p-0">
           <SheetTitle className="sr-only">Цэс</SheetTitle>
 
-          <div className="uudam-navy-surface flex items-center justify-between px-5 py-4">
-            <span className="text-base font-extrabold tracking-wide">UUDAM</span>
-            <button type="button" onClick={closeMobile} aria-label="Хаах">
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <span className="flex items-center gap-2">
+              <Image
+                src="/uudam-logo.jpg"
+                alt="Uudam Travel Agency"
+                width={28}
+                height={28}
+                className="rounded-md"
+              />
+              <span className="text-base font-extrabold tracking-wide text-foreground">UUDAM</span>
+            </span>
+            <button
+              type="button"
+              onClick={closeMobile}
+              aria-label="Хаах"
+              className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+            >
               <X className="h-5 w-5" />
             </button>
           </div>

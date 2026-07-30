@@ -32,13 +32,13 @@ const VALUES = [
 export default function AboutPage() {
   return (
     <div>
-      <section className="uudam-navy-surface">
+      <section className="border-b border-border bg-secondary/30">
         <div className="uudam-container py-16 md:py-20">
           <span className="uudam-eyebrow">Uudam Travel Agency</span>
-          <h1 className="mt-3 max-w-2xl text-3xl font-bold leading-tight text-white md:text-4xl">
+          <h1 className="mt-3 max-w-2xl text-3xl font-bold leading-tight tracking-tight text-foreground md:text-4xl">
             Аялал бол зөвхөн газар биш — тэнд өнгөрүүлэх цаг
           </h1>
-          <p className="mt-4 max-w-2xl text-base leading-relaxed text-white/80">
+          <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
             Бид аяллын багцыг зохион байгуулж, тийз, буудал, хөтөлбөр, хөтчийг нэг дор
             шийдэж өгдөг. Та зөвхөн аяллаа мэдэрхэд л анхаарна.
           </p>

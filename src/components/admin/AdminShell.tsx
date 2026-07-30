@@ -28,22 +28,22 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-secondary/30">
-      <div className="uudam-navy-surface">
+      <div className="border-b border-border bg-background">
         <div className="uudam-container flex h-16 items-center gap-3">
           <Image src="/uudam-logo.jpg" alt="Uudam" width={32} height={32} className="rounded-md" />
-          <span className="text-sm font-extrabold tracking-wide">UUDAM · Админ</span>
+          <span className="text-sm font-extrabold tracking-wide text-foreground">UUDAM · Админ</span>
 
           <div className="ml-auto flex items-center gap-2">
             <Link
               href={`/${locale}`}
-              className="rounded-lg px-3 py-1.5 text-sm text-white/80 hover:bg-white/10 hover:text-white"
+              className="rounded-lg px-3 py-1.5 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
             >
               Сайт харах
             </Link>
             <button
               type="button"
               onClick={() => setAuthToken(null)}
-              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-white/80 hover:bg-white/10 hover:text-white"
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
             >
               <LogOut className="h-4 w-4" />
               Гарах
@@ -60,7 +60,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
                 href={href}
                 className={cn(
                   "inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
-                  active ? "bg-white/15 text-white" : "text-white/70 hover:bg-white/10 hover:text-white",
+                  active ? "bg-secondary text-primary" : "text-muted-foreground hover:bg-secondary hover:text-foreground",
                 )}
               >
                 <Icon className="h-4 w-4" />

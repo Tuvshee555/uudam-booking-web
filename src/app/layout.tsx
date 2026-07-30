@@ -20,7 +20,10 @@ export const metadata: Metadata = {
   },
   description:
     "Uudam Travel Agency — гадаад, дотоодын аяллын багц. Хөтөлбөр, үнэ, хөдлөх огноог шууд харж захиална.",
-  icons: { icon: "/favicon.ico" },
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-icon.png",
+  },
   openGraph: {
     title: "Uudam Travel Agency",
     description: "Гадаад, дотоодын аяллын багц. Хөтөлбөр, үнэ, огноог шууд харна.",

@@ -2,12 +2,38 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight, Compass, Headphones, PhoneCall, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { ArrowRight, Compass, Headphones, ImageOff, PhoneCall, Sparkles } from "lucide-react";
 
 import { useTrips, useCategoryTree } from "@/hooks/useTrips";
 import TripCard from "@/components/trip/TripCard";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { Button } from "@/components/ui/button";
+
+/** Falls back to a plain icon tile instead of a broken-image glyph when a
+    category has no photo, or the stored URL no longer resolves. */
+function CategoryThumb({ src, alt }: { src: string | null | undefined; alt: string }) {
+  const [failed, setFailed] = useState(false);
+
+  if (!src || failed) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-secondary">
+        <ImageOff className="h-6 w-6 text-muted-foreground/40" />
+      </div>
+    );
+  }
+
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      sizes="(max-width: 640px) 100vw, 25vw"
+      className="object-cover transition-transform duration-500 group-hover:scale-105"
+      onError={() => setFailed(true)}
+    />
+  );
+}
 
 function TripGrid({ featured }: { featured?: boolean }) {
   const { data, isLoading } = useTrips(featured ? { featured: true } : undefined);
@@ -46,47 +72,47 @@ export default function HomePage() {
 
   return (
     <div>
-      {/* Hero — navy field lifted straight from the logo, used once, at full
-          strength, so the rest of the page can stay white. */}
-      <section className="uudam-navy-surface relative overflow-hidden">
-        <div
-          className="absolute inset-0 opacity-25"
-          style={{
-            backgroundImage:
-              "url(https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=2000&q=80)",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-navy-deep via-navy-deep/80 to-transparent" />
-
-        <div className="uudam-container relative py-20 md:py-28">
-          <div className="max-w-2xl">
+      {/* Hero — white-first: a real photo carries the atmosphere, navy and
+          gold only touch type and the two buttons. */}
+      <section className="relative overflow-hidden bg-background">
+        <div className="uudam-container grid gap-10 py-16 md:py-24 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+          <div className="relative z-10 max-w-2xl">
             <span className="uudam-eyebrow">Uudam Travel Agency</span>
-            <h1 className="mt-3 text-4xl font-bold leading-[1.1] text-white md:text-5xl lg:text-6xl">
+            <h1 className="mt-3 text-4xl font-bold leading-[1.1] tracking-tight text-foreground md:text-5xl lg:text-6xl">
               Дараагийн аялалаа
-              <span className="block text-gold">эндээс эхлүүл</span>
+              <span className="block text-primary">эндээс эхлүүл</span>
             </h1>
-            <p className="mt-5 max-w-xl text-base leading-relaxed text-white/80 md:text-lg">
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg">
               Хөтөлбөр, үнэ, хөдлөх огноо, үлдсэн суудал — бүгд ил тод. Хүссэн аялалаа
               сонгоод шууд захиал.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
-              <Button asChild size="lg" className="bg-gold text-navy-deep hover:bg-gold/90">
+              <Button asChild size="lg">
                 <Link href={`${base}/trips`}>
                   Аялал үзэх
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
-              <Button
-                asChild
-                size="lg"
-                variant="outline"
-                className="border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
-              >
+              <Button asChild size="lg" variant="outline">
                 <Link href={`${base}/contact`}>Зөвлөгөө авах</Link>
               </Button>
+            </div>
+          </div>
+
+          <div className="relative hidden aspect-[4/3] overflow-hidden rounded-3xl shadow-xl shadow-primary/10 lg:block">
+            <Image
+              src="https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=1400&q=80"
+              alt=""
+              fill
+              sizes="45vw"
+              className="object-cover"
+              priority
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-navy-deep/30 via-transparent to-transparent" />
+            <div className="absolute bottom-4 left-4 flex items-center gap-2 rounded-full bg-background/90 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm backdrop-blur">
+              <span className="h-1.5 w-1.5 rounded-full bg-gold" />
+              Шинэ аялалууд долоо бүр нэмэгдэнэ
             </div>
           </div>
         </div>
@@ -125,16 +151,8 @@ export default function HomePage() {
                 href={`${base}/category/${category.slug ?? category.id}`}
                 className="group relative aspect-[16/9] overflow-hidden rounded-2xl border border-border bg-secondary"
               >
-                {category.image && (
-                  <Image
-                    src={category.image}
-                    alt={category.categoryName}
-                    fill
-                    sizes="(max-width: 640px) 100vw, 25vw"
-                    className="object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-navy-deep/85 to-navy-deep/10" />
+                <CategoryThumb src={category.image} alt={category.categoryName} />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 p-4">
                   <div className="text-base font-semibold text-white">{category.categoryName}</div>
                   <div className="text-xs text-white/70">{category.tripCount} аялал</div>

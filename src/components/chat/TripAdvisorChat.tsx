@@ -80,15 +80,15 @@ export default function TripAdvisorChat() {
     <div className="fixed bottom-5 right-5 z-40">
       {open && (
         <div className="mb-3 flex h-[min(560px,70vh)] w-[min(380px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-xl">
-          <div className="uudam-navy-surface flex items-center justify-between px-4 py-3">
+          <div className="flex items-center justify-between border-b border-border bg-background px-4 py-3">
             <div className="flex items-center gap-2">
-              <Bot className="h-4 w-4 text-gold" />
-              <span className="text-sm font-bold">Аяллын зөвлөх</span>
+              <Bot className="h-4 w-4 text-primary" />
+              <span className="text-sm font-bold text-foreground">Аяллын зөвлөх</span>
             </div>
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="rounded-lg p-1 text-white/80 hover:bg-white/10 hover:text-white"
+              className="rounded-lg p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
               aria-label="Хаах"
             >
               <X className="h-4 w-4" />
