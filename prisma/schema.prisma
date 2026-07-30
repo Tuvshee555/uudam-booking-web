@@ -1,0 +1,308 @@
+// Uudam Travel Agency — booking platform schema.
+//
+// Business model note, because it shapes everything below: the agency sells
+// manually. The website is the catalogue and the lead capture; nobody pays
+// online. So there is no cart, no payment, no customer account — a visitor
+// reads a trip and sends an Enquiry, and staff ring them back.
+//
+// That is why there is no Payment/Order/PaymentMethod anywhere here, and why
+// Enquiry has no userId.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// Staff accounts only. Customers never sign in.
+model User {
+  id               String    @id @default(uuid())
+  email            String    @unique
+  password         String?
+  phonenumber      String?
+  role             Role      @default(ADMIN)
+  isVerified       Boolean   @default(false)
+  resetToken       String?
+  resetTokenExpiry DateTime?
+  firstName        String?
+  lastName         String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  handledEnquiries Enquiry[]
+
+  @@index([role])
+}
+
+model Trip {
+  id      String  @id @default(uuid())
+  slug    String  @unique
+  title   String
+  summary String?
+
+  /// Long-form sell copy shown on the trip page.
+  description String
+
+  // ---- Where ----------------------------------------------------------------
+  country      String?
+  city         String?
+  region       String?
+  destinations String[] @default([])
+  meetingPoint String?
+  latitude     Float?
+  longitude    Float?
+  mapUrl       String?
+
+  // ---- Trip facts -----------------------------------------------------------
+  durationDays   Int        @default(1)
+  durationNights Int        @default(0)
+  minTravelers   Int        @default(1)
+  maxTravelers   Int?
+  difficulty     Difficulty @default(EASY)
+  transport      String[]   @default([])
+  languages      String[]   @default([])
+  season         String?
+
+  // ---- Sell copy ------------------------------------------------------------
+  highlights         String[] @default([])
+  included           String[] @default([])
+  excluded           String[] @default([])
+  requirements       String?
+  cancellationPolicy String?
+
+  // ---- Media ----------------------------------------------------------------
+  image       String
+  extraImages String[] @default([])
+  video       String?
+  videos      String[] @default([])
+
+  // ---- Pricing (indicative; staff quote the final figure on the phone) ------
+  price            Float
+  oldPrice         Float?
+  discount         Int?    @default(0)
+  childPrice       Float?
+  infantPrice      Float?
+  singleSupplement Float?
+  currency         String  @default("MNT")
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
+
+  isFeatured  Boolean @default(true)
+  isPublished Boolean @default(true)
+  /// Manually maintained by staff — there is no automatic sales counter.
+  salesCount  Int     @default(0)
+  avgRating   Float   @default(0)
+  reviewCount Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  itinerary    ItineraryDay[]
+  departures   Departure[]
+  enquiries    Enquiry[]
+  testimonials Testimonial[]
+  views        TripView[]
+
+  @@index([categoryId])
+  @@index([createdAt])
+  @@index([isPublished, isFeatured])
+}
+
+/// A dated instance of a trip. Seat counts are maintained by staff, not
+/// decremented automatically, because bookings are confirmed off-site.
+model Departure {
+  id     String  @id @default(uuid())
+  tripId String
+  label  String?
+
+  startDate DateTime
+  endDate   DateTime?
+
+  seatsTotal Int?
+  seatsLeft  Int?
+
+  price       Float?
+  childPrice  Float?
+  infantPrice Float?
+
+  status DepartureStatus @default(OPEN)
+
+  trip      Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  enquiries Enquiry[]
+
+  @@index([tripId])
+  @@index([startDate])
+  @@index([tripId, startDate])
+}
+
+model ItineraryDay {
+  id        String @id @default(uuid())
+  tripId    String
+  dayNumber Int
+  title     String
+
+  description   String?
+  location      String?
+  meals         String[] @default([])
+  accommodation String?
+  image         String?
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@unique([tripId, dayNumber])
+  @@index([tripId])
+}
+
+model Category {
+  id           String  @id @default(uuid())
+  categoryName String
+  slug         String? @unique
+  description  String?
+  image        String?
+
+  parentId String?
+  parent   Category?  @relation("CategoryChildren", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryChildren")
+
+  trips Trip[]
+
+  @@index([parentId])
+}
+
+/// A "call me back" request. This is the site's only conversion event.
+model Enquiry {
+  id        String @id @default(uuid())
+  /// Short human-quotable code, so staff can say "your request UUD-7K2Q9".
+  reference String @unique
+
+  tripId        String?
+  departureId   String?
+  departureDate DateTime?
+
+  firstName String
+  phone     String
+  lastName  String?
+  email     String?
+
+  adults   Int @default(1)
+  children Int @default(0)
+  infants  Int @default(0)
+
+  message String?
+
+  /// Indicative total from the published fares at the time of the enquiry —
+  /// a starting point for the call, never a quote.
+  estimatedTotal Float?
+
+  status     EnquiryStatus @default(NEW)
+  staffNotes String?
+
+  handledById String?
+  handledBy   User?   @relation(fields: [handledById], references: [id])
+
+  /// Where the visitor came from, so staff know which post is working.
+  source String?
+  /// Anonymous visitor id, links this lead back to its TripView rows.
+  visitorId String?
+  referrer  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  trip      Trip?      @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  departure Departure? @relation(fields: [departureId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([tripId])
+  @@index([createdAt])
+  @@index([visitorId])
+}
+
+/// Customer feedback, entered by staff. There are no customer accounts, so
+/// these can't be self-service reviews.
+model Testimonial {
+  id         String   @id @default(uuid())
+  tripId     String?
+  authorName String
+  rating     Int      @default(5)
+  comment    String
+  images     String[] @default([])
+  travelDate DateTime?
+
+  isPublished Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  trip Trip? @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@index([isPublished])
+}
+
+
+/// One page view. First-party analytics — no third-party script, and nothing
+/// personally identifying: `visitorId` is a random id the browser generates for
+/// itself, never an IP or a fingerprint.
+///
+/// Rows are kept raw rather than pre-aggregated. At an agency's traffic that is
+/// far cheaper than maintaining rollups, and it keeps every question askable
+/// after the fact. Add a daily rollup if this ever passes a few million rows.
+model TripView {
+  id     String  @id @default(uuid())
+  tripId String?
+  path   String
+
+  visitorId String
+  sessionId String
+
+  referrer String?
+  source   String?
+  device   String?
+
+  /// Time on page, filled in by a beacon when the visitor leaves. 0 means they
+  /// left before it fired — a bounce, or a browser that dropped the beacon.
+  durationMs Int @default(0)
+  videoPlays Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  trip Trip? @relation(fields: [tripId], references: [id], onDelete: SetNull)
+
+  @@index([tripId, createdAt])
+  @@index([createdAt])
+  @@index([visitorId])
+  @@index([tripId, visitorId])
+}
+
+enum Role {
+  ADMIN
+  STAFF
+}
+
+enum Difficulty {
+  EASY
+  MODERATE
+  CHALLENGING
+}
+
+enum DepartureStatus {
+  OPEN
+  ALMOST_FULL
+  SOLD_OUT
+  CANCELLED
+  DEPARTED
+}
+
+enum EnquiryStatus {
+  NEW
+  CONTACTED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}

@@ -1,0 +1,136 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Uudam Travel — brand tokens.
+ *
+ * The logo is a deep navy field with a gold sun. On screen that reads as far
+ * too heavy if navy becomes the page colour, so the site is white-first: navy
+ * is reserved for type, the header rail and primary buttons, and gold appears
+ * only in small doses (badges, rules, the odd underline). Roughly a 90/8/2
+ * white / navy / gold split.
+ */
+
+@layer base {
+  :root {
+    /* Brand */
+    --uudam-navy: 209 72% 24%; /* #113e67 */
+    --uudam-navy-soft: 207 64% 31%; /* #1c4f80 */
+    --uudam-navy-deep: 207 82% 18%; /* #082f52 */
+    --uudam-gold: 41 87% 62%; /* #f2bd4a */
+
+    /* Surfaces — white-first, with a barely-there warm tint for sections */
+    --background: 0 0% 100%;
+    --foreground: 209 45% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 209 45% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 209 45% 12%;
+
+    /* Primary is the logo navy: buttons, active nav, links */
+    --primary: var(--uudam-navy);
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 209 72% 24%;
+
+    --muted: 210 40% 97%;
+    --muted-foreground: 215 16% 47%;
+
+    /* Accent is the gold sun — used sparingly */
+    --accent: var(--uudam-gold);
+    --accent-foreground: 209 60% 15%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 209 72% 24%;
+
+    --chart-1: 209 72% 24%;
+    --chart-2: 41 87% 62%;
+    --chart-3: 207 64% 45%;
+    --chart-4: 199 89% 48%;
+    --chart-5: 25 95% 53%;
+
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 209 45% 8%;
+    --foreground: 210 40% 98%;
+
+    --card: 209 42% 11%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 209 42% 11%;
+    --popover-foreground: 210 40% 98%;
+
+    /* Navy is invisible on a dark field, so primary shifts to the lighter
+       brand navy and gold carries more of the emphasis. */
+    --primary: 207 64% 55%;
+    --primary-foreground: 209 60% 10%;
+
+    --secondary: 209 35% 17%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 209 35% 15%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 41 87% 62%;
+    --accent-foreground: 209 60% 12%;
+
+    --destructive: 0 63% 45%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 209 30% 20%;
+    --input: 209 30% 20%;
+    --ring: 207 64% 55%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Mongolian Cyrillic runs slightly wider than Latin; a touch more tracking
+     on headings keeps Ө/Ү/Ё from crowding. */
+  h1, h2, h3, h4 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  /* The navy field from the logo, used for the header rail and hero overlays. */
+  .uudam-navy-surface {
+    background-color: hsl(var(--uudam-navy));
+    color: #fff;
+  }
+
+  /* Small gold eyebrow label — the one place gold appears as type. */
+  .uudam-eyebrow {
+    @apply text-[11px] font-bold uppercase tracking-[0.2em];
+    color: hsl(var(--uudam-gold));
+  }
+
+  .uudam-container {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+}
+
+/* Hide the scrollbar on horizontal card rails without disabling scrolling. */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
