@@ -20,7 +20,9 @@ export const CONTACT = {
   messenger: process.env.NEXT_PUBLIC_MESSENGER_URL ?? "https://m.me",
   instagram: process.env.NEXT_PUBLIC_INSTAGRAM ?? "",
 
-  address: process.env.NEXT_PUBLIC_ADDRESS ?? "Улаанбаатар, Монгол",
+  address:
+    process.env.NEXT_PUBLIC_ADDRESS ??
+    "Чингэлтэй дүүрэг, 4-р хороо, Анкарагийн гудамж-23 “Tod tower” оффис, 701, Улаанбаатар, Монгол",
   workingHours: process.env.NEXT_PUBLIC_WORKING_HOURS ?? "Даваа–Баасан 09:00–18:00",
 } as const;
 
