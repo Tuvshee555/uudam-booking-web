@@ -1,10 +1,26 @@
 "use client";
 
-import { Check, Clock, Languages, MapPin, Mountain, Star, X } from "lucide-react";
+import { useEffect, useMemo, type ReactNode } from "react";
+import {
+  AlertCircle,
+  BedDouble,
+  Check,
+  Clock,
+  FileText,
+  Languages,
+  MapPin,
+  Mountain,
+  ReceiptText,
+  Star,
+  Utensils,
+  X,
+} from "lucide-react";
 
-import { useTrip } from "@/hooks/useTrips";
+import { useTrip, useTrips } from "@/hooks/useTrips";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
+import { recordRecentlyViewed } from "@/lib/analytics";
 import TripMedia from "@/components/trip/TripMedia";
+import TripCard from "@/components/trip/TripCard";
 import EnquiryPanel from "@/components/trip/EnquiryPanel";
 import { Button } from "@/components/ui/button";
 
@@ -18,6 +34,23 @@ export default function TripDetailClient({ slug }: { slug: string }) {
   const { locale } = useI18n();
 
   const { data: trip, isLoading } = useTrip(slug);
+  const { data: allTrips } = useTrips();
+
+  const related = useMemo(() => {
+    if (!trip || !allTrips) return [];
+
+    const shareTag = (candidate: (typeof allTrips)[number]) =>
+      candidate.tags.some((tag) => trip.tags.some((t) => t.id === tag.id));
+
+    return allTrips
+      .filter((candidate) => candidate.id !== trip.id)
+      .filter((candidate) => (trip.categoryId && candidate.categoryId === trip.categoryId) || shareTag(candidate))
+      .slice(0, 4);
+  }, [trip, allTrips]);
+
+  useEffect(() => {
+    if (trip) recordRecentlyViewed(trip.slug);
+  }, [trip]);
 
   if (isLoading) {
     return (
@@ -194,7 +227,57 @@ export default function TripDetailClient({ slug }: { slug: string }) {
             </section>
           )}
 
-          {(trip.transport.length > 0 || trip.languages.length > 0 || trip.meetingPoint) && (
+          {(trip.importantNotes.length > 0 ||
+            trip.extraFees.length > 0 ||
+            trip.roomPrices.length > 0 ||
+            trip.childPriceNotes.length > 0 ||
+            trip.brochurePdfUrl) && (
+            <section className="mt-8 space-y-5">
+              {trip.importantNotes.length > 0 && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-950">
+                  <h2 className="flex items-center gap-2 text-lg font-bold">
+                    <AlertCircle className="h-5 w-5" />
+                    Чухал тэмдэглэл
+                  </h2>
+                  <ul className="mt-3 space-y-2 text-sm leading-relaxed">
+                    {trip.importantNotes.map((note) => (
+                      <li key={note}>{note}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {(trip.extraFees.length > 0 || trip.roomPrices.length > 0 || trip.childPriceNotes.length > 0) && (
+                <div className="grid gap-5 md:grid-cols-3">
+                  {trip.extraFees.length > 0 && (
+                    <InfoList icon={<ReceiptText className="h-4 w-4" />} title="Нэмэлт төлбөр" items={trip.extraFees} />
+                  )}
+                  {trip.roomPrices.length > 0 && (
+                    <InfoList icon={<BedDouble className="h-4 w-4" />} title="Өрөөний үнэ" items={trip.roomPrices} />
+                  )}
+                  {trip.childPriceNotes.length > 0 && (
+                    <InfoList icon={<ReceiptText className="h-4 w-4" />} title="Хүүхдийн үнэ" items={trip.childPriceNotes} />
+                  )}
+                </div>
+              )}
+
+              {trip.brochurePdfUrl && (
+                <Button asChild variant="outline" className="gap-2">
+                  <a href={trip.brochurePdfUrl} target="_blank" rel="noreferrer">
+                    <FileText className="h-4 w-4" />
+                    PDF брошур үзэх
+                  </a>
+                </Button>
+              )}
+            </section>
+          )}
+
+          {(trip.transport.length > 0 ||
+            trip.languages.length > 0 ||
+            trip.meetingPoint ||
+            trip.hotel ||
+            trip.foodIncluded !== null ||
+            trip.departureRule) && (
             <section className="mt-8 rounded-2xl border border-border p-5">
               <h2 className="text-lg font-bold">Бэлтгэл мэдээлэл</h2>
               <dl className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -221,6 +304,34 @@ export default function TripDetailClient({ slug }: { slug: string }) {
                       Цугларах цэг
                     </dt>
                     <dd className="mt-1 text-sm">{trip.meetingPoint}</dd>
+                  </div>
+                )}
+                {trip.hotel && (
+                  <div>
+                    <dt className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <BedDouble className="h-3 w-3" />
+                      Зочид буудал
+                    </dt>
+                    <dd className="mt-1 text-sm">{trip.hotel}</dd>
+                  </div>
+                )}
+                {trip.foodIncluded !== null && (
+                  <div>
+                    <dt className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <Utensils className="h-3 w-3" />
+                      Хоол
+                    </dt>
+                    <dd className="mt-1 text-sm">
+                      {trip.foodIncluded ? "Хөтөлбөрт багтсан" : "Хөтөлбөрт багтаагүй"}
+                    </dd>
+                  </div>
+                )}
+                {trip.departureRule && (
+                  <div className="sm:col-span-2">
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Гарах өдрийн дүрэм
+                    </dt>
+                    <dd className="mt-1 whitespace-pre-line text-sm">{trip.departureRule}</dd>
                   </div>
                 )}
                 {trip.requirements && (
@@ -257,12 +368,68 @@ export default function TripDetailClient({ slug }: { slug: string }) {
               </div>
             </section>
           )}
+
+          {trip.testimonials && trip.testimonials.length > 0 && (
+            <section className="mt-8">
+              <h2 className="text-lg font-bold">Харилцагчийн сэтгэгдэл</h2>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {trip.testimonials.map((t) => (
+                  <div key={t.id} className="rounded-2xl border border-border p-4">
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: t.rating }).map((_, i) => (
+                        <Star key={i} className="h-3.5 w-3.5 fill-gold text-gold" />
+                      ))}
+                    </div>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t.comment}</p>
+                    <p className="mt-2 text-xs font-semibold">{t.authorName}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
 
         <aside className="lg:sticky lg:top-[124px] lg:h-fit">
           <EnquiryPanel trip={trip} />
         </aside>
       </div>
+
+      {related.length > 0 && (
+        <section className="mt-12">
+          <h2 className="text-lg font-bold">Санал болгох аялалууд</h2>
+          <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {related.map((candidate) => (
+              <TripCard key={candidate.id} trip={candidate} />
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function InfoList({
+  icon,
+  title,
+  items,
+}: {
+  icon: ReactNode;
+  title: string;
+  items: string[];
+}) {
+  return (
+    <div className="rounded-2xl border border-border p-5">
+      <h2 className="flex items-center gap-2 text-base font-bold">
+        {icon}
+        {title}
+      </h2>
+      <ul className="mt-3 space-y-2">
+        {items.map((item) => (
+          <li key={item} className="text-sm leading-relaxed text-muted-foreground">
+            {item}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

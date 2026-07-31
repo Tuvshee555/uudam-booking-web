@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/server/prisma";
 import { requireAdmin } from "@/server/auth";
 import { handler, json, publicCache, readJson, safeText } from "@/server/http";
@@ -11,9 +12,12 @@ import {
   reconcilePricing,
   slugify,
   toDifficulty,
+  toOptionalBoolean,
   toOptionalInt,
+  toOptionalJsonObject,
   toOptionalNumber,
   toStringArray,
+  toTagConnect,
   uniqueSlug,
 } from "@/server/tripInput";
 
@@ -119,6 +123,7 @@ export const POST = handler(async (req: Request) => {
       excluded: toStringArray(body.excluded),
       requirements: safeText(body.requirements, 4000),
       cancellationPolicy: safeText(body.cancellationPolicy, 4000),
+      importantNotes: toStringArray(body.importantNotes, 80),
 
       image,
       extraImages: toStringArray(body.extraImages),
@@ -131,11 +136,21 @@ export const POST = handler(async (req: Request) => {
       childPrice: toOptionalNumber(body.childPrice) ?? null,
       infantPrice: toOptionalNumber(body.infantPrice) ?? null,
       singleSupplement: toOptionalNumber(body.singleSupplement) ?? null,
+      sourceTripId: safeText(body.sourceTripId, 120),
+      sourceMetadata: toOptionalJsonObject(body.sourceMetadata) as Prisma.InputJsonValue | undefined,
+      hotel: safeText(body.hotel, 400),
+      foodIncluded: toOptionalBoolean(body.foodIncluded) ?? null,
+      departureRule: safeText(body.departureRule, 1000),
+      extraFees: toStringArray(body.extraFees, 80),
+      roomPrices: toStringArray(body.roomPrices, 120),
+      childPriceNotes: toStringArray(body.childPriceNotes, 80),
+      brochurePdfUrl: safeText(body.brochurePdfUrl, 1000),
 
       categoryId: safeText(body.categoryId, 60),
       isFeatured: Boolean(body.isFeatured),
       isPublished: body.isPublished === undefined ? true : Boolean(body.isPublished),
 
+      tags: toTagConnect(body.tagIds),
       itinerary: { create: normalizeItinerary(body.itinerary) },
       departures: { create: normalizeDepartures(body.departures) },
     },

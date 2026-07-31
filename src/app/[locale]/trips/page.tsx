@@ -2,11 +2,12 @@
 
 import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Search, SlidersHorizontal, Star, X } from "lucide-react";
+import { BadgePercent, Search, SlidersHorizontal, Star, X } from "lucide-react";
 
-import { useTrips, useCategoryTree } from "@/hooks/useTrips";
+import { useTrips, useCategoryTree, useTags, usePriceBands } from "@/hooks/useTrips";
 import TripCard from "@/components/trip/TripCard";
 import { Input } from "@/components/ui/input";
+import { formatMnt } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
 type SortKey = "recommended" | "price-asc" | "price-desc" | "duration-asc" | "soonest";
@@ -46,10 +47,17 @@ function TripsPageInner() {
 
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [tagIds, setTagIds] = useState<string[]>([]);
+  const [bandId, setBandId] = useState<string | null>(null);
+  const [onSaleOnly, setOnSaleOnly] = useState(false);
   const [sort, setSort] = useState<SortKey>("recommended");
 
   const { data: categories } = useCategoryTree();
+  const { data: tags } = useTags();
+  const { data: priceBands } = usePriceBands();
   const { data: trips, isLoading } = useTrips();
+
+  const activeBand = priceBands?.find((band) => band.id === bandId) ?? null;
 
   const visible = useMemo(() => {
     if (!trips) return [];
@@ -59,6 +67,12 @@ function TripsPageInner() {
     const filtered = trips.filter((trip) => {
       if (featuredOnly && !trip.isFeatured) return false;
       if (categoryId && trip.categoryId !== categoryId) return false;
+      if (onSaleOnly && !(typeof trip.discount === "number" && trip.discount > 0)) return false;
+      if (tagIds.length > 0 && !trip.tags.some((tag) => tagIds.includes(tag.id))) return false;
+      if (activeBand) {
+        if (trip.price < activeBand.minPrice) return false;
+        if (activeBand.maxPrice !== null && trip.price > activeBand.maxPrice) return false;
+      }
       if (!needle) return true;
 
       return [trip.title, trip.summary, trip.country, trip.city, ...trip.destinations]
@@ -90,7 +104,7 @@ function TripsPageInner() {
     }
 
     return sorted;
-  }, [trips, search, categoryId, sort, featuredOnly]);
+  }, [trips, search, categoryId, sort, featuredOnly, tagIds, activeBand, onSaleOnly]);
 
   return (
     <div className="uudam-container py-8">
@@ -169,6 +183,69 @@ function TripsPageInner() {
               {category.categoryName}
             </button>
           ))}
+        </div>
+      )}
+
+      {((priceBands && priceBands.length > 0) || (tags && tags.length > 0)) && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setOnSaleOnly((v) => !v)}
+            className={cn(
+              "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+              onSaleOnly
+                ? "border-destructive bg-destructive text-destructive-foreground"
+                : "border-border hover:border-destructive/40",
+            )}
+          >
+            <BadgePercent className="h-3.5 w-3.5" />
+            Хямдралтай
+          </button>
+
+          {priceBands?.map((band) => (
+            <button
+              key={band.id}
+              type="button"
+              onClick={() => setBandId((current) => (current === band.id ? null : band.id))}
+              title={`${formatMnt(band.minPrice)} – ${band.maxPrice !== null ? formatMnt(band.maxPrice) : "∞"}`}
+              className={cn(
+                "shrink-0 rounded-full border px-3.5 py-1.5 text-sm transition-colors",
+                bandId === band.id
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border hover:border-primary/40",
+              )}
+            >
+              {band.name}
+            </button>
+          ))}
+
+          {tags && tags.length > 0 && (
+            <>
+              <span className="mx-0.5 h-4 w-px shrink-0 bg-border" />
+              {tags.map((tag) => {
+                const active = tagIds.includes(tag.id);
+                return (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() =>
+                      setTagIds((current) =>
+                        active ? current.filter((id) => id !== tag.id) : [...current, tag.id],
+                      )
+                    }
+                    className={cn(
+                      "shrink-0 rounded-full border px-3.5 py-1.5 text-sm transition-colors",
+                      active
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border hover:border-primary/40",
+                    )}
+                  >
+                    {tag.name}
+                  </button>
+                );
+              })}
+            </>
+          )}
         </div>
       )}
 

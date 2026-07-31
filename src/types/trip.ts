@@ -46,6 +46,21 @@ export type TripCategory = {
   parentId: string | null;
 };
 
+export type TripTag = { id: string; name: string; slug: string };
+
+export type Testimonial = {
+  id: string;
+  tripId: string | null;
+  authorName: string;
+  rating: number;
+  comment: string;
+  images: string[];
+  travelDate: string | null;
+  isPublished: boolean;
+  createdAt: string;
+  trip?: Pick<Trip, "id" | "slug" | "title"> | null;
+};
+
 export type Trip = {
   id: string;
   slug: string;
@@ -76,6 +91,7 @@ export type Trip = {
   excluded: string[];
   requirements: string | null;
   cancellationPolicy: string | null;
+  importantNotes: string[];
 
   image: string;
   extraImages: string[];
@@ -88,11 +104,21 @@ export type Trip = {
   childPrice: number | null;
   infantPrice: number | null;
   singleSupplement: number | null;
-  depositPercent: number | null;
   currency: string;
+
+  sourceTripId: string | null;
+  sourceMetadata: Record<string, unknown> | null;
+  hotel: string | null;
+  foodIncluded: boolean | null;
+  departureRule: string | null;
+  extraFees: string[];
+  roomPrices: string[];
+  childPriceNotes: string[];
+  brochurePdfUrl: string | null;
 
   categoryId: string | null;
   category: TripCategory | null;
+  tags: TripTag[];
 
   isFeatured: boolean;
   isPublished: boolean;
@@ -106,6 +132,7 @@ export type Trip = {
   departures: Departure[];
   itinerary: ItineraryDay[];
   reviews?: TripReview[];
+  testimonials?: Testimonial[];
 };
 
 export type TripReview = {

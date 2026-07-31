@@ -7,6 +7,7 @@ import { ArrowRight, Compass, Headphones, ImageOff, PhoneCall, Sparkles } from "
 
 import { useTrips, useCategoryTree } from "@/hooks/useTrips";
 import TripCard from "@/components/trip/TripCard";
+import RecentlyViewedStrip from "@/components/trip/RecentlyViewedStrip";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { Button } from "@/components/ui/button";
 
@@ -162,6 +163,8 @@ export default function HomePage() {
           </div>
         </section>
       )}
+
+      <RecentlyViewedStrip />
 
       {/* Featured */}
       <section className="uudam-container pb-6">

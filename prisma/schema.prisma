@@ -73,6 +73,7 @@ model Trip {
   excluded           String[] @default([])
   requirements       String?
   cancellationPolicy String?
+  importantNotes     String[] @default([])
 
   // ---- Media ----------------------------------------------------------------
   image       String
@@ -89,8 +90,26 @@ model Trip {
   singleSupplement Float?
   currency         String  @default("MNT")
 
+  // ---- Chatbot import facts --------------------------------------------------
+  /// Original source row id from the Messenger chatbot travel database.
+  sourceTripId    String?  @unique
+  sourceMetadata  Json?
+  hotel           String?
+  foodIncluded    Boolean?
+  departureRule   String?
+  extraFees       String[] @default([])
+  roomPrices      String[] @default([])
+  childPriceNotes String[] @default([])
+  brochurePdfUrl  String?
+
   categoryId String?
   category   Category? @relation(fields: [categoryId], references: [id])
+
+  /// Free-form, admin-authored labels ("Галт тэрэг", "Хосолсон аялал" …) —
+  /// unlike Category (one tree, one slot per trip) a trip can carry any
+  /// number of these, and staff create the tags themselves. Nothing is
+  /// pre-seeded.
+  tags Tag[] @relation("TripTags")
 
   isFeatured  Boolean @default(true)
   isPublished Boolean @default(true)
@@ -111,6 +130,7 @@ model Trip {
   @@index([categoryId])
   @@index([createdAt])
   @@index([isPublished, isFeatured])
+  @@index([sourceTripId])
 }
 
 /// A dated instance of a trip. Seat counts are maintained by staff, not
@@ -172,6 +192,40 @@ model Category {
   trips Trip[]
 
   @@index([parentId])
+}
+
+/// Free-form categorisation staff define themselves — "Галт тэрэг", "Хосолсон",
+/// anything. Starts empty; nothing is pre-seeded. A trip can carry any number
+/// of these, unlike Category which is one tree with one slot per trip.
+model Tag {
+  id   String @id @default(uuid())
+  name String
+  slug String @unique
+
+  trips Trip[] @relation("TripTags")
+
+  createdAt DateTime @default(now())
+
+  @@index([name])
+}
+
+/// A named, admin-authored price range ("0–1 сая", "2 сая+"). Deliberately
+/// has no relation to Trip: membership is computed live from `Trip.price` at
+/// read time, so a band never goes stale when staff edit a trip's price —
+/// the alternative (stamping a band id onto each trip) would silently lie
+/// the moment the price changes.
+model PriceBand {
+  id        String  @id @default(uuid())
+  name      String
+  minPrice  Float   @default(0)
+  /// Null means no upper bound ("2 сая+").
+  maxPrice  Float?
+  sortOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sortOrder])
 }
 
 /// A "call me back" request. This is the site's only conversion event.

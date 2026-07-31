@@ -108,6 +108,19 @@ export default function TripCard({ trip }: { trip: Trip }) {
           </p>
         )}
 
+        {trip.tags.length > 0 && (
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {trip.tags.slice(0, 2).map((tag) => (
+              <span
+                key={tag.id}
+                className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+              >
+                {tag.name}
+              </span>
+            ))}
+          </div>
+        )}
+
         <div className="mt-3 flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <Clock className="h-3.5 w-3.5" />

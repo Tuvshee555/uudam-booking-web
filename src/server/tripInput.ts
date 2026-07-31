@@ -77,6 +77,16 @@ export function toStringArray(value: unknown, maxItems = 40): string[] {
     .slice(0, maxItems);
 }
 
+export function toOptionalBoolean(value: unknown): boolean | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return null;
+  if (typeof value === "boolean") return value;
+  const normalized = String(value).trim().toLowerCase();
+  if (["true", "1", "yes", "y", "тийм"].includes(normalized)) return true;
+  if (["false", "0", "no", "n", "үгүй", "ugui"].includes(normalized)) return false;
+  return null;
+}
+
 export function toOptionalNumber(value: unknown): number | undefined {
   if (value === undefined || value === null || value === "") return undefined;
   const parsed = Number(value);
@@ -264,9 +274,62 @@ export function reconcilePricing(input: {
 /** Shared include shape so every trip response looks the same. */
 export const TRIP_INCLUDE = {
   category: true,
+  tags: { orderBy: { name: "asc" } },
   departures: { orderBy: { startDate: "asc" } },
   itinerary: { orderBy: { dayNumber: "asc" } },
 } as const;
+
+/**
+ * Trip <-> Tag is a plain implicit many-to-many with no join fields, so a
+ * save always replaces the full set rather than diffing it — the same
+ * "admin sends the whole list" contract as itinerary/departures. `connect`
+ * on create, `set` on update (Prisma doesn't accept `set` for a fresh row).
+ */
+function tagIds(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is string => typeof entry === "string" && entry.length > 0);
+}
+
+export function toTagConnect(value: unknown) {
+  return { connect: tagIds(value).map((id) => ({ id })) };
+}
+
+export function toTagSet(value: unknown) {
+  if (!Array.isArray(value)) return undefined;
+  return { set: tagIds(value).map((id) => ({ id })) };
+}
+
+export function toOptionalJsonObject(value: unknown): Record<string, unknown> | undefined {
+  if (value === undefined) return undefined;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  return value as Record<string, unknown>;
+}
+
+/**
+ * Recompute a trip's avgRating/reviewCount from its published testimonials.
+ *
+ * These two fields exist on Trip so the storefront can show a rating without
+ * fetching every testimonial, but they're only trustworthy if they're always
+ * derived from the same rows customers actually see — a hand-typed rating
+ * that outlives the testimonial that produced it is exactly the kind of
+ * "site claims one thing, reality shows another" trap this catalog has been
+ * bitten by before.
+ */
+export async function recomputeTripRating(tripId: string) {
+  const agg = await prisma.testimonial.aggregate({
+    where: { tripId, isPublished: true },
+    _avg: { rating: true },
+    _count: { rating: true },
+  });
+
+  await prisma.trip.update({
+    where: { id: tripId },
+    data: {
+      avgRating: agg._avg.rating ?? 0,
+      reviewCount: agg._count.rating,
+    },
+  });
+}
 
 export function assertTitle(title: unknown): string {
   if (typeof title !== "string" || !title.trim()) {

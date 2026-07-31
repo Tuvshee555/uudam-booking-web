@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -8,8 +9,9 @@ import { Loader2 } from "lucide-react";
 
 import { api, apiErrorMessage } from "@/lib/api";
 import { isAllowedImageHost } from "@/lib/imageHosts";
-import { useCategoryTree, useTrip } from "@/hooks/useTrips";
+import { useCategoryTree, useTags, useTrip } from "@/hooks/useTrips";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,6 +42,7 @@ type FormState = {
   summary: string;
   description: string;
   categoryId: string;
+  tagIds: string[];
 
   country: string;
   city: string;
@@ -62,6 +65,7 @@ type FormState = {
   excluded: string[];
   requirements: string;
   cancellationPolicy: string;
+  importantNotes: string[];
 
   image: string;
   extraImages: string[];
@@ -74,6 +78,15 @@ type FormState = {
   childPrice: string;
   infantPrice: string;
   singleSupplement: string;
+
+  sourceTripId: string;
+  hotel: string;
+  foodIncluded: string;
+  departureRule: string;
+  extraFees: string[];
+  roomPrices: string[];
+  childPriceNotes: string[];
+  brochurePdfUrl: string;
 
   isFeatured: boolean;
   isPublished: boolean;
@@ -88,6 +101,7 @@ const EMPTY_FORM: FormState = {
   summary: "",
   description: "",
   categoryId: "",
+  tagIds: [],
   country: "",
   city: "",
   region: "",
@@ -107,6 +121,7 @@ const EMPTY_FORM: FormState = {
   excluded: [],
   requirements: "",
   cancellationPolicy: "",
+  importantNotes: [],
   image: "",
   extraImages: [],
   video: "",
@@ -117,6 +132,14 @@ const EMPTY_FORM: FormState = {
   childPrice: "",
   infantPrice: "",
   singleSupplement: "",
+  sourceTripId: "",
+  hotel: "",
+  foodIncluded: "",
+  departureRule: "",
+  extraFees: [],
+  roomPrices: [],
+  childPriceNotes: [],
+  brochurePdfUrl: "",
   isFeatured: false,
   isPublished: true,
   itinerary: [],
@@ -130,6 +153,7 @@ function tripToForm(trip: Trip): FormState {
     summary: trip.summary ?? "",
     description: trip.description,
     categoryId: trip.categoryId ?? "",
+    tagIds: trip.tags.map((tag) => tag.id),
     country: trip.country ?? "",
     city: trip.city ?? "",
     region: trip.region ?? "",
@@ -149,6 +173,7 @@ function tripToForm(trip: Trip): FormState {
     excluded: trip.excluded,
     requirements: trip.requirements ?? "",
     cancellationPolicy: trip.cancellationPolicy ?? "",
+    importantNotes: trip.importantNotes,
     image: trip.image,
     extraImages: trip.extraImages,
     video: trip.video ?? "",
@@ -159,6 +184,15 @@ function tripToForm(trip: Trip): FormState {
     childPrice: trip.childPrice ? String(trip.childPrice) : "",
     infantPrice: trip.infantPrice ? String(trip.infantPrice) : "",
     singleSupplement: trip.singleSupplement ? String(trip.singleSupplement) : "",
+    sourceTripId: trip.sourceTripId ?? "",
+    hotel: trip.hotel ?? "",
+    foodIncluded:
+      trip.foodIncluded === true ? "true" : trip.foodIncluded === false ? "false" : "",
+    departureRule: trip.departureRule ?? "",
+    extraFees: trip.extraFees,
+    roomPrices: trip.roomPrices,
+    childPriceNotes: trip.childPriceNotes,
+    brochurePdfUrl: trip.brochurePdfUrl ?? "",
     isFeatured: trip.isFeatured,
     isPublished: trip.isPublished,
     itinerary: trip.itinerary.map((day) => ({
@@ -195,6 +229,7 @@ function buildPayload(form: FormState) {
     summary: form.summary.trim() || undefined,
     description: form.description.trim(),
     categoryId: form.categoryId || undefined,
+    tagIds: form.tagIds,
 
     country: form.country.trim() || undefined,
     city: form.city.trim() || undefined,
@@ -217,6 +252,7 @@ function buildPayload(form: FormState) {
     excluded: form.excluded,
     requirements: form.requirements.trim() || undefined,
     cancellationPolicy: form.cancellationPolicy.trim() || undefined,
+    importantNotes: form.importantNotes,
 
     image: form.image.trim(),
     extraImages: form.extraImages,
@@ -229,6 +265,15 @@ function buildPayload(form: FormState) {
     childPrice: numOrUndefined(form.childPrice),
     infantPrice: numOrUndefined(form.infantPrice),
     singleSupplement: numOrUndefined(form.singleSupplement),
+    sourceTripId: form.sourceTripId.trim() || undefined,
+    hotel: form.hotel.trim() || undefined,
+    foodIncluded:
+      form.foodIncluded === "true" ? true : form.foodIncluded === "false" ? false : undefined,
+    departureRule: form.departureRule.trim() || undefined,
+    extraFees: form.extraFees,
+    roomPrices: form.roomPrices,
+    childPriceNotes: form.childPriceNotes,
+    brochurePdfUrl: form.brochurePdfUrl.trim() || undefined,
 
     isFeatured: form.isFeatured,
     isPublished: form.isPublished,
@@ -267,6 +312,7 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
 
   const { data: existingTrip, isPending: loadingTrip } = useTrip(mode === "edit" ? tripId : undefined);
   const { data: categoryTree } = useCategoryTree();
+  const { data: tags } = useTags();
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const hydrated = useRef(false);
@@ -368,6 +414,46 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
                 <option key={opt.id} value={opt.id}>{opt.label}</option>
               ))}
             </select>
+          </div>
+          <div className="sm:col-span-2">
+            <Label>Шошго (үнэ, урамшуулал, тээврийн төрөл гэх мэт)</Label>
+            {tags && tags.length > 0 ? (
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {tags.map((tag) => {
+                  const active = form.tagIds.includes(tag.id);
+                  return (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      onClick={() =>
+                        set(
+                          "tagIds",
+                          active
+                            ? form.tagIds.filter((id) => id !== tag.id)
+                            : [...form.tagIds, tag.id],
+                        )
+                      }
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 text-sm transition-colors",
+                        active
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border hover:border-primary/40",
+                      )}
+                    >
+                      {tag.name}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                Шошго алга байна.{" "}
+                <Link href={`/${locale}/admin/tags`} className="font-medium text-primary hover:underline">
+                  Шошгын хэсгээс нэмнэ үү
+                </Link>
+                .
+              </p>
+            )}
           </div>
           <div className="sm:col-span-2">
             <Label>Товч танилцуулга</Label>
@@ -482,6 +568,38 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
             <StringListField label="Багцад багтсан" values={form.included} onChange={(v) => set("included", v)} />
             <StringListField label="Багцад ороогүй" values={form.excluded} onChange={(v) => set("excluded", v)} />
           </div>
+          <StringListField label="Чухал тэмдэглэл" values={form.importantNotes} onChange={(v) => set("importantNotes", v)} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <StringListField label="Нэмэлт төлбөр" values={form.extraFees} onChange={(v) => set("extraFees", v)} />
+            <StringListField label="Өрөөний үнэ" values={form.roomPrices} onChange={(v) => set("roomPrices", v)} />
+          </div>
+          <StringListField label="Хүүхдийн үнийн тэмдэглэл" values={form.childPriceNotes} onChange={(v) => set("childPriceNotes", v)} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <Label>Зочид буудал</Label>
+              <Input value={form.hotel} onChange={(e) => set("hotel", e.target.value)} />
+            </div>
+            <div>
+              <Label>Хоол багтсан эсэх</Label>
+              <select
+                value={form.foodIncluded}
+                onChange={(e) => set("foodIncluded", e.target.value)}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                <option value="">Тодорхойгүй</option>
+                <option value="true">Багтсан</option>
+                <option value="false">Багтаагүй</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <Label>Гарах өдрийн дүрэм</Label>
+            <Textarea rows={2} value={form.departureRule} onChange={(e) => set("departureRule", e.target.value)} />
+          </div>
+          <div>
+            <Label>PDF / брошур URL</Label>
+            <Input value={form.brochurePdfUrl} onChange={(e) => set("brochurePdfUrl", e.target.value)} placeholder="https://…" />
+          </div>
           <div>
             <Label>Шаардлага</Label>
             <Textarea rows={3} value={form.requirements} onChange={(e) => set("requirements", e.target.value)} />
@@ -489,6 +607,10 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
           <div>
             <Label>Цуцлалтын нөхцөл</Label>
             <Textarea rows={3} value={form.cancellationPolicy} onChange={(e) => set("cancellationPolicy", e.target.value)} />
+          </div>
+          <div>
+            <Label>Chatbot source id</Label>
+            <Input value={form.sourceTripId} onChange={(e) => set("sourceTripId", e.target.value)} />
           </div>
         </div>
       </Section>

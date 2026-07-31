@@ -1,0 +1,20 @@
+
+> uudam-booking-web@1.0.0 dev
+> next dev --port 3000
+
+▲ Next.js 16.2.12 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.22:3000
+- Environments: .env.local, .env
+✓ Ready in 1317ms
+Creating turbopack project {
+  dir: 'C:\\Dev\\Nexon-nova-company\\clients-chatbot\\Uudam-travel-brand\\uudam-booking-web',
+  testMode: true
+}
+
+ GET /mn/trips 200 in 2.4s (next.js: 1656ms, proxy.ts: 279ms, generate-params: 835ms, application-code: 515ms)
+ GET /api/trips 200 in 6.9s (next.js: 481ms, application-code: 6.4s)
+ GET /api/trips 200 in 14ms (next.js: 4ms, application-code: 10ms)
+ GET /mn/trips/jinin-mini-avatar-hoh-hot-ordos-hotyn-ayalal 200 in 3.8s (next.js: 1462ms, proxy.ts: 10ms, application-code: 2.4s)
+prisma:error Error in PostgreSQL connection: Error { kind: Closed, cause: None }
+prisma:error Error in PostgreSQL connection: Error { kind: Closed, cause: None }

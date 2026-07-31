@@ -20,6 +20,20 @@ export const CONTACT = {
   messenger: process.env.NEXT_PUBLIC_MESSENGER_URL ?? "https://m.me",
   instagram: process.env.NEXT_PUBLIC_INSTAGRAM ?? "",
 
+  /**
+   * wa.me needs the full international number with no "+", spaces or
+   * leading zero. Staff only ever type the local 8-digit number, so a bare
+   * digit-only value is assumed local and gets Mongolia's 976 prefixed;
+   * NEXT_PUBLIC_WHATSAPP can override with an already-international number.
+   */
+  whatsapp: (() => {
+    const raw = process.env.NEXT_PUBLIC_WHATSAPP || process.env.NEXT_PUBLIC_PHONE || "";
+    const digits = raw.replace(/[^\d]/g, "");
+    if (!digits) return "";
+    const international = digits.startsWith("976") ? digits : `976${digits}`;
+    return `https://wa.me/${international}`;
+  })(),
+
   address:
     process.env.NEXT_PUBLIC_ADDRESS ??
     "Чингэлтэй дүүрэг, 4-р хороо, Анкарагийн гудамж-23 “Tod tower” оффис, 701, Улаанбаатар, Монгол",

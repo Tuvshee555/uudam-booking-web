@@ -4,7 +4,18 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { BarChart3, FolderTree, Inbox, LayoutDashboard, LogOut, Map, Users } from "lucide-react";
+import {
+  BarChart3,
+  Coins,
+  FolderTree,
+  Inbox,
+  LayoutDashboard,
+  LogOut,
+  Map,
+  MessageSquareQuote,
+  Tag,
+  Users,
+} from "lucide-react";
 
 import { useAuth } from "@/app/[locale]/provider/AuthProvider";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
@@ -22,6 +33,9 @@ export default function AdminShell({ children }: { children: ReactNode }) {
     { href: `${base}/enquiries`, label: "Хүсэлтүүд", icon: Inbox },
     { href: `${base}/trips`, label: "Аялалууд", icon: Map },
     { href: `${base}/categories`, label: "Ангилалууд", icon: FolderTree },
+    { href: `${base}/tags`, label: "Шошгууд", icon: Tag },
+    { href: `${base}/price-bands`, label: "Үнийн ангилал", icon: Coins },
+    { href: `${base}/testimonials`, label: "Сэтгэгдэл", icon: MessageSquareQuote },
     { href: `${base}/analytics`, label: "Хандалт", icon: BarChart3 },
     { href: `${base}/staff`, label: "Ажилтнууд", icon: Users },
   ];

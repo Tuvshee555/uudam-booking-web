@@ -31,4 +31,6 @@ export function invalidate(prefix: string) {
 export function invalidateCatalog() {
   invalidate("trips");
   invalidate("categories");
+  invalidate("tags");
+  invalidate("priceBands");
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/server/prisma";
 import { optionalAdmin, requireAdmin } from "@/server/auth";
 import { handler, httpError, json, publicCache, readJson, safeText } from "@/server/http";
@@ -10,9 +11,12 @@ import {
   reconcilePricing,
   slugify,
   toDifficulty,
+  toOptionalBoolean,
   toOptionalInt,
+  toOptionalJsonObject,
   toOptionalNumber,
   toStringArray,
+  toTagSet,
   uniqueSlug,
 } from "@/server/tripInput";
 
@@ -148,6 +152,7 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
         excluded: optionalArray(body.excluded),
         requirements: optionalText(body.requirements, 4000),
         cancellationPolicy: optionalText(body.cancellationPolicy, 4000),
+        importantNotes: optionalArray(body.importantNotes),
 
         image: body.image === undefined ? undefined : (safeText(body.image, 800) ?? undefined),
         extraImages: optionalArray(body.extraImages),
@@ -165,11 +170,22 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
           body.singleSupplement === undefined
             ? undefined
             : (toOptionalNumber(body.singleSupplement) ?? null),
+        sourceTripId:
+          body.sourceTripId === undefined ? undefined : safeText(body.sourceTripId, 120),
+        sourceMetadata: toOptionalJsonObject(body.sourceMetadata) as Prisma.InputJsonValue | undefined,
+        hotel: optionalText(body.hotel, 400),
+        foodIncluded: toOptionalBoolean(body.foodIncluded),
+        departureRule: optionalText(body.departureRule, 1000),
+        extraFees: optionalArray(body.extraFees),
+        roomPrices: optionalArray(body.roomPrices),
+        childPriceNotes: optionalArray(body.childPriceNotes),
+        brochurePdfUrl: optionalText(body.brochurePdfUrl, 1000),
 
         categoryId: body.categoryId === undefined ? undefined : safeText(body.categoryId, 60),
         isFeatured: typeof body.isFeatured === "boolean" ? body.isFeatured : undefined,
         isPublished: typeof body.isPublished === "boolean" ? body.isPublished : undefined,
         salesCount: toOptionalInt(body.salesCount),
+        tags: body.tagIds === undefined ? undefined : toTagSet(body.tagIds),
 
         ...(Array.isArray(body.itinerary)
           ? { itinerary: { create: normalizeItinerary(body.itinerary) } }

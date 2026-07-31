@@ -21,11 +21,17 @@ async function findPublishedTrip(slug: string) {
       description: true,
       image: true,
       price: true,
+      currency: true,
+      durationDays: true,
       country: true,
       city: true,
+      avgRating: true,
+      reviewCount: true,
     },
   });
 }
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://uudamtravel.mn";
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -60,5 +66,44 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function TripDetailPage({ params }: Props) {
   const { slug } = await params;
-  return <TripDetailClient slug={slug} />;
+  const trip = await findPublishedTrip(slug);
+
+  const jsonLd = trip && {
+    "@context": "https://schema.org",
+    "@type": "TouristTrip",
+    name: trip.title,
+    description: trip.summary?.trim() || trip.description.slice(0, 300).trim(),
+    image: trip.image,
+    url: `${SITE_URL}/trips/${slug}`,
+    touristType: trip.country ? `${[trip.city, trip.country].filter(Boolean).join(", ")}` : undefined,
+    itinerary: { "@type": "ItemList", numberOfItems: trip.durationDays },
+    offers: {
+      "@type": "Offer",
+      price: trip.price,
+      priceCurrency: trip.currency,
+      availability: "https://schema.org/InStock",
+      url: `${SITE_URL}/trips/${slug}`,
+    },
+    ...(trip.reviewCount > 0
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: trip.avgRating,
+            reviewCount: trip.reviewCount,
+          },
+        }
+      : {}),
+  };
+
+  return (
+    <>
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
+      <TripDetailClient slug={slug} />
+    </>
+  );
 }

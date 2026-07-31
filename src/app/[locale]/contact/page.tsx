@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Clock, Facebook, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 import { CONTACT, hasLink } from "@/lib/contact";
+import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
 
 export const metadata: Metadata = {
   title: "Холбоо барих",
@@ -69,6 +70,17 @@ export default function ContactPage() {
       </div>
 
       <div className="mt-8 flex gap-3">
+        {hasLink(CONTACT.whatsapp) && (
+          <a
+            href={CONTACT.whatsapp}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-medium transition-colors hover:border-primary hover:text-primary"
+          >
+            <WhatsAppIcon className="h-4 w-4" />
+            WhatsApp
+          </a>
+        )}
         {hasLink(CONTACT.messenger) && (
           <a
             href={CONTACT.messenger}

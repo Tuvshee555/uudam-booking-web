@@ -60,6 +60,31 @@ export function getVideoPlays() {
   return videoPlays;
 }
 
+const RECENT_KEY = "uudam-recent-trips";
+const RECENT_LIMIT = 8;
+
+/** Most-recent-first list of trip slugs the visitor has opened, capped at 8. */
+export function recordRecentlyViewed(slug: string) {
+  try {
+    const existing = getRecentlyViewed();
+    const next = [slug, ...existing.filter((s) => s !== slug)].slice(0, RECENT_LIMIT);
+    localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+  } catch {
+    // Private mode / storage blocked — recently-viewed is a nice-to-have, not
+    // worth surfacing an error for.
+  }
+}
+
+export function getRecentlyViewed(): string[] {
+  try {
+    const raw = localStorage.getItem(RECENT_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((s): s is string => typeof s === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 export type TrackInput = {
   path: string;
   source?: string | null;

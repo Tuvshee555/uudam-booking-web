@@ -222,7 +222,18 @@ export default function EnquiryPanel({ trip }: { trip: Trip }) {
           <span>Нярай</span>
           <span className="font-medium text-foreground">{formatFare(prices.infant)}</span>
         </div>
+        {typeof trip.singleSupplement === "number" && trip.singleSupplement > 0 && (
+          <div className="flex justify-between">
+            <span>Ганц хүний өрөөний нэмэгдэл</span>
+            <span className="font-medium text-foreground">{formatMnt(trip.singleSupplement)}</span>
+          </div>
+        )}
       </div>
+      {trip.excluded.length > 0 && (
+        <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+          Дээрх үнэнд юу ороогүйг доорх &ldquo;Багцад ороогүй&rdquo; жагсаалтаас нягтална уу — виз, хувийн зардал зэрэг зарим зүйл ихэвчлэн үнэд ороогүй байдаг.
+        </p>
+      )}
 
       <form onSubmit={submit} className="mt-5">
         <div className="flex items-center gap-1.5 text-sm font-semibold">

@@ -83,3 +83,37 @@ export function useCategoryTrips(idOrSlug?: string) {
     staleTime: 60_000,
   });
 }
+
+export type FlatTag = { id: string; name: string; slug: string; tripCount: number };
+
+/** Free-form trip labels staff create themselves. Starts empty. */
+export function useTags() {
+  return useQuery<FlatTag[]>({
+    queryKey: ["tags"],
+    queryFn: async () => {
+      const { data } = await api.get<FlatTag[]>("/tags");
+      return data;
+    },
+    staleTime: 5 * 60_000,
+  });
+}
+
+export type PriceBand = {
+  id: string;
+  name: string;
+  minPrice: number;
+  maxPrice: number | null;
+  sortOrder: number;
+};
+
+/** Admin-authored price ranges, e.g. "0–1 сая". */
+export function usePriceBands() {
+  return useQuery<PriceBand[]>({
+    queryKey: ["priceBands"],
+    queryFn: async () => {
+      const { data } = await api.get<PriceBand[]>("/price-bands");
+      return data;
+    },
+    staleTime: 5 * 60_000,
+  });
+}

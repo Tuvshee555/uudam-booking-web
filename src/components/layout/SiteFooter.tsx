@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Facebook, Instagram, Mail, MapPin, Phone } from "lucide-react";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { CONTACT, hasLink } from "@/lib/contact";
+import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
 
 export default function SiteFooter() {
   const { locale } = useI18n();
@@ -37,6 +38,11 @@ export default function SiteFooter() {
             <li>
               <Link href={`${base}/contact`} className="hover:text-primary">
                 Зөвлөгөө авах
+              </Link>
+            </li>
+            <li>
+              <Link href={`${base}/faq`} className="hover:text-primary">
+                Түгээмэл асуулт
               </Link>
             </li>
           </ul>
@@ -94,6 +100,17 @@ export default function SiteFooter() {
           </ul>
 
           <div className="mt-5 flex gap-2">
+            {hasLink(CONTACT.whatsapp) && (
+              <a
+                href={CONTACT.whatsapp}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="WhatsApp"
+                className="rounded-lg border border-border p-2 text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+              >
+                <WhatsAppIcon className="h-4 w-4" />
+              </a>
+            )}
             <a
               href={CONTACT.facebook}
               target="_blank"
