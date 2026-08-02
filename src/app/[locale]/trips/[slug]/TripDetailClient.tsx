@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, type ReactNode } from "react";
+import Image from "next/image";
 import {
   AlertCircle,
   BedDouble,
@@ -173,6 +174,17 @@ export default function TripDetailClient({ slug }: { slug: string }) {
                         <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
                           {day.description}
                         </p>
+                      )}
+                      {day.image && (
+                        <div className="relative mt-3 aspect-[16/9] w-full max-w-xl overflow-hidden rounded-lg bg-secondary">
+                          <Image
+                            src={day.image}
+                            alt={day.title}
+                            fill
+                            sizes="(max-width: 640px) 100vw, 576px"
+                            className="object-cover"
+                          />
+                        </div>
                       )}
                       {(day.meals.length > 0 || day.accommodation) && (
                         <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">

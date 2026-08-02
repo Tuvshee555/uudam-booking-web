@@ -49,64 +49,103 @@ loadEnvFile(path.resolve(".env"));
 loadEnvFile(path.resolve(".env.local"));
 
 const DESTINATIONS = [
-  ["Шанхай", "Shanghai"],
-  ["Ханжоу", "Hangzhou"],
-  ["Бэйдайхэ", "Beidaihe"],
-  ["БЭЙДАЙХЭ", "Beidaihe"],
-  ["Бээжин", "Beijing"],
-  ["БЭЭЖИН", "Beijing"],
-  ["Датон", "Datong"],
-  ["Утай", "Wutai Mountain"],
-  ["Жинин", "Jining"],
-  ["Хөх хот", "Hohhot"],
-  ["Тэнгэрийн хаалга", "Tianmen Mountain"],
-  ["Чунчин", "Chongqing"],
-  ["Хайлаар", "Hailar"],
-  ["Манжуур", "Manzhouli"],
-  ["Жанжакоу", "Zhangjiakou"],
-  ["Эрээн", "Erenhot"],
-  ["Чичихар", "Qiqihar"],
-  ["Далянь", "Dalian"],
-  ["Токио", "Tokyo"],
-  ["Фүжи", "Mount Fuji"],
-  ["Тяньжин", "Tianjin"],
-  ["Чежү", "Jeju"],
-  ["Жэжү", "Jeju"],
-  ["Пусан", "Busan"],
-  ["Хайнан", "Hainan"],
-  ["Саньяа", "Sanya"],
-  ["Хайкоу", "Haikou"],
-  ["Ордос", "Ordos"],
-  ["Гүмбэн", "Kumbum Monastery"],
-  ["Макао", "Macau"],
-  ["Жухай", "Zhuhai"],
-  ["Хайлин", "Hailing Island"],
-  ["Гуанжоу", "Guangzhou"],
-  ["Шэнжин", "Shenzhen"],
+  { matches: ["Шанхай"], key: "Shanghai", label: "Шанхай", queries: ["shanghai skyline", "shanghai china"] },
+  { matches: ["Ханжоу"], key: "Hangzhou", label: "Ханжоу", queries: ["hangzhou west lake", "hangzhou china"] },
+  { matches: ["Бэйдайхэ", "БЭЙДАЙХЭ"], key: "Beidaihe", label: "Бэйдайхэ", queries: ["beidaihe beach", "beidaihe china"] },
+  { matches: ["Бээжин", "БЭЭЖИН"], key: "Beijing", label: "Бээжин", queries: ["beijing forbidden city", "great wall of china beijing"] },
+  { matches: ["Датон"], key: "Datong", label: "Датон", queries: ["datong china", "datong yungang grottoes"] },
+  { matches: ["Утай"], key: "Wutai Mountain", label: "Утай", queries: ["wutai mountain china"] },
+  { matches: ["Жинин"], key: "Jining", label: "Жинин", queries: ["jining china"] },
+  { matches: ["Хөх хот"], key: "Hohhot", label: "Хөх хот", queries: ["hohhot inner mongolia"] },
+  { matches: ["Тэнгэрийн хаалга"], key: "Tianmen Mountain", label: "Тэнгэрийн хаалга", queries: ["zhangjiajie tianmen mountain"] },
+  { matches: ["Чунчин"], key: "Chongqing", label: "Чунчин", queries: ["chongqing skyline", "chongqing china"] },
+  { matches: ["Хайлаар"], key: "Hailar", label: "Хайлаар", queries: ["hailaer grassland", "hulunbuir grassland"] },
+  { matches: ["Манжуур"], key: "Manzhouli", label: "Манжуур", queries: ["manzhouli china"] },
+  { matches: ["Жанжакоу"], key: "Zhangjiakou", label: "Жанжакоу", queries: ["zhangjiakou china"] },
+  { matches: ["Эрээн"], key: "Erenhot", label: "Эрээн", queries: ["erenhot inner mongolia"] },
+  { matches: ["Чичихар"], key: "Qiqihar", label: "Чичихар", queries: ["qiqihar china"] },
+  { matches: ["Далянь"], key: "Dalian", label: "Далянь", queries: ["dalian coast", "dalian china"] },
+  { matches: ["Токио"], key: "Tokyo", label: "Токио", queries: ["tokyo skyline", "tokyo japan"] },
+  { matches: ["Фүжи"], key: "Mount Fuji", label: "Фүжи", queries: ["mount fuji japan"] },
+  { matches: ["Тяньжин"], key: "Tianjin", label: "Тяньжин", queries: ["tianjin china"] },
+  { matches: ["Чежү", "Жэжү"], key: "Jeju", label: "Жэжү", queries: ["jeju island", "jeju coast"] },
+  { matches: ["Пусан"], key: "Busan", label: "Пусан", queries: ["busan korea", "busan coast"] },
+  { matches: ["Хайнан"], key: "Hainan", label: "Хайнан", queries: ["hainan beach", "hainan island"] },
+  { matches: ["Саньяа"], key: "Sanya", label: "Саньяа", queries: ["sanya beach", "sanya china"] },
+  { matches: ["Хайкоу"], key: "Haikou", label: "Хайкоу", queries: ["haikou china"] },
+  { matches: ["Ордос"], key: "Ordos", label: "Ордос", queries: ["ordos china", "inner mongolia city"] },
+  { matches: ["Гүмбэн"], key: "Kumbum Monastery", label: "Гүмбэн", queries: ["kumbum monastery"] },
+  { matches: ["Макао"], key: "Macau", label: "Макао", queries: ["macau skyline", "macau city"] },
+  { matches: ["Жухай"], key: "Zhuhai", label: "Жухай", queries: ["zhuhai china", "zhuhai coast"] },
+  { matches: ["Хайлин"], key: "Hailing Island", label: "Хайлин арал", queries: ["hailing island china"] },
+  { matches: ["Гуанжоу"], key: "Guangzhou", label: "Гуанжоу", queries: ["guangzhou skyline", "guangzhou china"] },
+  { matches: ["Шэнжин"], key: "Shenzhen", label: "Шэнжин", queries: ["shenzhen skyline", "shenzhen china"] },
 ];
+
+const LOCATION_LABELS = Object.fromEntries(DESTINATIONS.map((item) => [item.key, item.label]));
+const LOCATION_QUERIES = Object.fromEntries(DESTINATIONS.map((item) => [item.key, item.queries]));
 
 const IMAGE_LIBRARY = {
   Beijing: [
+    "https://images.unsplash.com/photo-1719382810007-ccfe2238a58b?auto=format&fit=crop&w=1600&q=80",
     "https://images.unsplash.com/photo-1508804185872-d7badad00f7d?auto=format&fit=crop&w=1600&q=80",
   ],
   Shanghai: [
+    "https://images.unsplash.com/photo-1718427778421-ad719f965738?auto=format&fit=crop&w=1600&q=80",
     "https://images.unsplash.com/photo-1538428494232-9c0d8a3ab403?auto=format&fit=crop&w=1600&q=80",
     "https://images.unsplash.com/photo-1545893835-abaa50cbe628?auto=format&fit=crop&w=1600&q=80",
   ],
   "Tianmen Mountain": [
-    "https://images.unsplash.com/photo-1508804185872-d7badad00f7d?auto=format&fit=crop&w=1600&q=80",
+    "https://images.unsplash.com/photo-1743526885034-b2f9331113c3?auto=format&fit=crop&w=1600&q=80",
   ],
   Chongqing: [
+    "https://images.unsplash.com/photo-1601021200156-7f61433330d5?auto=format&fit=crop&w=1600&q=80",
     "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1600&q=80",
   ],
   Hainan: [
+    "https://images.unsplash.com/photo-1601819625452-4de4f0eef21b?auto=format&fit=crop&w=1600&q=80",
+    "https://images.unsplash.com/photo-1599975225934-a60267556759?auto=format&fit=crop&w=1600&q=80",
     "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80",
   ],
   Sanya: [
-    "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80",
+    "https://images.unsplash.com/photo-1683184778326-7e8460792126?auto=format&fit=crop&w=1600&q=80",
+    "https://images.unsplash.com/photo-1601819625452-4de4f0eef21b?auto=format&fit=crop&w=1600&q=80",
   ],
   Haikou: [
+    "https://images.unsplash.com/photo-1599975225934-a60267556759?auto=format&fit=crop&w=1600&q=80",
+  ],
+  Beidaihe: [
     "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80",
+  ],
+  Datong: [
+    "https://images.unsplash.com/photo-1719382810007-ccfe2238a58b?auto=format&fit=crop&w=1600&q=80",
+  ],
+  "Wutai Mountain": [
+    "https://images.unsplash.com/photo-1743526885034-b2f9331113c3?auto=format&fit=crop&w=1600&q=80",
+  ],
+  Jining: [
+    "https://images.unsplash.com/photo-1719382810007-ccfe2238a58b?auto=format&fit=crop&w=1600&q=80",
+  ],
+  Hohhot: [
+    "https://images.unsplash.com/photo-1508804185872-d7badad00f7d?auto=format&fit=crop&w=1600&q=80",
+  ],
+  Hailar: [
+    "https://images.unsplash.com/photo-1508804185872-d7badad00f7d?auto=format&fit=crop&w=1600&q=80",
+  ],
+  Manzhouli: [
+    "https://images.unsplash.com/photo-1545893835-abaa50cbe628?auto=format&fit=crop&w=1600&q=80",
+  ],
+  Zhangjiakou: [
+    "https://images.unsplash.com/photo-1719382810007-ccfe2238a58b?auto=format&fit=crop&w=1600&q=80",
+  ],
+  Erenhot: [
+    "https://images.unsplash.com/photo-1508804185872-d7badad00f7d?auto=format&fit=crop&w=1600&q=80",
+  ],
+  Qiqihar: [
+    "https://images.unsplash.com/photo-1508804185872-d7badad00f7d?auto=format&fit=crop&w=1600&q=80",
+  ],
+  Dalian: [
+    "https://images.unsplash.com/photo-1548574505-5e239809ee19?auto=format&fit=crop&w=1600&q=80",
   ],
   Tokyo: [
     "https://images.unsplash.com/photo-1490806843957-31f4c9a91c65?auto=format&fit=crop&w=1600&q=80",
@@ -116,6 +155,7 @@ const IMAGE_LIBRARY = {
     "https://images.unsplash.com/photo-1490806843957-31f4c9a91c65?auto=format&fit=crop&w=1600&q=80",
   ],
   Jeju: [
+    "https://images.unsplash.com/photo-1730898652585-bda492ae1b41?auto=format&fit=crop&w=1600&q=80",
     "https://images.unsplash.com/photo-1538485399081-7191377e8241?auto=format&fit=crop&w=1600&q=80",
   ],
   Busan: [
@@ -127,11 +167,28 @@ const IMAGE_LIBRARY = {
   Cruise: [
     "https://images.unsplash.com/photo-1548574505-5e239809ee19?auto=format&fit=crop&w=1600&q=80",
   ],
+  Macau: [
+    "https://images.unsplash.com/photo-1730036758748-79eac8fa8eb8?auto=format&fit=crop&w=1600&q=80",
+  ],
+  Zhuhai: [
+    "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80",
+  ],
+  "Hailing Island": [
+    "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80",
+  ],
+  Guangzhou: [
+    "https://images.unsplash.com/photo-1718427778421-ad719f965738?auto=format&fit=crop&w=1600&q=80",
+  ],
+  Shenzhen: [
+    "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1600&q=80",
+  ],
   Default: [
     "https://images.unsplash.com/photo-1508804185872-d7badad00f7d?auto=format&fit=crop&w=1600&q=80",
     "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80",
   ],
 };
+
+const UNSPLASH_QUERY_CACHE = new Map();
 
 const DEMO_SLUGS = [
   "yapon-sakura-7-honog",
@@ -183,32 +240,129 @@ function parseDuration(text) {
   return { days, nights };
 }
 
+function displayLocation(location) {
+  return LOCATION_LABELS[location] || compact(location);
+}
+
+function hashString(value) {
+  return compact(value)
+    .split("")
+    .reduce((acc, ch) => ((acc * 31) + ch.charCodeAt(0)) >>> 0, 7);
+}
+
+function normalizeUnsplashUrl(url) {
+  const match = compact(url).match(/https:\/\/images\.unsplash\.com\/photo-[^?&"]+/);
+  if (!match) return "";
+  return `${match[0]}?auto=format&fit=crop&w=1600&q=80`;
+}
+
+async function fetchUnsplashQueryImages(query) {
+  const cacheKey = compact(query).toLowerCase();
+  if (!cacheKey) return [];
+  if (UNSPLASH_QUERY_CACHE.has(cacheKey)) return UNSPLASH_QUERY_CACHE.get(cacheKey);
+
+  try {
+    const slug = encodeURIComponent(cacheKey).replace(/%20/g, "-");
+    const response = await fetch(`https://unsplash.com/s/photos/${slug}`);
+    if (!response.ok) {
+      UNSPLASH_QUERY_CACHE.set(cacheKey, []);
+      return [];
+    }
+
+    const html = await response.text();
+    const matches = [...html.matchAll(/https:\/\/images\.unsplash\.com\/photo-[^"&)]+/g)]
+      .map((match) => normalizeUnsplashUrl(match[0]))
+      .filter(Boolean);
+    const unique = uniq(matches).slice(0, 60);
+    UNSPLASH_QUERY_CACHE.set(cacheKey, unique);
+    return unique;
+  } catch {
+    UNSPLASH_QUERY_CACHE.set(cacheKey, []);
+    return [];
+  }
+}
+
+async function loadLocationImages(location) {
+  const queries = LOCATION_QUERIES[location] || [location];
+  const fetched = [];
+
+  for (const query of queries) {
+    fetched.push(...(await fetchUnsplashQueryImages(query)));
+    if (fetched.length >= 60) break;
+  }
+
+  const merged = uniq([...(IMAGE_LIBRARY[location] || []), ...fetched]);
+  if (merged.length) IMAGE_LIBRARY[location] = merged;
+  return merged;
+}
+
 function inferDestinations(trip) {
   const haystack = `${trip.route_name || ""} ${trip.source_description || ""} ${array(trip.important_notes).join(" ")}`;
   const found = [];
-  for (const [needle, destination] of DESTINATIONS) {
-    if (haystack.toLowerCase().includes(needle.toLowerCase())) found.push(destination);
+  for (const destination of DESTINATIONS) {
+    if (destination.matches.some((needle) => haystack.toLowerCase().includes(needle.toLowerCase()))) {
+      found.push(destination.key);
+    }
   }
   return uniq(found);
 }
 
 function inferCountry(destinations) {
-  if (destinations.some((d) => ["Tokyo", "Mount Fuji"].includes(d))) return "Japan";
+  if (destinations.some((d) => ["Tokyo", "Mount Fuji"].includes(d))) return "Япон";
   if (destinations.some((d) => ["Jeju", "Busan"].includes(d)) && destinations.every((d) => ["Jeju", "Busan"].includes(d))) {
-    return "South Korea";
+    return "Өмнөд Солонгос";
   }
-  if (destinations.some((d) => ["Jeju", "Busan"].includes(d))) return "China / South Korea";
-  return "China";
+  if (destinations.some((d) => ["Jeju", "Busan"].includes(d))) return "БНХАУ / Өмнөд Солонгос";
+  return "БНХАУ";
 }
 
-function scenicImages(destinations, title) {
+async function scenicImages(destinations, title) {
   const images = [];
-  for (const destination of destinations) images.push(...(IMAGE_LIBRARY[destination] || []));
+  for (const destination of destinations) images.push(...(await loadLocationImages(destination)));
   if (/усан онгоц|круз/i.test(title)) images.push(...IMAGE_LIBRARY.Cruise);
-  if (/хайнан|саньяа|хайкоу/i.test(title)) images.push(...IMAGE_LIBRARY.Hainan);
-  if (/токио|фүжи/i.test(title)) images.push(...IMAGE_LIBRARY.Tokyo);
-  if (/жэжү|чежү/i.test(title)) images.push(...IMAGE_LIBRARY.Jeju);
+  if (/хайнан|саньяа|хайкоу/i.test(title)) images.push(...(await loadLocationImages("Hainan")));
+  if (/токио|фүжи/i.test(title)) images.push(...(await loadLocationImages("Tokyo")));
+  if (/жэжү|чежү/i.test(title)) images.push(...(await loadLocationImages("Jeju")));
   return uniq(images.length ? images : IMAGE_LIBRARY.Default);
+}
+
+function imageForLocation(location, fallbackImages, index, seed = 0) {
+  const preferred = IMAGE_LIBRARY[location] || [];
+  if (preferred.length) return preferred[(seed + index) % preferred.length];
+
+  const fallback = uniq([...fallbackImages, ...IMAGE_LIBRARY.Default]);
+  return fallback[(seed + index) % fallback.length] || null;
+}
+
+function locationForDay(index, totalDays, locations) {
+  if (locations.length === 0) return "";
+  if (index === totalDays - 1) return locations[locations.length - 1];
+  return locations[index % locations.length];
+}
+
+function titleForDay(index, totalDays, locations, location) {
+  const current = displayLocation(location);
+  if (index === 0) return `Улаанбаатар → ${current}`;
+  if (index === totalDays - 1) return `${current} → Улаанбаатар`;
+
+  const previous = displayLocation(locations[(index - 1) % locations.length]);
+  if (previous && previous !== current && index < locations.length) return `${previous} → ${current}`;
+
+  return `${current} дахь хөтөлбөр`;
+}
+
+function descriptionForDay(index, totalDays, highlights) {
+  if (index === 0) {
+    return "Нисэх буудал/хилийн боомтоос угтан авч, аяллын хөтөлбөр эхэлнэ.";
+  }
+  if (index === totalDays - 1) {
+    return "Өглөөний цайны дараа буцах хөдөлгөөнд орно.";
+  }
+
+  const highlight = highlights[(index - 1) % highlights.length];
+  return highlight
+    ? `${highlight} болон тухайн өдрийн аяллын хөтөлбөр.`
+    : "Хотын үзвэр, чөлөөт цаг болон хөтөлбөрт багтсан хэсгүүд.";
 }
 
 function inferTransport(trip) {
@@ -253,7 +407,7 @@ function formatChildRule(rule) {
 function extractHighlights(trip, destinations) {
   const notes = array(trip.important_notes);
   const title = compact(trip.route_name);
-  const highlights = [...destinations];
+  const highlights = destinations.map(displayLocation);
   if (/усан парк|Water World/i.test(`${title} ${notes.join(" ")}`)) highlights.push("Усан парк");
   if (/дисней/i.test(`${title} ${notes.join(" ")}`)) highlights.push("Шанхайн Диснейлэнд");
   if (/атлантис/i.test(`${title} ${notes.join(" ")}`)) highlights.push("Атлантис усан парк");
@@ -281,9 +435,10 @@ function derivePrice(trip) {
 }
 
 function buildDescription(trip, destinations) {
+  const route = destinations.map(displayLocation);
   const parts = [
     compact(trip.source_description),
-    destinations.length ? `Маршрут: ${destinations.join(" → ")}.` : "",
+    route.length ? `Маршрут: ${route.join(" → ")}.` : "",
     compact(trip.notes),
   ];
   return parts.filter(Boolean).join("\n\n") || compact(trip.route_name);
@@ -301,29 +456,19 @@ function buildItinerary(trip, destinations, images) {
   const locations = destinations.length ? destinations : [compact(trip.route_name)];
   return Array.from({ length: Math.min(days, 30) }, (_, index) => {
     const dayNumber = index + 1;
-    const isFirst = dayNumber === 1;
-    const isLast = dayNumber === days;
-    const location = isLast ? locations[locations.length - 1] : locations[Math.min(index, locations.length - 1)];
-    const title = isFirst
-      ? `Улаанбаатар → ${location}`
-      : isLast
-        ? `${location} → Улаанбаатар`
-        : `${location} хөтөлбөр`;
-    const description = isFirst
-      ? "Нисэх буудал/хилийн боомтоос угтан авч, аяллын хөтөлбөр эхэлнэ."
-      : isLast
-        ? "Өглөөний цайны дараа буцах хөдөлгөөнд орно."
-        : (highlights[index - 1] ? `${highlights[index - 1]} болон тухайн өдрийн аяллын хөтөлбөр.` : "Хотын үзвэр, чөлөөт цаг болон хөтөлбөрт багтсан хэсгүүд.");
+    const locationKey = locationForDay(index, days, locations);
+    const title = titleForDay(index, days, locations, locationKey);
+    const description = descriptionForDay(index, days, highlights);
     return {
       dayNumber,
       title,
       description,
-      location,
+      location: displayLocation(locationKey),
       meals: trip.has_food === true || array(trip.included_items).some((item) => /хоол|цай/i.test(item))
         ? ["Өглөөний цай"]
         : [],
       accommodation: compact(trip.hotel) || null,
-      image: images[index % images.length] || null,
+      image: images[index] || null,
     };
   });
 }
@@ -500,14 +645,125 @@ async function uniqueSlug(prisma, base, sourceTripId) {
   }
 }
 
-function toTripData(trip, categoryId, tags) {
+async function enforceUniquePublishedImages(prisma) {
+  const trips = await prisma.trip.findMany({
+    where: { sourceTripId: { not: null }, isPublished: true },
+    select: {
+      id: true,
+      image: true,
+      extraImages: true,
+      itinerary: { select: { id: true, image: true } },
+    },
+  });
+
+  const occurrencesByImage = new Map();
+  for (const trip of trips) {
+    const cover = compact(trip.image);
+    if (cover) {
+      if (!occurrencesByImage.has(cover)) occurrencesByImage.set(cover, []);
+      occurrencesByImage.get(cover).push({ tripId: trip.id, kind: "cover" });
+    }
+
+    for (const image of trip.extraImages) {
+      const value = compact(image);
+      if (!value) continue;
+      if (!occurrencesByImage.has(value)) occurrencesByImage.set(value, []);
+      occurrencesByImage.get(value).push({ tripId: trip.id, kind: "extra" });
+    }
+
+    for (const day of trip.itinerary) {
+      const value = compact(day.image);
+      if (!value) continue;
+      if (!occurrencesByImage.has(value)) occurrencesByImage.set(value, []);
+      occurrencesByImage.get(value).push({ tripId: trip.id, kind: "itinerary", itineraryId: day.id });
+    }
+  }
+
+  const extraRemovals = new Map();
+  const itineraryNulls = new Set();
+  const priority = { cover: 0, extra: 1, itinerary: 2 };
+
+  for (const [image, occurrences] of occurrencesByImage.entries()) {
+    if (occurrences.length < 2) continue;
+    const ordered = [...occurrences].sort((a, b) => priority[a.kind] - priority[b.kind]);
+    for (const occurrence of ordered.slice(1)) {
+      if (occurrence.kind === "extra") {
+        if (!extraRemovals.has(occurrence.tripId)) extraRemovals.set(occurrence.tripId, new Set());
+        extraRemovals.get(occurrence.tripId).add(image);
+      } else if (occurrence.kind === "itinerary") {
+        itineraryNulls.add(occurrence.itineraryId);
+      }
+    }
+  }
+
+  for (const trip of trips) {
+    const removals = extraRemovals.get(trip.id);
+    if (!removals?.size) continue;
+    const nextExtraImages = trip.extraImages.filter((image) => !removals.has(image));
+    await prisma.trip.update({
+      where: { id: trip.id },
+      data: { extraImages: nextExtraImages },
+    });
+  }
+
+  for (const itineraryId of itineraryNulls) {
+    await prisma.itineraryDay.update({
+      where: { id: itineraryId },
+      data: { image: null },
+    });
+  }
+}
+
+function pickCoverImage(images, seedText) {
+  if (!images.length) return IMAGE_LIBRARY.Default[0];
+  return images[hashString(seedText) % images.length];
+}
+
+function rotateCandidates(images, seedText) {
+  const candidates = uniq(images);
+  if (candidates.length < 2) return candidates;
+  const offset = hashString(seedText) % candidates.length;
+  return [...candidates.slice(offset), ...candidates.slice(0, offset)];
+}
+
+function pickUnusedImage(images, globalUsedImages, tripUsedImages, seedText) {
+  for (const image of rotateCandidates(images, seedText)) {
+    if (!globalUsedImages.has(image) && !tripUsedImages.has(image)) {
+      globalUsedImages.add(image);
+      tripUsedImages.add(image);
+      return image;
+    }
+  }
+  return null;
+}
+
+function pickUnusedImages(images, globalUsedImages, tripUsedImages, seedText, limit) {
+  const chosen = [];
+  for (const image of rotateCandidates(images, seedText)) {
+    if (chosen.length >= limit) break;
+    if (globalUsedImages.has(image) || tripUsedImages.has(image)) continue;
+    globalUsedImages.add(image);
+    tripUsedImages.add(image);
+    chosen.push(image);
+  }
+  return chosen;
+}
+
+async function toTripData(trip, categoryId, tags, globalUsedImages) {
   const title = compact(trip.route_name);
   const destinations = inferDestinations(trip);
   const country = inferCountry(destinations);
   const { days, nights } = parseDuration(trip.duration_text);
-  const scenic = scenicImages(destinations, title);
+  const scenic = await scenicImages(destinations, title);
   const posterPhotos = array(trip.photo_urls);
-  const images = uniq([...scenic, ...posterPhotos]);
+  const tripUsedImages = new Set();
+  const tripSeed = trip.id || title;
+  const locationKeys = destinations.length ? destinations : [compact(trip.route_name)];
+  const imageCandidates = uniq([...scenic, ...posterPhotos, ...IMAGE_LIBRARY.Default]);
+  const coverImage =
+    pickUnusedImage(scenic, globalUsedImages, tripUsedImages, `${tripSeed}:cover`) ||
+    pickUnusedImage(imageCandidates, globalUsedImages, tripUsedImages, `${tripSeed}:cover:fallback`) ||
+    pickCoverImage(scenic, tripSeed);
   const included = uniq(array(trip.included_items));
   const excluded = uniq(array(trip.excluded_items));
   const importantNotes = uniq(array(trip.important_notes));
@@ -517,15 +773,32 @@ function toTripData(trip, categoryId, tags) {
   const price = derivePrice(trip);
   const singleSupplementText = extraFees.find((fee) => fee.includes("ганцаараа"));
   const singleSupplementMatch = singleSupplementText?.match(/([\d,]+)₮/);
+  const localizedDestinations = destinations.map(displayLocation);
+  const itineraryImageCount = Math.min(days, 30);
+  const itineraryImages = Array.from({ length: itineraryImageCount }, (_, index) => {
+    const locationKey = locationForDay(index, days, locationKeys);
+    const locationCandidates = uniq([...(IMAGE_LIBRARY[locationKey] || []), ...imageCandidates]);
+    return (
+      pickUnusedImage(locationCandidates, globalUsedImages, tripUsedImages, `${tripSeed}:day:${index}:${locationKey}`) ||
+      pickUnusedImage(imageCandidates, globalUsedImages, tripUsedImages, `${tripSeed}:day:${index}:fallback`)
+    );
+  });
+  const galleryImages = pickUnusedImages(
+    imageCandidates,
+    globalUsedImages,
+    tripUsedImages,
+    `${tripSeed}:gallery`,
+    8,
+  );
 
   return {
     title,
     summary: compact(trip.source_description).slice(0, 400) || `${title} - ${days} өдөр ${nights} шөнө.`,
     description: buildDescription(trip, destinations),
     country,
-    city: destinations[0] || null,
-    region: country === "China" ? "Asia" : null,
-    destinations,
+    city: localizedDestinations[0] || null,
+    region: country.includes("БНХАУ") ? "Ази" : null,
+    destinations: localizedDestinations,
     durationDays: days,
     durationNights: nights,
     minTravelers: 1,
@@ -540,8 +813,8 @@ function toTripData(trip, categoryId, tags) {
     requirements: buildRequirements(trip) || null,
     cancellationPolicy: null,
     importantNotes,
-    image: images[0] || IMAGE_LIBRARY.Default[0],
-    extraImages: images.slice(1, 24),
+    image: coverImage,
+    extraImages: galleryImages,
     video: null,
     videos: [],
     price,
@@ -575,7 +848,7 @@ function toTripData(trip, categoryId, tags) {
     categoryId,
     isFeatured: posterPhotos.length > 0 || importantNotes.length > 0,
     isPublished: trip.status === "active" && trip.customer_visible !== false,
-    itinerary: { create: buildItinerary(trip, destinations, images) },
+    itinerary: { create: buildItinerary(trip, destinations, itineraryImages, 0) },
     departures: { create: buildDepartures(trip, days) },
     tags: { connect: tags.map((tag) => ({ id: tag.id })) },
   };
@@ -601,13 +874,14 @@ async function main() {
   let created = 0;
   let updated = 0;
   const imported = [];
+  const usedImages = new Set();
 
   for (const sourceTrip of trips) {
     const category = await ensureCategory(prisma, sourceTrip.category);
     const tags = await ensureTags(prisma, buildTags(sourceTrip));
     const sourceTripId = compact(sourceTrip.id) || `chatbot-${slugify(sourceTrip.route_name)}`;
     const slug = await uniqueSlug(prisma, slugify(sourceTrip.route_name), sourceTripId);
-    const data = toTripData({ ...sourceTrip, id: sourceTripId }, category.id, tags);
+    const data = await toTripData({ ...sourceTrip, id: sourceTripId }, category.id, tags, usedImages);
 
     const existing = await prisma.trip.findUnique({
       where: { sourceTripId },
@@ -637,6 +911,8 @@ async function main() {
     existing ? (updated += 1) : (created += 1);
     imported.push({ title: saved.title, media: 1 + saved.extraImages.length });
   }
+
+  await enforceUniquePublishedImages(prisma);
 
   console.log(JSON.stringify({
     source: {

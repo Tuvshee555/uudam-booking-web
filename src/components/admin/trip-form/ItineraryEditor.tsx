@@ -6,12 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
+import ImageUploadField from "./ImageUploadField";
+
 export type ItineraryDraft = {
   title: string;
   description: string;
   location: string;
   meals: string;
   accommodation: string;
+  image: string;
 };
 
 const EMPTY_DAY: ItineraryDraft = {
@@ -20,6 +23,7 @@ const EMPTY_DAY: ItineraryDraft = {
   location: "",
   meals: "",
   accommodation: "",
+  image: "",
 };
 
 export { EMPTY_DAY };
@@ -84,6 +88,13 @@ export default function ItineraryEditor({
             <div className="sm:col-span-2">
               <Label>Тайлбар</Label>
               <Textarea rows={2} value={day.description} onChange={(e) => update(index, { description: e.target.value })} />
+            </div>
+            <div className="sm:col-span-2">
+              <ImageUploadField
+                label="Ó¨Ð´Ñ€Ð¸Ð¹Ð½ Ð·ÑƒÑ€Ð°Ð³"
+                value={day.image}
+                onChange={(value) => update(index, { image: value })}
+              />
             </div>
             <div className="sm:col-span-2">
               <Label>Хоол (таслалаар, ж: Өглөө, Орой)</Label>

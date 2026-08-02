@@ -9,6 +9,7 @@ const ALLOWED_IMAGE_HOSTS = ["images.unsplash.com", "res.cloudinary.com"];
 
 export function isAllowedImageHost(url: string): boolean {
   if (!url.trim()) return true; // empty is a separate required-field concern
+  if (url.startsWith("/")) return true;
   try {
     return ALLOWED_IMAGE_HOSTS.includes(new URL(url).hostname);
   } catch {

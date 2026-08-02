@@ -14,7 +14,8 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
-    "import:chatbot-trips": "node scripts/import-chatbot-trips.mjs"
+    "import:chatbot-trips": "node scripts/import-chatbot-trips.mjs",
+    "import:isanpo-zhangchhuu": "node scripts/import-isanpo-zhangchhuu-trip.mjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
