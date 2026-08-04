@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
 import { prisma } from "@/server/prisma";
 import { formatMnt } from "@/lib/pricing";
@@ -67,6 +68,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function TripDetailPage({ params }: Props) {
   const { slug } = await params;
   const trip = await findPublishedTrip(slug);
+
+  // A shared link to a trip that's since been unpublished or deleted should
+  // 404 for real (search engines, unfurl bots), not render a 200 page whose
+  // content happens to say "not found" — that was a soft-404.
+  if (!trip) notFound();
 
   const jsonLd = trip && {
     "@context": "https://schema.org",

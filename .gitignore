@@ -37,6 +37,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# scratch/working files (PDF imports, generated page renders) — never ship these
+/tmp/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
 import { prisma } from "@/server/prisma";
 import CategoryPageClient from "./CategoryPageClient";
@@ -43,5 +44,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function CategoryPage({ params }: Props) {
   const { id } = await params;
+  const category = await findCategory(id);
+
+  // Without this, a bad category link rendered "Энэ ангилалд ... алга
+  // байна" — the same copy as a real, empty category — instead of a 404.
+  if (!category) notFound();
+
   return <CategoryPageClient id={id} />;
 }
