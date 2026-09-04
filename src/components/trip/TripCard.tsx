@@ -6,40 +6,16 @@ import { CalendarDays, Clock, MapPin, Play, Star, Users } from "lucide-react";
 
 import type { Trip } from "@/types/trip";
 import { formatMnt } from "@/lib/pricing";
+import { availability, formatDepartureDate, nextDeparture } from "@/lib/departures";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { cn } from "@/lib/utils";
-
-/** Soonest departure that is still open, or null if the trip has none listed. */
-function nextDeparture(trip: Trip) {
-  const now = Date.now();
-  return (
-    trip.departures
-      .filter(
-        (departure) =>
-          new Date(departure.startDate).getTime() >= now &&
-          departure.status !== "CANCELLED" &&
-          departure.status !== "DEPARTED",
-      )
-      .sort(
-        (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
-      )[0] ?? null
-  );
-}
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("mn-MN", {
-    month: "short",
-    day: "numeric",
-  });
-}
 
 export default function TripCard({ trip }: { trip: Trip }) {
   const { locale } = useI18n();
   const departure = nextDeparture(trip);
   const hasVideo = Boolean(trip.video) || trip.videos.length > 0;
 
-  const seatsLeft = departure?.seatsLeft ?? null;
-  const scarce = seatsLeft !== null && seatsLeft > 0 && seatsLeft <= 5;
+  const seats = departure ? availability(departure) : null;
 
   return (
     <Link
@@ -129,13 +105,19 @@ export default function TripCard({ trip }: { trip: Trip }) {
           {departure && (
             <span className="flex items-center gap-1">
               <CalendarDays className="h-3.5 w-3.5" />
-              {formatDate(departure.startDate)}
+              {formatDepartureDate(departure.startDate)}
             </span>
           )}
-          {seatsLeft !== null && (
-            <span className={cn("flex items-center gap-1", scarce && "font-semibold text-destructive")}>
+          {seats && (
+            <span
+              className={cn(
+                "flex items-center gap-1",
+                seats.tone === "tight" && "font-semibold text-destructive",
+                seats.tone === "closed" && "text-muted-foreground/70",
+              )}
+            >
               <Users className="h-3.5 w-3.5" />
-              {seatsLeft > 0 ? `${seatsLeft} суудал` : "Дүүрсэн"}
+              {seats.label}
             </span>
           )}
         </div>

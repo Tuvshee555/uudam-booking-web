@@ -18,6 +18,7 @@ import { api, apiErrorMessage } from "@/lib/api";
 import { CONTACT, hasLink } from "@/lib/contact";
 import { getVisitorId } from "@/lib/analytics";
 import { formatFare, formatMnt, lineTotal, resolvePrices } from "@/lib/pricing";
+import { availability, upcomingDepartures } from "@/lib/departures";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -105,18 +106,7 @@ export default function EnquiryPanel({ trip }: { trip: Trip }) {
   // impure, and departures shouldn't vanish while someone is filling the form.
   const [now] = useState(() => Date.now());
 
-  const openDepartures = useMemo(
-    () =>
-      trip.departures
-        .filter(
-          (departure) =>
-            new Date(departure.startDate).getTime() >= now &&
-            departure.status !== "CANCELLED" &&
-            departure.status !== "DEPARTED",
-        )
-        .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()),
-    [trip.departures, now],
-  );
+  const openDepartures = useMemo(() => upcomingDepartures(trip, now), [trip, now]);
 
   const selected = openDepartures.find((departure) => departure.id === departureId) ?? null;
   const prices = resolvePrices(trip, selected);
@@ -248,7 +238,8 @@ export default function EnquiryPanel({ trip }: { trip: Trip }) {
         ) : (
           <div className="mt-2 space-y-2">
             {openDepartures.map((departure) => {
-              const soldOut = departure.status === "SOLD_OUT" || departure.seatsLeft === 0;
+              const seats = availability(departure);
+              const soldOut = !seats.selectable;
               const active = departure.id === departureId;
 
               return (
@@ -265,13 +256,14 @@ export default function EnquiryPanel({ trip }: { trip: Trip }) {
                 >
                   <div className="min-w-0">
                     <div className="truncate text-sm font-medium">{formatRange(departure)}</div>
-                    <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                    <div
+                      className={cn(
+                        "mt-0.5 flex items-center gap-1 text-xs text-muted-foreground",
+                        seats.tone === "tight" && "font-semibold text-destructive",
+                      )}
+                    >
                       <Users className="h-3 w-3" />
-                      {soldOut
-                        ? "Дүүрсэн"
-                        : departure.seatsLeft != null
-                          ? `${departure.seatsLeft} суудал үлдсэн`
-                          : "Суудал байгаа"}
+                      {seats.label}
                     </div>
                   </div>
                   {departure.price != null && departure.price !== trip.price && (

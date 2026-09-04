@@ -4,8 +4,17 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { CategoryNode, Trip } from "@/types/trip";
 
-/** Published trips, optionally filtered. */
-export function useTrips(params?: { category?: string; featured?: boolean; search?: string }) {
+/**
+ * Published trips, optionally filtered.
+ *
+ * `initialData` serves the same purpose as in `useTrip`: the catalogue page
+ * queries the list on the server and seeds it here, so the cards exist in the
+ * initial HTML instead of appearing only once this request resolves.
+ */
+export function useTrips(
+  params?: { category?: string; featured?: boolean; search?: string },
+  initialData?: Trip[],
+) {
   return useQuery<Trip[]>({
     queryKey: ["trips", params ?? {}],
     queryFn: async () => {
@@ -18,6 +27,7 @@ export function useTrips(params?: { category?: string; featured?: boolean; searc
       });
       return data;
     },
+    initialData,
     staleTime: 60_000,
   });
 }

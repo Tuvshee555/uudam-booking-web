@@ -1,13 +1,15 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { BadgePercent, Search, SlidersHorizontal, Star, X } from "lucide-react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { BadgePercent, CalendarDays, MapPin, Search, SlidersHorizontal, Star, X } from "lucide-react";
 
 import { useTrips, useCategoryTree, useTags, usePriceBands } from "@/hooks/useTrips";
 import TripCard from "@/components/trip/TripCard";
 import { Input } from "@/components/ui/input";
 import { formatMnt } from "@/lib/pricing";
+import { soonestDepartureTime, upcomingDepartures } from "@/lib/departures";
+import type { Trip } from "@/types/trip";
 import { cn } from "@/lib/utils";
 
 type SortKey = "recommended" | "price-asc" | "price-desc" | "duration-asc" | "soonest";
@@ -20,44 +22,114 @@ const SORTS: { key: SortKey; label: string }[] = [
   { key: "soonest", label: "Ойрын огноо" },
 ];
 
-/** Earliest still-open departure, used by the "soonest" sort. */
-function soonest(departures: { startDate: string; status: string }[]) {
-  const now = Date.now();
-  const times = departures
-    .filter((d) => d.status !== "CANCELLED" && d.status !== "DEPARTED")
-    .map((d) => new Date(d.startDate).getTime())
-    .filter((time) => time >= now);
 
-  return times.length ? Math.min(...times) : Number.POSITIVE_INFINITY;
-}
-
-export default function TripsPageClient() {
+export default function TripsPageClient({ initialTrips }: { initialTrips?: Trip[] }) {
   return (
     <Suspense fallback={null}>
-      <TripsPageInner />
+      <TripsPageInner initialTrips={initialTrips} />
     </Suspense>
   );
 }
 
-function TripsPageInner() {
+function TripsPageInner({ initialTrips }: { initialTrips?: Trip[] }) {
   const searchParams = useSearchParams();
-  // Read once at mount, not on every render: the filter is a local toggle the
-  // visitor can clear, not something that should keep re-locking to the URL.
-  const [featuredOnly, setFeaturedOnly] = useState(() => searchParams.get("featured") === "true");
+  const router = useRouter();
+  const pathname = usePathname();
 
-  const [search, setSearch] = useState("");
-  const [categoryId, setCategoryId] = useState<string | null>(null);
-  const [tagIds, setTagIds] = useState<string[]>([]);
-  const [bandId, setBandId] = useState<string | null>(null);
-  const [onSaleOnly, setOnSaleOnly] = useState(false);
-  const [sort, setSort] = useState<SortKey>("recommended");
+  // Every filter is seeded from the URL, so a filtered catalogue can be shared
+  // in Messenger — the agency's actual sales channel — bookmarked, and survive
+  // a back button. It used to live purely in component state, which made every
+  // filtered view unlinkable.
+  const [featuredOnly, setFeaturedOnly] = useState(() => searchParams.get("featured") === "true");
+  const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
+  const [categoryId, setCategoryId] = useState<string | null>(() => searchParams.get("category"));
+  const [country, setCountry] = useState<string | null>(() => searchParams.get("country"));
+  const [month, setMonth] = useState<string | null>(() => searchParams.get("month"));
+  const [tagIds, setTagIds] = useState<string[]>(() => {
+    const raw = searchParams.get("tags");
+    return raw ? raw.split(",").filter(Boolean) : [];
+  });
+  const [bandId, setBandId] = useState<string | null>(() => searchParams.get("band"));
+  const [onSaleOnly, setOnSaleOnly] = useState(() => searchParams.get("sale") === "true");
+  const [sort, setSort] = useState<SortKey>(() => {
+    const raw = searchParams.get("sort");
+    return SORTS.some((option) => option.key === raw) ? (raw as SortKey) : "recommended";
+  });
+
+  // Frozen at mount. Reading the clock during render makes the component
+  // impure, and a departure shouldn't drop out of the results mid-scroll.
+  const [now] = useState(() => Date.now());
 
   const { data: categories } = useCategoryTree();
   const { data: tags } = useTags();
   const { data: priceBands } = usePriceBands();
-  const { data: trips, isLoading } = useTrips();
+  const { data: trips, isLoading } = useTrips(undefined, initialTrips);
 
   const activeBand = priceBands?.find((band) => band.id === bandId) ?? null;
+
+  // Mirror state back into the URL without adding a history entry per keystroke.
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (search.trim()) params.set("q", search.trim());
+    if (categoryId) params.set("category", categoryId);
+    if (country) params.set("country", country);
+    if (month) params.set("month", month);
+    if (tagIds.length) params.set("tags", tagIds.join(","));
+    if (bandId) params.set("band", bandId);
+    if (onSaleOnly) params.set("sale", "true");
+    if (featuredOnly) params.set("featured", "true");
+    if (sort !== "recommended") params.set("sort", sort);
+
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [
+    search,
+    categoryId,
+    country,
+    month,
+    tagIds,
+    bandId,
+    onSaleOnly,
+    featuredOnly,
+    sort,
+    pathname,
+    router,
+  ]);
+
+  /** Countries present in the catalogue, for the destination filter. */
+  const countries = useMemo(() => {
+    if (!trips) return [];
+    return Array.from(
+      new Set(trips.map((trip) => trip.country).filter((value): value is string => Boolean(value))),
+    ).sort((a, b) => a.localeCompare(b, "mn"));
+  }, [trips]);
+
+  /**
+   * Months that actually have an upcoming departure. Built from the data rather
+   * than a fixed twelve-month list so the filter never offers an empty month.
+   */
+  const months = useMemo(() => {
+    if (!trips) return [];
+    const keys = new Set<string>();
+
+    for (const trip of trips) {
+      for (const departure of upcomingDepartures(trip, now)) {
+        const date = new Date(departure.startDate);
+        keys.add(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`);
+      }
+    }
+
+    return Array.from(keys)
+      .sort()
+      .map((key) => {
+        const [year, monthIndex] = key.split("-");
+        const label = new Date(Number(year), Number(monthIndex) - 1, 1).toLocaleDateString("mn-MN", {
+          year: "numeric",
+          month: "long",
+        });
+        return { key, label };
+      });
+  }, [trips, now]);
 
   const visible = useMemo(() => {
     if (!trips) return [];
@@ -67,8 +139,17 @@ function TripsPageInner() {
     const filtered = trips.filter((trip) => {
       if (featuredOnly && !trip.isFeatured) return false;
       if (categoryId && trip.categoryId !== categoryId) return false;
+      if (country && trip.country !== country) return false;
       if (onSaleOnly && !(typeof trip.discount === "number" && trip.discount > 0)) return false;
       if (tagIds.length > 0 && !trip.tags.some((tag) => tagIds.includes(tag.id))) return false;
+      if (month) {
+        const departsThatMonth = upcomingDepartures(trip, now).some((departure) => {
+          const date = new Date(departure.startDate);
+          const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+          return key === month;
+        });
+        if (!departsThatMonth) return false;
+      }
       if (activeBand) {
         if (trip.price < activeBand.minPrice) return false;
         if (activeBand.maxPrice !== null && trip.price > activeBand.maxPrice) return false;
@@ -93,7 +174,7 @@ function TripsPageInner() {
         sorted.sort((a, b) => a.durationDays - b.durationDays);
         break;
       case "soonest":
-        sorted.sort((a, b) => soonest(a.departures) - soonest(b.departures));
+        sorted.sort((a, b) => soonestDepartureTime(a, now) - soonestDepartureTime(b, now));
         break;
       default:
         // Featured first, then whatever sells most.
@@ -104,7 +185,7 @@ function TripsPageInner() {
     }
 
     return sorted;
-  }, [trips, search, categoryId, sort, featuredOnly, tagIds, activeBand, onSaleOnly]);
+  }, [trips, search, categoryId, country, month, sort, featuredOnly, tagIds, activeBand, onSaleOnly, now]);
 
   return (
     <div className="uudam-container py-8">
@@ -137,6 +218,42 @@ function TripsPageInner() {
             className="pl-9"
           />
         </div>
+
+        {countries.length > 0 && (
+          <div className="relative">
+            <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <select
+              value={country ?? ""}
+              onChange={(event) => setCountry(event.target.value || null)}
+              className="h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm sm:w-44"
+            >
+              <option value="">Бүх чиглэл</option>
+              {countries.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {months.length > 0 && (
+          <div className="relative">
+            <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <select
+              value={month ?? ""}
+              onChange={(event) => setMonth(event.target.value || null)}
+              className="h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm sm:w-44"
+            >
+              <option value="">Бүх сар</option>
+              {months.map((option) => (
+                <option key={option.key} value={option.key}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="relative">
           <SlidersHorizontal className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

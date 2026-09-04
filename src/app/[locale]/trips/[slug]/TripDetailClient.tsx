@@ -24,6 +24,7 @@ import { recordRecentlyViewed } from "@/lib/analytics";
 import TripMedia from "@/components/trip/TripMedia";
 import TripCard from "@/components/trip/TripCard";
 import EnquiryPanel from "@/components/trip/EnquiryPanel";
+import ShareButton from "@/components/trip/ShareButton";
 import { Button } from "@/components/ui/button";
 
 const DIFFICULTY_LABEL: Record<string, string> = {
@@ -60,6 +61,32 @@ export default function TripDetailClient({
       .filter((candidate) => (trip.categoryId && candidate.categoryId === trip.categoryId) || shareTag(candidate))
       .slice(0, 4);
   }, [trip, allTrips]);
+
+  /**
+   * Anchors for the sticky section nav. Built from the same conditions the
+   * sections themselves render under, so the nav can never link to a heading
+   * that isn't on the page — trip content varies a lot across the catalogue.
+   */
+  const sections = useMemo(() => {
+    if (!trip) return [];
+
+    return [
+      trip.highlights.length > 0 && { id: "highlights", label: "Онцлох" },
+      { id: "about", label: "Тухай" },
+      trip.itinerary.length > 0 && { id: "itinerary", label: "Хөтөлбөр" },
+      (trip.included.length > 0 || trip.excluded.length > 0) && {
+        id: "included",
+        label: "Багц",
+      },
+      (trip.transport.length > 0 ||
+        trip.languages.length > 0 ||
+        trip.meetingPoint ||
+        trip.hotel ||
+        trip.foodIncluded !== null ||
+        trip.departureRule) && { id: "notes", label: "Бэлтгэл" },
+      trip.testimonials && trip.testimonials.length > 0 && { id: "reviews", label: "Сэтгэгдэл" },
+    ].filter((entry): entry is { id: string; label: string } => Boolean(entry));
+  }, [trip]);
 
   useEffect(() => {
     if (trip) recordRecentlyViewed(trip.slug);
@@ -131,7 +158,10 @@ export default function TripDetailClient({
               )}
             </div>
 
-            <h1 className="mt-3 text-2xl font-bold leading-tight md:text-3xl">{trip.title}</h1>
+            <div className="mt-3 flex items-start justify-between gap-4">
+              <h1 className="text-2xl font-bold leading-tight md:text-3xl">{trip.title}</h1>
+              <ShareButton title={trip.title} className="mt-1 shrink-0" />
+            </div>
             {trip.summary && (
               <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
                 {trip.summary}
@@ -139,8 +169,28 @@ export default function TripDetailClient({
             )}
           </header>
 
+          {sections.length > 1 && (
+            <nav
+              aria-label="Хуудасны хэсгүүд"
+              className="sticky top-[72px] z-20 -mx-4 mt-6 border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80"
+            >
+              <ul className="no-scrollbar flex gap-1 overflow-x-auto py-2">
+                {sections.map((section) => (
+                  <li key={section.id}>
+                    <a
+                      href={`#${section.id}`}
+                      className="inline-block shrink-0 rounded-full px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                    >
+                      {section.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          )}
+
           {trip.highlights.length > 0 && (
-            <section className="mt-8">
+            <section id="highlights" className="mt-8 scroll-mt-28">
               <h2 className="text-lg font-bold">Онцлох мөчүүд</h2>
               <ul className="mt-3 grid gap-2 sm:grid-cols-2">
                 {trip.highlights.map((highlight) => (
@@ -153,7 +203,7 @@ export default function TripDetailClient({
             </section>
           )}
 
-          <section className="mt-8">
+          <section id="about" className="mt-8 scroll-mt-28">
             <h2 className="text-lg font-bold">Аяллын тухай</h2>
             <p className="mt-3 whitespace-pre-line text-[15px] leading-relaxed text-muted-foreground">
               {trip.description}
@@ -161,7 +211,7 @@ export default function TripDetailClient({
           </section>
 
           {trip.itinerary.length > 0 && (
-            <section className="mt-8">
+            <section id="itinerary" className="mt-8 scroll-mt-28">
               <h2 className="text-lg font-bold">Өдөр тутмын хөтөлбөр</h2>
               <ol className="mt-4 space-y-0">
                 {trip.itinerary.map((day, index) => (
@@ -220,7 +270,7 @@ export default function TripDetailClient({
           )}
 
           {(trip.included.length > 0 || trip.excluded.length > 0) && (
-            <section className="mt-8 grid gap-6 sm:grid-cols-2">
+            <section id="included" className="mt-8 grid scroll-mt-28 gap-6 sm:grid-cols-2">
               {trip.included.length > 0 && (
                 <div>
                   <h2 className="text-lg font-bold">Багцад багтсан</h2>
@@ -302,7 +352,7 @@ export default function TripDetailClient({
             trip.hotel ||
             trip.foodIncluded !== null ||
             trip.departureRule) && (
-            <section className="mt-8 rounded-2xl border border-border p-5">
+            <section id="notes" className="mt-8 scroll-mt-28 rounded-2xl border border-border p-5">
               <h2 className="text-lg font-bold">Бэлтгэл мэдээлэл</h2>
               <dl className="mt-4 grid gap-4 sm:grid-cols-2">
                 {trip.transport.length > 0 && (
@@ -394,7 +444,7 @@ export default function TripDetailClient({
           )}
 
           {trip.testimonials && trip.testimonials.length > 0 && (
-            <section className="mt-8">
+            <section id="reviews" className="mt-8 scroll-mt-28">
               <h2 className="text-lg font-bold">Харилцагчийн сэтгэгдэл</h2>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {trip.testimonials.map((t) => (
