@@ -316,6 +316,22 @@ model Testimonial {
 }
 
 
+/// Single-row site-wide settings. A fixed id rather than a real primary key
+/// sequence, because there is exactly one row and it is fetched by that
+/// known id, never queried or listed.
+model SiteSettings {
+  id String @id @default("default")
+
+  /// Shown on every trip page — a standing disclaimer or policy note the
+  /// client wants repeated everywhere ("бид хариуцлага хүлээхгүй" etc.)
+  /// without retyping it into every trip. A trip's own `Trip.importantNotes[]`
+  /// still exists for anything specific to that one trip; the two render
+  /// together, this one first.
+  tripNotice String?
+
+  updatedAt DateTime @updatedAt
+}
+
 /// A funnel signal that isn't a full Enquiry: a share tap, a save toggle, a
 /// phone/Messenger click, a departure being picked before the form is ever
 /// submitted. TripView already answers "views vs. enquiries" by itself — this

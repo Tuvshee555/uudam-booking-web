@@ -14,6 +14,7 @@ import {
   Map,
   MessageSquareQuote,
   Newspaper,
+  Settings,
   Tag,
   Users,
 } from "lucide-react";
@@ -40,6 +41,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
     { href: `${base}/posts`, label: "Зөвлөгөө", icon: Newspaper },
     { href: `${base}/analytics`, label: "Хандалт", icon: BarChart3 },
     { href: `${base}/staff`, label: "Ажилтнууд", icon: Users },
+    { href: `${base}/settings`, label: "Тохиргоо", icon: Settings },
   ];
 
   return (

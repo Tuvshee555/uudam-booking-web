@@ -63,6 +63,12 @@ export async function getCategoryWithTrips(idOrSlug: string) {
   };
 }
 
+/** Mirrors GET /api/settings. Missing row (nothing set yet) is not an error. */
+export async function getSiteSettings(): Promise<{ tripNotice: string | null }> {
+  const row = await prisma.siteSettings.findUnique({ where: { id: "default" } });
+  return { tripNotice: row?.tripNotice ?? null };
+}
+
 /** Mirrors GET /api/categories/tree, including its orphan-promotion rule. */
 export async function getCategoryTree(): Promise<CategoryNode[]> {
   const all = await prisma.category.findMany({

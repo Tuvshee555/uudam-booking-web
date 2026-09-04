@@ -163,7 +163,19 @@ export const DELETE = handler(async (req: Request) => {
     await prisma.trip.updateMany({ where: { categoryId: id }, data: { categoryId: null } });
   }
 
-  await prisma.category.delete({ where: { id } });
+  try {
+    await prisma.category.delete({ where: { id } });
+  } catch (err) {
+    // The admin's category tree can go stale in a long-lived browser tab
+    // (it only refetches on its own schedule) and still show a category that
+    // was already deleted. Deleting it a second time hit Prisma's raw
+    // P2025 and surfaced as an opaque "Internal server error" — treat it as
+    // the success it effectively is instead: the row is gone either way.
+    const isMissing =
+      typeof err === "object" && err !== null && "code" in err && err.code === "P2025";
+    if (!isMissing) throw err;
+  }
+
   invalidateCatalog();
 
   return json({ success: true, detachedTrips: tripCount });

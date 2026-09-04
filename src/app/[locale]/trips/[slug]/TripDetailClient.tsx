@@ -18,7 +18,7 @@ import {
   X,
 } from "lucide-react";
 
-import { useTrip, useTrips } from "@/hooks/useTrips";
+import { useTrip, useTrips, useSiteSettings } from "@/hooks/useTrips";
 import type { Trip } from "@/types/trip";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { recordRecentlyViewed } from "@/lib/analytics";
@@ -39,6 +39,7 @@ const DIFFICULTY_LABEL: Record<string, string> = {
 export default function TripDetailClient({
   slug,
   initialTrip,
+  initialSiteSettings,
 }: {
   slug: string;
   /**
@@ -47,10 +48,12 @@ export default function TripDetailClient({
    * leaving a shell until the browser refetches.
    */
   initialTrip?: Trip;
+  initialSiteSettings?: { tripNotice: string | null };
 }) {
   const { locale } = useI18n();
 
   const { data: trip, isLoading } = useTrip(slug, initialTrip);
+  const { data: siteSettings } = useSiteSettings(initialSiteSettings);
   const { data: allTrips } = useTrips();
 
   const related = useMemo(() => {
@@ -81,6 +84,12 @@ export default function TripDetailClient({
         id: "included",
         label: "Багц",
       },
+      (siteSettings?.tripNotice ||
+        trip.importantNotes.length > 0 ||
+        trip.extraFees.length > 0 ||
+        trip.roomPrices.length > 0 ||
+        trip.childPriceNotes.length > 0 ||
+        trip.brochurePdfUrl) && { id: "important", label: "Чухал" },
       (trip.transport.length > 0 ||
         trip.languages.length > 0 ||
         trip.meetingPoint ||
@@ -89,7 +98,7 @@ export default function TripDetailClient({
         trip.departureRule) && { id: "notes", label: "Бэлтгэл" },
       trip.testimonials && trip.testimonials.length > 0 && { id: "reviews", label: "Сэтгэгдэл" },
     ].filter((entry): entry is { id: string; label: string } => Boolean(entry));
-  }, [trip]);
+  }, [trip, siteSettings]);
 
   useEffect(() => {
     if (trip) recordRecentlyViewed(trip.slug);
@@ -319,19 +328,24 @@ export default function TripDetailClient({
             </section>
           )}
 
-          {(trip.importantNotes.length > 0 ||
+          {(siteSettings?.tripNotice ||
+            trip.importantNotes.length > 0 ||
             trip.extraFees.length > 0 ||
             trip.roomPrices.length > 0 ||
             trip.childPriceNotes.length > 0 ||
             trip.brochurePdfUrl) && (
-            <section className="mt-8 space-y-5">
-              {trip.importantNotes.length > 0 && (
+            <section id="important" className="mt-8 scroll-mt-28 space-y-5">
+              {(siteSettings?.tripNotice || trip.importantNotes.length > 0) && (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-950">
                   <h2 className="flex items-center gap-2 text-lg font-bold">
                     <AlertCircle className="h-5 w-5" />
                     Чухал тэмдэглэл
                   </h2>
                   <ul className="mt-3 space-y-2 text-sm leading-relaxed">
+                    {/* Standing, site-wide note — set once in admin, shown on
+                        every trip — always comes first, then whatever is
+                        specific to this one trip. */}
+                    {siteSettings?.tripNotice && <li>{siteSettings.tripNotice}</li>}
                     {trip.importantNotes.map((note) => (
                       <li key={note}>{note}</li>
                     ))}

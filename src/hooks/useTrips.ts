@@ -79,7 +79,10 @@ export function useCategories(parentId?: string) {
   });
 }
 
-export function useCategoryTree(initialData?: CategoryNode[]) {
+export function useCategoryTree(
+  initialData?: CategoryNode[],
+  options?: { refetchOnMount?: boolean | "always" },
+) {
   return useQuery<CategoryNode[]>({
     queryKey: ["categories", "tree"],
     queryFn: async () => {
@@ -88,6 +91,7 @@ export function useCategoryTree(initialData?: CategoryNode[]) {
     },
     initialData,
     staleTime: 5 * 60_000,
+    ...options,
   });
 }
 
@@ -107,6 +111,19 @@ export function useCategoryTrips(idOrSlug?: string, initialData?: CategoryTrips)
     },
     initialData,
     staleTime: 60_000,
+  });
+}
+
+/** The one site-wide setting the storefront reads: the standing trip notice. */
+export function useSiteSettings(initialData?: { tripNotice: string | null }) {
+  return useQuery<{ tripNotice: string | null }>({
+    queryKey: ["settings"],
+    queryFn: async () => {
+      const { data } = await api.get<{ tripNotice: string | null }>("/settings");
+      return data;
+    },
+    initialData,
+    staleTime: 5 * 60_000,
   });
 }
 

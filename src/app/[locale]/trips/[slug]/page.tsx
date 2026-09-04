@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { prisma } from "@/server/prisma";
 import { TRIP_INCLUDE } from "@/server/tripInput";
+import { getSiteSettings } from "@/server/catalog";
 import { formatMnt } from "@/lib/pricing";
 import { localeAlternates } from "@/lib/hreflang";
 import type { Trip } from "@/types/trip";
@@ -85,7 +86,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function TripDetailPage({ params }: Props) {
   const { slug } = await params;
-  const trip = await findPublishedTrip(slug);
+  const [trip, siteSettings] = await Promise.all([findPublishedTrip(slug), getSiteSettings()]);
 
   // A shared link to a trip that's since been unpublished or deleted should
   // 404 for real (search engines, unfurl bots), not render a 200 page whose
@@ -127,7 +128,11 @@ export default async function TripDetailPage({ params }: Props) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       )}
-      <TripDetailClient slug={slug} initialTrip={serializeTrip(trip)} />
+      <TripDetailClient
+        slug={slug}
+        initialTrip={serializeTrip(trip)}
+        initialSiteSettings={siteSettings}
+      />
     </>
   );
 }
