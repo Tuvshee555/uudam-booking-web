@@ -7,6 +7,7 @@ import { CalendarDays, Clock, MapPin, Play, Star, Users } from "lucide-react";
 import type { Trip } from "@/types/trip";
 import { formatMnt } from "@/lib/pricing";
 import { availability, formatDepartureDate, nextDeparture } from "@/lib/departures";
+import SaveButton from "@/components/trip/SaveButton";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { cn } from "@/lib/utils";
 
@@ -50,12 +51,15 @@ export default function TripCard({ trip }: { trip: Trip }) {
           )}
         </div>
 
-        {hasVideo && (
-          <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
-            <Play className="h-3 w-3 fill-current" />
-            Бичлэг
-          </span>
-        )}
+        <div className="absolute right-3 top-3 flex items-center gap-1.5">
+          {hasVideo && (
+            <span className="flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
+              <Play className="h-3 w-3 fill-current" />
+              Бичлэг
+            </span>
+          )}
+          <SaveButton slug={trip.slug} />
+        </div>
 
         {trip.country && (
           <span className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
