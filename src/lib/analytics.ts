@@ -85,6 +85,47 @@ export function getRecentlyViewed(): string[] {
   }
 }
 
+/**
+ * Fire-and-forget funnel signal: a share tap, a save toggle, a phone/Messenger
+ * click, a departure pick. TripView already answers "views vs. enquiries" —
+ * this fills the part between the two that was previously invisible: whether
+ * anyone engages with a trip page before deciding not to enquire.
+ *
+ * Deliberately not awaited by callers. A click handler should never wait on
+ * a network request before doing its actual job (opening a share sheet,
+ * a tel: link, a Messenger deep link).
+ */
+export function track(
+  name:
+    | "share_click"
+    | "save_toggle"
+    | "phone_click"
+    | "messenger_click"
+    | "departure_select"
+    | "custom_trip_submit"
+    | "gift_submit",
+  options?: { tripId?: string; properties?: Record<string, unknown> },
+) {
+  try {
+    const payload = JSON.stringify({
+      name,
+      tripId: options?.tripId,
+      visitorId: getVisitorId(),
+      sessionId: getSessionId(),
+      properties: options?.properties,
+    });
+
+    fetch("/api/events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: payload,
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    // Analytics must never surface an error to a visitor.
+  }
+}
+
 export type TrackInput = {
   path: string;
   source?: string | null;

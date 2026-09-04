@@ -5,6 +5,7 @@ import { Check, Share2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
+import { track } from "@/lib/analytics";
 
 /**
  * The agency sells in Facebook Messenger, so a shared trip link is the single
@@ -14,15 +15,21 @@ import { cn } from "@/lib/utils";
  */
 export default function ShareButton({
   title,
+  tripId,
   className,
 }: {
   title: string;
+  tripId?: string;
   className?: string;
 }) {
   const [copied, setCopied] = useState(false);
 
   const share = async () => {
     const url = window.location.href;
+    track("share_click", {
+      tripId,
+      properties: { method: typeof navigator.share === "function" ? "native" : "copy" },
+    });
 
     if (navigator.share) {
       try {

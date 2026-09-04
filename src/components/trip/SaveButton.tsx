@@ -3,6 +3,7 @@
 import { Heart } from "lucide-react";
 
 import { useSavedTrips } from "@/lib/saved";
+import { track } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 
 export default function SaveButton({
@@ -23,6 +24,7 @@ export default function SaveButton({
     event.preventDefault();
     event.stopPropagation();
     toggle(slug);
+    track("save_toggle", { properties: { slug, saved: !saved } });
   };
 
   if (variant === "button") {

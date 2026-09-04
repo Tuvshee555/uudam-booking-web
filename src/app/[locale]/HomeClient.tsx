@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { ArrowRight, Compass, Headphones, ImageOff, PhoneCall, Sparkles } from "lucide-react";
 
 import { useTrips, useCategoryTree } from "@/hooks/useTrips";
@@ -179,9 +179,16 @@ function CustomTripCta({ base }: { base: string }) {
 export default function HomeClient({
   initialTrips,
   initialCategories,
+  trustBar,
 }: {
   initialTrips?: Trip[];
   initialCategories?: CategoryNode[];
+  /**
+   * Rendered server-side in page.tsx and passed down as a slot: it reads
+   * Prisma directly for a live trip count, which an async Server Component
+   * can do but this Client Component cannot.
+   */
+  trustBar?: ReactNode;
 }) {
   const { locale } = useI18n();
   const base = `/${locale}`;
@@ -256,6 +263,8 @@ export default function HomeClient({
           ))}
         </div>
       </section>
+
+      {trustBar}
 
       {/* Categories */}
       {categories && categories.length > 0 && (

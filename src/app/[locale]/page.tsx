@@ -1,4 +1,5 @@
 import { getCategoryTree, getPublishedTrips } from "@/server/catalog";
+import TrustBar from "@/components/trust/TrustBar";
 import HomeClient from "./HomeClient";
 
 /**
@@ -12,5 +13,11 @@ export const revalidate = 60;
 export default async function HomePage() {
   const [trips, categories] = await Promise.all([getPublishedTrips(), getCategoryTree()]);
 
-  return <HomeClient initialTrips={trips} initialCategories={categories} />;
+  return (
+    <HomeClient
+      initialTrips={trips}
+      initialCategories={categories}
+      trustBar={<TrustBar />}
+    />
+  );
 }

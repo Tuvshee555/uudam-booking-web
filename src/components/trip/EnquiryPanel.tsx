@@ -16,7 +16,7 @@ import {
 
 import { api, apiErrorMessage } from "@/lib/api";
 import { CONTACT, hasLink } from "@/lib/contact";
-import { getVisitorId } from "@/lib/analytics";
+import { getVisitorId, track } from "@/lib/analytics";
 import { formatFare, formatMnt, lineTotal, resolvePrices } from "@/lib/pricing";
 import { availability, upcomingDepartures } from "@/lib/departures";
 import { Button } from "@/components/ui/button";
@@ -165,7 +165,7 @@ export default function EnquiryPanel({ trip }: { trip: Trip }) {
         <div className="mt-5 grid gap-2">
           {hasLink(CONTACT.phone) && (
             <Button asChild variant="outline">
-              <a href={CONTACT.phoneHref}>
+              <a href={CONTACT.phoneHref} onClick={() => track("phone_click", { tripId: trip.id })}>
                 <Phone className="mr-2 h-4 w-4" />
                 {CONTACT.phone}
               </a>
@@ -173,7 +173,12 @@ export default function EnquiryPanel({ trip }: { trip: Trip }) {
           )}
           {hasLink(CONTACT.messenger) && (
             <Button asChild variant="ghost">
-              <a href={CONTACT.messenger} target="_blank" rel="noreferrer">
+              <a
+                href={CONTACT.messenger}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => track("messenger_click", { tripId: trip.id })}
+              >
                 <MessageCircle className="mr-2 h-4 w-4" />
                 Messenger-ээр бичих
               </a>
@@ -247,7 +252,11 @@ export default function EnquiryPanel({ trip }: { trip: Trip }) {
                   key={departure.id}
                   type="button"
                   disabled={soldOut}
-                  onClick={() => setDepartureId(active ? null : departure.id)}
+                  onClick={() => {
+                    const next = active ? null : departure.id;
+                    setDepartureId(next);
+                    if (next) track("departure_select", { tripId: trip.id, properties: { departureId: next } });
+                  }}
                   className={cn(
                     "flex w-full items-center justify-between rounded-xl border p-3 text-left transition-colors",
                     active ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",

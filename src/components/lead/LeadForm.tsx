@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { api, apiErrorMessage } from "@/lib/api";
 import { CONTACT, hasLink } from "@/lib/contact";
-import { getVisitorId } from "@/lib/analytics";
+import { getVisitorId, track } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -77,6 +77,7 @@ export default function LeadForm({
         referrer: typeof document !== "undefined" ? document.referrer || undefined : undefined,
       });
 
+      track(kind === "CUSTOM" ? "custom_trip_submit" : "gift_submit");
       setReference(data.reference);
     } catch (err) {
       toast.error(apiErrorMessage(err, "Илгээхэд алдаа гарлаа"));

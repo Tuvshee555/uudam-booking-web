@@ -8,6 +8,7 @@ import { Menu, Phone, Search, X } from "lucide-react";
 
 import { useCategoryTree } from "@/hooks/useTrips";
 import { CONTACT, hasLink } from "@/lib/contact";
+import { track } from "@/lib/analytics";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import ThemeToggle from "@/components/theme/ThemeToggle";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -113,6 +114,7 @@ export default function SiteHeader() {
             {hasLink(CONTACT.phone) && (
               <a
                 href={CONTACT.phoneHref}
+                onClick={() => track("phone_click")}
                 className="ml-1 inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
               >
                 <Phone className="h-4 w-4" />
@@ -205,6 +207,7 @@ export default function SiteHeader() {
             <div className="border-t border-border p-3">
               <a
                 href={CONTACT.phoneHref}
+                onClick={() => track("phone_click")}
                 className="flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2.5 text-sm font-bold text-primary-foreground"
               >
                 <Phone className="h-4 w-4" />

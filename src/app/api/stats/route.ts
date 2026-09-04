@@ -26,6 +26,7 @@ export const GET = handler(async (req: Request) => {
     draftCount,
     recent,
     upcoming,
+    eventCounts,
     byTrip,
   ] = await Promise.all([
     prisma.enquiry.count({ where: { status: "NEW" } }),
@@ -68,6 +69,14 @@ export const GET = handler(async (req: Request) => {
       },
     }),
 
+    // Funnel signals that aren't a full enquiry: shares, saves, phone/Messenger
+    // taps, departure picks. Answers "does anyone engage before not enquiring?"
+    prisma.analyticsEvent.groupBy({
+      by: ["name"],
+      where: { createdAt: { gte: monthStart } },
+      _count: { name: true },
+    }),
+
     // Which trips people are actually asking about — the signal the agency
     // can act on when deciding what to post next.
     prisma.enquiry.groupBy({
@@ -101,6 +110,8 @@ export const GET = handler(async (req: Request) => {
       tripCount,
       draftCount,
     },
+    // 30-day funnel signal counts, e.g. { share_click: 12, phone_click: 4 }.
+    events: Object.fromEntries(eventCounts.map((row) => [row.name, row._count.name])),
     recentEnquiries: recent,
     upcomingDepartures: upcoming,
     topTrips: byTrip

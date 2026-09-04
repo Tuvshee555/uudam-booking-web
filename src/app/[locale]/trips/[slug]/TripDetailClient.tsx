@@ -25,6 +25,7 @@ import { recordRecentlyViewed } from "@/lib/analytics";
 import TripMedia from "@/components/trip/TripMedia";
 import TripCard from "@/components/trip/TripCard";
 import EnquiryPanel from "@/components/trip/EnquiryPanel";
+import EnquiryTrustNote from "@/components/trust/EnquiryTrustNote";
 import ShareButton from "@/components/trip/ShareButton";
 import SaveButton from "@/components/trip/SaveButton";
 import { Button } from "@/components/ui/button";
@@ -164,7 +165,7 @@ export default function TripDetailClient({
               <h1 className="text-2xl font-bold leading-tight md:text-3xl">{trip.title}</h1>
               <div className="mt-1 flex shrink-0 items-center gap-2">
                 <SaveButton slug={trip.slug} variant="button" />
-                <ShareButton title={trip.title} />
+                <ShareButton title={trip.title} tripId={trip.id} />
               </div>
             </div>
             {trip.summary && (
@@ -482,6 +483,7 @@ export default function TripDetailClient({
 
         <aside className="lg:sticky lg:top-[124px] lg:h-fit">
           <EnquiryPanel trip={trip} />
+          <EnquiryTrustNote />
         </aside>
       </div>
 

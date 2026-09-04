@@ -316,6 +316,29 @@ model Testimonial {
 }
 
 
+/// A funnel signal that isn't a full Enquiry: a share tap, a save toggle, a
+/// phone/Messenger click, a departure being picked before the form is ever
+/// submitted. TripView already answers "views vs. enquiries" by itself — this
+/// fills the gap between the two, which is currently invisible: whether the
+/// page is being used at all before someone decides not to enquire.
+model AnalyticsEvent {
+  id   String @id @default(uuid())
+  name String
+
+  tripId    String?
+  visitorId String
+  sessionId String
+
+  /// Small, event-specific extras — e.g. { channel: "messenger" } for a share,
+  /// { departureId } for a departure pick. Never anything identifying.
+  properties Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([name, createdAt])
+  @@index([tripId, name])
+}
+
 /// A travel guide or news article. Staff-authored in the admin; there is no
 /// external CMS, because everything the client edits has to live in one place.
 model Post {

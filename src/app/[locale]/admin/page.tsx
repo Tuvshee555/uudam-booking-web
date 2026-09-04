@@ -3,7 +3,18 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarDays, Check, FileText, Inbox, Map, Phone, TrendingUp } from "lucide-react";
+import {
+  CalendarDays,
+  Check,
+  FileText,
+  Heart,
+  Inbox,
+  Map,
+  MessageCircle,
+  Phone,
+  Share2,
+  TrendingUp,
+} from "lucide-react";
 
 import { api } from "@/lib/api";
 import { useAuth } from "@/app/[locale]/provider/AuthProvider";
@@ -50,6 +61,7 @@ type Stats = {
     price: number;
     enquiryCount: number;
   }>;
+  events: Record<string, number>;
 };
 
 export default function AdminDashboard() {
@@ -227,6 +239,32 @@ export default function AdminDashboard() {
           )}
         </section>
       </div>
+
+      {Object.keys(data.events).length > 0 && (
+        <section className="mt-6 rounded-2xl border border-border bg-card p-5">
+          <h2 className="text-lg font-bold">Энэ сарын идэвх</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Хүсэлт болгоогүй ч сайттай харьцсан дохио — хуудас хараад юу ч хийхгүй
+            орхисон эсэхийг харах боломжтой.
+          </p>
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {[
+              { key: "share_click", label: "Хуваалцсан", icon: Share2 },
+              { key: "save_toggle", label: "Хадгалсан", icon: Heart },
+              { key: "phone_click", label: "Утас дарсан", icon: Phone },
+              { key: "messenger_click", label: "Messenger дарсан", icon: MessageCircle },
+              { key: "departure_select", label: "Огноо сонгосон", icon: CalendarDays },
+              { key: "custom_trip_submit", label: "Захиалгат хүсэлт", icon: TrendingUp },
+            ].map(({ key, label, icon: Icon }) => (
+              <div key={key} className="rounded-xl border border-border p-3">
+                <Icon className="h-4 w-4 text-primary" />
+                <div className="mt-2 text-lg font-bold">{data.events[key] ?? 0}</div>
+                <div className="text-xs text-muted-foreground">{label}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {data.topTrips.length > 0 && (
         <section className="mt-6 rounded-2xl border border-border bg-card p-5">
