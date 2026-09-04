@@ -22,6 +22,47 @@ export async function getPublishedTrips(): Promise<Trip[]> {
   return JSON.parse(JSON.stringify(trips)) as Trip[];
 }
 
+/**
+ * A category plus every trip filed under it *or any descendant category* —
+ * browsing "Ази" also shows trips filed under "Ази > Япон". Shared by
+ * GET /api/categories/:id/trips and the category page's server fetch, so the
+ * descendant walk exists in exactly one place rather than two copies that can
+ * silently drift.
+ */
+export async function getCategoryWithTrips(idOrSlug: string) {
+  const categories = await prisma.category.findMany({
+    select: { id: true, parentId: true, categoryName: true, slug: true },
+  });
+
+  const target = categories.find((c) => c.id === idOrSlug || c.slug === idOrSlug);
+  if (!target) return null;
+
+  // Breadth-first walk down the tree collecting every descendant id.
+  const ids = new Set([target.id]);
+  const queue = [target.id];
+
+  while (queue.length) {
+    const current = queue.shift();
+    for (const category of categories) {
+      if (category.parentId === current && !ids.has(category.id)) {
+        ids.add(category.id);
+        queue.push(category.id);
+      }
+    }
+  }
+
+  const trips = await prisma.trip.findMany({
+    where: { categoryId: { in: Array.from(ids) }, isPublished: true },
+    include: TRIP_INCLUDE,
+    orderBy: { createdAt: "desc" },
+  });
+
+  return {
+    category: { id: target.id, categoryName: target.categoryName, slug: target.slug },
+    trips: JSON.parse(JSON.stringify(trips)) as Trip[],
+  };
+}
+
 /** Mirrors GET /api/categories/tree, including its orphan-promotion rule. */
 export async function getCategoryTree(): Promise<CategoryNode[]> {
   const all = await prisma.category.findMany({

@@ -14,7 +14,10 @@ const manrope = Manrope({
   display: "swap",
 });
 
+const SITE_URL_FOR_METADATA = process.env.NEXT_PUBLIC_SITE_URL || "https://uudamtravel.mn";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL_FOR_METADATA),
   title: {
     default: "Uudam Travel Agency — Аяллын захиалга",
     template: "%s · Uudam Travel",

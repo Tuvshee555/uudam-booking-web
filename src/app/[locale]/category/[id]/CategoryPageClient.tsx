@@ -1,12 +1,18 @@
 "use client";
 
-import { useCategoryTrips } from "@/hooks/useTrips";
+import { useCategoryTrips, type CategoryTrips } from "@/hooks/useTrips";
 import TripCard from "@/components/trip/TripCard";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 
-export default function CategoryPageClient({ id }: { id: string }) {
+export default function CategoryPageClient({
+  id,
+  initialData,
+}: {
+  id: string;
+  initialData?: CategoryTrips;
+}) {
   const { locale } = useI18n();
-  const { data, isLoading } = useCategoryTrips(id);
+  const { data, isLoading } = useCategoryTrips(id, initialData);
 
   return (
     <div className="uudam-container py-8">

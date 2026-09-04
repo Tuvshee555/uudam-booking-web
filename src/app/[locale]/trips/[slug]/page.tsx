@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/server/prisma";
 import { TRIP_INCLUDE } from "@/server/tripInput";
 import { formatMnt } from "@/lib/pricing";
+import { localeAlternates } from "@/lib/hreflang";
 import type { Trip } from "@/types/trip";
 import TripDetailClient from "./TripDetailClient";
 
@@ -78,6 +79,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       images: [trip.image],
     },
+    alternates: { languages: localeAlternates(`/trips/${slug}`) },
   };
 }
 

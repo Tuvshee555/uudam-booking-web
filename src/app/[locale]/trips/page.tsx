@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { prisma } from "@/server/prisma";
+import { localeAlternates } from "@/lib/hreflang";
 import { TRIP_INCLUDE } from "@/server/tripInput";
 import type { Trip } from "@/types/trip";
 import TripsPageClient from "./TripsPageClient";
@@ -14,6 +15,7 @@ export const metadata: Metadata = {
     description: "Чиглэл, үнэ, хугацаагаар шүүж өөрт тохирох аялалаа олоорой.",
     type: "website",
   },
+  alternates: { languages: localeAlternates("/trips") },
 };
 
 /**

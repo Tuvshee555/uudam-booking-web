@@ -91,15 +91,21 @@ export function useCategoryTree(initialData?: CategoryNode[]) {
   });
 }
 
+export type CategoryTrips = {
+  category: { id: string; categoryName: string; slug: string | null };
+  trips: Trip[];
+};
+
 /** Trips within a category, including every descendant category. */
-export function useCategoryTrips(idOrSlug?: string) {
-  return useQuery<{ category: { id: string; categoryName: string }; trips: Trip[] }>({
+export function useCategoryTrips(idOrSlug?: string, initialData?: CategoryTrips) {
+  return useQuery<CategoryTrips>({
     queryKey: ["categories", idOrSlug, "trips"],
     enabled: Boolean(idOrSlug),
     queryFn: async () => {
       const { data } = await api.get(`/categories/${idOrSlug}/trips`);
       return data;
     },
+    initialData,
     staleTime: 60_000,
   });
 }

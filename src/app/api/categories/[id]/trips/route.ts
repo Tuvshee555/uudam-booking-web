@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/server/prisma";
 import { handler, httpError, publicCache } from "@/server/http";
 import { cached } from "@/server/cache";
-import { TRIP_INCLUDE } from "@/server/tripInput";
+import { getCategoryWithTrips } from "@/server/catalog";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -15,46 +14,9 @@ type Ctx = { params: Promise<{ id: string }> };
 export const GET = handler(async (_req: Request, ctx: Ctx) => {
   const { id } = await ctx.params;
 
-  const payload = await cached(`categories:trips:${id}`, 20_000, async () => {
-    const categories = await prisma.category.findMany({
-      select: { id: true, parentId: true, categoryName: true, slug: true },
-    });
-
-    const target = categories.find((c) => c.id === id || c.slug === id);
-    if (!target) return null;
-
-    // Breadth-first walk down the tree collecting every descendant id.
-    const ids = new Set([target.id]);
-    const queue = [target.id];
-
-    while (queue.length) {
-      const current = queue.shift();
-      for (const category of categories) {
-        if (category.parentId === current && !ids.has(category.id)) {
-          ids.add(category.id);
-          queue.push(category.id);
-        }
-      }
-    }
-
-    const trips = await prisma.trip.findMany({
-      where: { categoryId: { in: Array.from(ids) }, isPublished: true },
-      include: TRIP_INCLUDE,
-      orderBy: { createdAt: "desc" },
-    });
-
-    return {
-      success: true,
-      category: {
-        id: target.id,
-        categoryName: target.categoryName,
-        slug: target.slug,
-      },
-      trips,
-    };
-  });
+  const payload = await cached(`categories:trips:${id}`, 20_000, () => getCategoryWithTrips(id));
 
   if (!payload) throw httpError(404, "Ангилал олдсонгүй");
 
-  return publicCache(NextResponse.json(payload));
+  return publicCache(NextResponse.json({ success: true, ...payload }));
 });

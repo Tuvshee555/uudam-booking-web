@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
+
 import { getCategoryTree, getPublishedTrips } from "@/server/catalog";
+import { localeAlternates } from "@/lib/hreflang";
 import TrustBar from "@/components/trust/TrustBar";
 import HomeClient from "./HomeClient";
 
@@ -9,6 +12,10 @@ import HomeClient from "./HomeClient";
  * server like the catalogue and trip pages.
  */
 export const revalidate = 60;
+
+export const metadata: Metadata = {
+  alternates: { languages: localeAlternates("") },
+};
 
 export default async function HomePage() {
   const [trips, categories] = await Promise.all([getPublishedTrips(), getCategoryTree()]);
