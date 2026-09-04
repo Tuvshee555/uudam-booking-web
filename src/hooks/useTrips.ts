@@ -22,8 +22,16 @@ export function useTrips(params?: { category?: string; featured?: boolean; searc
   });
 }
 
-/** A single trip by id or slug. */
-export function useTrip(idOrSlug?: string) {
+/**
+ * A single trip by id or slug.
+ *
+ * `initialData` lets the server page hand over the trip it already queried for
+ * `generateMetadata`. Without it the first paint has no trip, so the whole page
+ * body — title, itinerary, price, departures — was missing from the initial
+ * HTML and only appeared after this request resolved in the browser. Crawlers
+ * and Messenger unfurlers saw an empty shell.
+ */
+export function useTrip(idOrSlug?: string, initialData?: Trip) {
   return useQuery<Trip>({
     queryKey: ["trip", idOrSlug],
     enabled: Boolean(idOrSlug),
@@ -31,6 +39,7 @@ export function useTrip(idOrSlug?: string) {
       const { data } = await api.get<Trip>(`/trips/${idOrSlug}`);
       return data;
     },
+    initialData,
     staleTime: 60_000,
   });
 }

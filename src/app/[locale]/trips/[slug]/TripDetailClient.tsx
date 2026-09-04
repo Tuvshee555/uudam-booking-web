@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { useTrip, useTrips } from "@/hooks/useTrips";
+import type { Trip } from "@/types/trip";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { recordRecentlyViewed } from "@/lib/analytics";
 import TripMedia from "@/components/trip/TripMedia";
@@ -31,10 +32,21 @@ const DIFFICULTY_LABEL: Record<string, string> = {
   CHALLENGING: "Хүнд",
 };
 
-export default function TripDetailClient({ slug }: { slug: string }) {
+export default function TripDetailClient({
+  slug,
+  initialTrip,
+}: {
+  slug: string;
+  /**
+   * The trip the server page already fetched. Seeding the query with it is what
+   * puts the itinerary, price and departures into the initial HTML instead of
+   * leaving a shell until the browser refetches.
+   */
+  initialTrip?: Trip;
+}) {
   const { locale } = useI18n();
 
-  const { data: trip, isLoading } = useTrip(slug);
+  const { data: trip, isLoading } = useTrip(slug, initialTrip);
   const { data: allTrips } = useTrips();
 
   const related = useMemo(() => {

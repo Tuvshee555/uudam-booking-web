@@ -1,35 +1,51 @@
+import { cache } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { prisma } from "@/server/prisma";
+import { TRIP_INCLUDE } from "@/server/tripInput";
 import { formatMnt } from "@/lib/pricing";
+import type { Trip } from "@/types/trip";
 import TripDetailClient from "./TripDetailClient";
 
 type Props = { params: Promise<{ slug: string }> };
 
 /**
- * Server-only lookup, kept separate from the client hook: a shared trip link
- * lands in Facebook Messenger — the agency's actual sales channel — so the
- * preview card needs this trip's own title, price and photo, not the generic
- * site-wide description every page used to fall back to.
+ * Server-only lookup. Two jobs, which is why it fetches the whole trip rather
+ * than a handful of columns:
+ *
+ * 1. A shared trip link lands in Facebook Messenger — the agency's actual sales
+ *    channel — so the preview card needs this trip's own title, price and photo.
+ * 2. The full record is handed to the client component as `initialData`, so the
+ *    itinerary, departures, inclusions and price render in the *initial HTML*.
+ *    Previously only the slug was passed down and the browser refetched
+ *    everything, which left crawlers a page whose only headings were the
+ *    footer's.
+ *
+ * `cache` dedupes the query across `generateMetadata` and the page render,
+ * which are separate invocations within the same request.
  */
-async function findPublishedTrip(slug: string) {
+const findPublishedTrip = cache(async (slug: string) => {
   return prisma.trip.findFirst({
     where: { slug, isPublished: true },
-    select: {
-      title: true,
-      summary: true,
-      description: true,
-      image: true,
-      price: true,
-      currency: true,
-      durationDays: true,
-      country: true,
-      city: true,
-      avgRating: true,
-      reviewCount: true,
+    include: {
+      ...TRIP_INCLUDE,
+      testimonials: {
+        where: { isPublished: true },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+      },
     },
   });
+});
+
+/**
+ * Match what `/api/trips/[id]` puts on the wire, so the hydrated cache entry is
+ * byte-identical to what a later refetch would return: `NextResponse.json`
+ * serialises Dates to ISO strings, and the client `Trip` type expects strings.
+ */
+function serializeTrip(trip: NonNullable<Awaited<ReturnType<typeof findPublishedTrip>>>): Trip {
+  return JSON.parse(JSON.stringify(trip)) as Trip;
 }
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://uudamtravel.mn";
@@ -109,7 +125,7 @@ export default async function TripDetailPage({ params }: Props) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       )}
-      <TripDetailClient slug={slug} />
+      <TripDetailClient slug={slug} initialTrip={serializeTrip(trip)} />
     </>
   );
 }
