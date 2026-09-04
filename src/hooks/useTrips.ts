@@ -79,13 +79,14 @@ export function useCategories(parentId?: string) {
   });
 }
 
-export function useCategoryTree() {
+export function useCategoryTree(initialData?: CategoryNode[]) {
   return useQuery<CategoryNode[]>({
     queryKey: ["categories", "tree"],
     queryFn: async () => {
       const { data } = await api.get<CategoryNode[]>("/categories/tree");
       return data;
     },
+    initialData,
     staleTime: 5 * 60_000,
   });
 }
