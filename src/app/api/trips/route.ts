@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
-import { prisma } from "@/server/prisma";
+import { prisma, withPrismaRetry } from "@/server/prisma";
 import { requireAdmin } from "@/server/auth";
 import { handler, json, publicCache, readJson, safeText } from "@/server/http";
 import { cached, invalidateCatalog } from "@/server/cache";
@@ -45,25 +45,27 @@ export const GET = handler(async (req: Request) => {
   const key = `trips:list:${categoryId ?? "all"}:${featured ?? "0"}:${search ?? ""}`;
 
   const trips = await cached(key, 20_000, () =>
-    prisma.trip.findMany({
-      where: {
-        isPublished: true,
-        ...(categoryId ? { categoryId } : {}),
-        ...(featured === "true" ? { isFeatured: true } : {}),
-        ...(search
-          ? {
-              OR: [
-                { title: { contains: search, mode: "insensitive" as const } },
-                { summary: { contains: search, mode: "insensitive" as const } },
-                { country: { contains: search, mode: "insensitive" as const } },
-                { city: { contains: search, mode: "insensitive" as const } },
-              ],
-            }
-          : {}),
-      },
-      include: TRIP_INCLUDE,
-      orderBy: { createdAt: "desc" },
-    }),
+    withPrismaRetry(() =>
+      prisma.trip.findMany({
+        where: {
+          isPublished: true,
+          ...(categoryId ? { categoryId } : {}),
+          ...(featured === "true" ? { isFeatured: true } : {}),
+          ...(search
+            ? {
+                OR: [
+                  { title: { contains: search, mode: "insensitive" as const } },
+                  { summary: { contains: search, mode: "insensitive" as const } },
+                  { country: { contains: search, mode: "insensitive" as const } },
+                  { city: { contains: search, mode: "insensitive" as const } },
+                ],
+              }
+            : {}),
+        },
+        include: TRIP_INCLUDE,
+        orderBy: { createdAt: "desc" },
+      }),
+    ),
   );
 
   return publicCache(NextResponse.json(trips));

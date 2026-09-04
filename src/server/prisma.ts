@@ -21,3 +21,46 @@ export const prisma =
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
 }
+
+function isTransientPrismaError(err: unknown) {
+  if (!(err instanceof Error)) return false;
+
+  const message = err.message.toLowerCase();
+  const name = err.name.toLowerCase();
+
+  return (
+    name.includes("prismaclientinitializationerror") ||
+    message.includes("can't reach database server") ||
+    message.includes("connection timed out") ||
+    message.includes("connection terminated") ||
+    message.includes("connection refused")
+  );
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Neon can occasionally reject or time out the first pooled connection from a
+ * cold local dev server. Give transient connection failures a short retry
+ * window before surfacing them to the route handler.
+ */
+export async function withPrismaRetry<T>(
+  operation: () => Promise<T>,
+  { attempts = 3, delayMs = 750 }: { attempts?: number; delayMs?: number } = {},
+): Promise<T> {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await operation();
+    } catch (err) {
+      lastError = err;
+      if (attempt === attempts || !isTransientPrismaError(err)) break;
+      await sleep(delayMs * attempt);
+    }
+  }
+
+  throw lastError;
+}

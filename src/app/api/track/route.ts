@@ -1,4 +1,4 @@
-import { prisma } from "@/server/prisma";
+import { prisma, withPrismaRetry } from "@/server/prisma";
 import { clientIp, handler, json, rateLimit, readJson, safeText } from "@/server/http";
 
 export const dynamic = "force-dynamic";
@@ -72,22 +72,29 @@ export const POST = handler(async (req: Request) => {
   // its own (which would double-count every trip view).
   const slug = path.match(/^\/(?:mn|en|ko)\/trips\/([^/?#]+)/)?.[1] ?? null;
 
-  const trip = slug
-    ? await prisma.trip.findUnique({ where: { slug }, select: { id: true } })
-    : null;
+  const view = await withPrismaRetry(async () => {
+    const trip = slug
+      ? await prisma.trip.findUnique({ where: { slug }, select: { id: true } })
+      : null;
 
-  const view = await prisma.tripView.create({
-    data: {
-      tripId: trip?.id ?? null,
-      path,
-      visitorId,
-      sessionId,
-      referrer: referrerHost(body.referrer),
-      source: safeText(body.source, 120),
-      device,
-    },
-    select: { id: true },
+    return prisma.tripView.create({
+      data: {
+        tripId: trip?.id ?? null,
+        path,
+        visitorId,
+        sessionId,
+        referrer: referrerHost(body.referrer),
+        source: safeText(body.source, 120),
+        device,
+      },
+      select: { id: true },
+    });
+  }).catch((err) => {
+    console.warn("Analytics view skipped because persistence is unavailable:", err);
+    return null;
   });
+
+  if (!view) return json({ ok: true, skipped: "persistence_unavailable" });
 
   return json({ ok: true, viewId: view.id });
 });

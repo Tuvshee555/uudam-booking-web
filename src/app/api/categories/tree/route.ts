@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/server/prisma";
+import { prisma, withPrismaRetry } from "@/server/prisma";
 import { handler, publicCache } from "@/server/http";
 import { cached } from "@/server/cache";
 
@@ -17,18 +17,20 @@ export type CategoryTreeNode = {
 /** GET /api/categories/tree — nested categories for the mega menu / sidebar. */
 export const GET = handler(async () => {
   const roots = await cached<CategoryTreeNode[]>("categories:tree", 30_000, async () => {
-    const all = await prisma.category.findMany({
-      select: {
-        id: true,
-        categoryName: true,
-        slug: true,
-        description: true,
-        image: true,
-        parentId: true,
-        _count: { select: { trips: true } },
-      },
-      orderBy: { categoryName: "asc" },
-    });
+    const all = await withPrismaRetry(() =>
+      prisma.category.findMany({
+        select: {
+          id: true,
+          categoryName: true,
+          slug: true,
+          description: true,
+          image: true,
+          parentId: true,
+          _count: { select: { trips: true } },
+        },
+        orderBy: { categoryName: "asc" },
+      }),
+    );
 
     const byId = new Map<string, CategoryTreeNode>();
     const built: CategoryTreeNode[] = [];
