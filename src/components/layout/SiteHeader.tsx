@@ -36,6 +36,9 @@ export default function SiteHeader() {
 
   const nav = [
     { href: `${base}/trips`, label: "Аялалууд" },
+    { href: `${base}/departures`, label: "Хуваарь" },
+    { href: `${base}/custom-trip`, label: "Захиалгат аялал" },
+    { href: `${base}/guide`, label: "Зөвлөгөө" },
     { href: `${base}/about`, label: "Бидний тухай" },
     { href: `${base}/contact`, label: "Холбоо барих" },
   ];

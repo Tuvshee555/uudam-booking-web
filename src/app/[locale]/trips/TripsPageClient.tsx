@@ -14,6 +14,13 @@ import { cn } from "@/lib/utils";
 
 type SortKey = "recommended" | "price-asc" | "price-desc" | "duration-asc" | "soonest";
 
+/** Duration buckets. Ranges are inclusive; `max: null` means "and longer". */
+const DURATIONS: { key: string; label: string; min: number; max: number | null }[] = [
+  { key: "1-4", label: "1-4 хоног", min: 1, max: 4 },
+  { key: "5-7", label: "5-7 хоног", min: 5, max: 7 },
+  { key: "8+", label: "8+ хоног", min: 8, max: null },
+];
+
 const SORTS: { key: SortKey; label: string }[] = [
   { key: "recommended", label: "Санал болгох" },
   { key: "price-asc", label: "Үнэ: багаас их" },
@@ -50,6 +57,7 @@ function TripsPageInner({ initialTrips }: { initialTrips?: Trip[] }) {
     return raw ? raw.split(",").filter(Boolean) : [];
   });
   const [bandId, setBandId] = useState<string | null>(() => searchParams.get("band"));
+  const [durationKey, setDurationKey] = useState<string | null>(() => searchParams.get("duration"));
   const [onSaleOnly, setOnSaleOnly] = useState(() => searchParams.get("sale") === "true");
   const [sort, setSort] = useState<SortKey>(() => {
     const raw = searchParams.get("sort");
@@ -66,6 +74,7 @@ function TripsPageInner({ initialTrips }: { initialTrips?: Trip[] }) {
   const { data: trips, isLoading } = useTrips(undefined, initialTrips);
 
   const activeBand = priceBands?.find((band) => band.id === bandId) ?? null;
+  const activeDuration = DURATIONS.find((entry) => entry.key === durationKey) ?? null;
 
   // Mirror state back into the URL without adding a history entry per keystroke.
   useEffect(() => {
@@ -76,6 +85,7 @@ function TripsPageInner({ initialTrips }: { initialTrips?: Trip[] }) {
     if (month) params.set("month", month);
     if (tagIds.length) params.set("tags", tagIds.join(","));
     if (bandId) params.set("band", bandId);
+    if (durationKey) params.set("duration", durationKey);
     if (onSaleOnly) params.set("sale", "true");
     if (featuredOnly) params.set("featured", "true");
     if (sort !== "recommended") params.set("sort", sort);
@@ -89,6 +99,7 @@ function TripsPageInner({ initialTrips }: { initialTrips?: Trip[] }) {
     month,
     tagIds,
     bandId,
+    durationKey,
     onSaleOnly,
     featuredOnly,
     sort,
@@ -150,6 +161,10 @@ function TripsPageInner({ initialTrips }: { initialTrips?: Trip[] }) {
         });
         if (!departsThatMonth) return false;
       }
+      if (activeDuration) {
+        if (trip.durationDays < activeDuration.min) return false;
+        if (activeDuration.max !== null && trip.durationDays > activeDuration.max) return false;
+      }
       if (activeBand) {
         if (trip.price < activeBand.minPrice) return false;
         if (activeBand.maxPrice !== null && trip.price > activeBand.maxPrice) return false;
@@ -185,7 +200,20 @@ function TripsPageInner({ initialTrips }: { initialTrips?: Trip[] }) {
     }
 
     return sorted;
-  }, [trips, search, categoryId, country, month, sort, featuredOnly, tagIds, activeBand, onSaleOnly, now]);
+  }, [
+    trips,
+    search,
+    categoryId,
+    country,
+    month,
+    sort,
+    featuredOnly,
+    tagIds,
+    activeBand,
+    activeDuration,
+    onSaleOnly,
+    now,
+  ]);
 
   return (
     <div className="uudam-container py-8">
@@ -303,8 +331,7 @@ function TripsPageInner({ initialTrips }: { initialTrips?: Trip[] }) {
         </div>
       )}
 
-      {((priceBands && priceBands.length > 0) || (tags && tags.length > 0)) && (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => setOnSaleOnly((v) => !v)}
@@ -318,6 +345,28 @@ function TripsPageInner({ initialTrips }: { initialTrips?: Trip[] }) {
             <BadgePercent className="h-3.5 w-3.5" />
             Хямдралтай
           </button>
+
+          {DURATIONS.map((entry) => (
+            <button
+              key={entry.key}
+              type="button"
+              onClick={() =>
+                setDurationKey((current) => (current === entry.key ? null : entry.key))
+              }
+              className={cn(
+                "shrink-0 rounded-full border px-3.5 py-1.5 text-sm transition-colors",
+                durationKey === entry.key
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border hover:border-primary/40",
+              )}
+            >
+              {entry.label}
+            </button>
+          ))}
+
+          {priceBands && priceBands.length > 0 && (
+            <span className="mx-0.5 h-4 w-px shrink-0 bg-border" />
+          )}
 
           {priceBands?.map((band) => (
             <button
@@ -363,8 +412,7 @@ function TripsPageInner({ initialTrips }: { initialTrips?: Trip[] }) {
               })}
             </>
           )}
-        </div>
-      )}
+      </div>
 
       <div className="mt-6">
         {isLoading ? (

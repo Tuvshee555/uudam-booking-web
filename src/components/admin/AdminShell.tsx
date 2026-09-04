@@ -13,6 +13,7 @@ import {
   LogOut,
   Map,
   MessageSquareQuote,
+  Newspaper,
   Tag,
   Users,
 } from "lucide-react";
@@ -36,6 +37,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
     { href: `${base}/tags`, label: "Шошгууд", icon: Tag },
     { href: `${base}/price-bands`, label: "Үнийн ангилал", icon: Coins },
     { href: `${base}/testimonials`, label: "Сэтгэгдэл", icon: MessageSquareQuote },
+    { href: `${base}/posts`, label: "Зөвлөгөө", icon: Newspaper },
     { href: `${base}/analytics`, label: "Хандалт", icon: BarChart3 },
     { href: `${base}/staff`, label: "Ажилтнууд", icon: Users },
   ];

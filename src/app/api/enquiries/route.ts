@@ -1,5 +1,5 @@
 import { after } from "next/server";
-import type { Prisma } from "@prisma/client";
+import type { EnquiryKind, Prisma } from "@prisma/client";
 import { prisma } from "@/server/prisma";
 import { requireAdmin } from "@/server/auth";
 import {
@@ -28,6 +28,13 @@ function normalizePhone(raw: unknown): string | null {
   return digits.slice(0, 20);
 }
 
+/** Money from a form field. Nulls anything non-numeric, negative or absurd. */
+function positiveAmount(value: unknown): number | null {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return Math.min(parsed, 1_000_000_000);
+}
+
 function count(value: unknown, fallback = 0) {
   const parsed = Number.parseInt(String(value ?? ""), 10);
   if (!Number.isFinite(parsed) || parsed < 0) return fallback;
@@ -53,6 +60,11 @@ export const POST = handler(async (req: Request) => {
 
   const tripId = safeText(body.tripId, 60);
   const departureId = safeText(body.departureId, 60);
+
+  // Which form this came from. Anything unrecognised falls back to TRIP, so a
+  // malformed request still lands as a lead rather than 400-ing a customer.
+  const kind: EnquiryKind =
+    body.kind === "CUSTOM" ? "CUSTOM" : body.kind === "GIFT" ? "GIFT" : "TRIP";
 
   const adults = count(body.adults, 1) || 1;
   const children = count(body.children);
@@ -115,6 +127,12 @@ export const POST = handler(async (req: Request) => {
       infants,
       message: safeText(body.message, 2000),
       estimatedTotal,
+      kind,
+      destination: kind === "CUSTOM" ? safeText(body.destination, 200) : null,
+      preferredDates: kind === "CUSTOM" ? safeText(body.preferredDates, 200) : null,
+      budgetPerPerson: kind === "CUSTOM" ? positiveAmount(body.budgetPerPerson) : null,
+      giftAmount: kind === "GIFT" ? positiveAmount(body.giftAmount) : null,
+      giftRecipient: kind === "GIFT" ? safeText(body.giftRecipient, 120) : null,
       source: safeText(body.source, 120),
       visitorId: safeText(body.visitorId, 64),
       referrer: safeText(body.referrer, 200),
@@ -145,7 +163,12 @@ export const POST = handler(async (req: Request) => {
     if (office) {
       await sendEmail({
         to: office,
-        subject: `Шинэ хүсэлт ${enquiry.reference} — ${trip?.title ?? "Аялал"}`,
+        subject:
+          kind === "CUSTOM"
+            ? `Захиалгат аялал ${enquiry.reference} — ${safeText(body.destination, 200) ?? "чиглэл заагаагүй"}`
+            : kind === "GIFT"
+              ? `Бэлгийн эрхийн бичиг ${enquiry.reference}`
+              : `Шинэ хүсэлт ${enquiry.reference} — ${trip?.title ?? "Аялал"}`,
         html: enquiryStaffEmail(payload),
       }).catch((err) => console.error("Staff enquiry email failed:", err));
     }

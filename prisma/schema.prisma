@@ -234,9 +234,25 @@ model Enquiry {
   /// Short human-quotable code, so staff can say "your request UUD-7K2Q9".
   reference String @unique
 
+  /// Which form this came from. TRIP keeps the original behaviour, so every
+  /// existing row is correct without a backfill.
+  kind EnquiryKind @default(TRIP)
+
   tripId        String?
   departureId   String?
   departureDate DateTime?
+
+  // ---- CUSTOM (private / group request) -------------------------------------
+  /// Free text: the catalogue can't cover everywhere people ask to go.
+  destination String?
+  /// Also free text — "10-р сарын дунд" and "уян хатан" are both real answers,
+  /// and forcing a date picker loses the flexibility staff need to sell into.
+  preferredDates String?
+  budgetPerPerson Float?
+
+  // ---- GIFT (gift certificate request) --------------------------------------
+  giftAmount    Float?
+  giftRecipient String?
 
   firstName String
   phone     String
@@ -300,6 +316,31 @@ model Testimonial {
 }
 
 
+/// A travel guide or news article. Staff-authored in the admin; there is no
+/// external CMS, because everything the client edits has to live in one place.
+model Post {
+  id      String  @id @default(uuid())
+  slug    String  @unique
+  title   String
+  excerpt String?
+
+  /// Markdown-ish plain text. Deliberately not a rich-text blob: the client is
+  /// non-technical and a broken WYSIWYG payload is unrecoverable for her.
+  body String
+
+  coverImage String?
+
+  /// Unlike Trip, this defaults to false. Publishing 24 of 25 trips by accident
+  /// was survivable; publishing a half-written article is not.
+  isPublished Boolean   @default(false)
+  publishedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isPublished, publishedAt])
+}
+
 /// One page view. First-party analytics — no third-party script, and nothing
 /// personally identifying: `visitorId` is a random id the browser generates for
 /// itself, never an IP or a fingerprint.
@@ -359,4 +400,13 @@ enum EnquiryStatus {
   CONFIRMED
   COMPLETED
   CANCELLED
+}
+
+enum EnquiryKind {
+  /// About a specific trip in the catalogue.
+  TRIP
+  /// "The dates don't work" — a private or custom group request.
+  CUSTOM
+  /// A gift certificate request. Staff arrange payment off-site.
+  GIFT
 }

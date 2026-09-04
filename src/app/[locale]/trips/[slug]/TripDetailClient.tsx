@@ -7,6 +7,7 @@ import {
   BedDouble,
   Check,
   Clock,
+  FileDown,
   FileText,
   Languages,
   MapPin,
@@ -25,6 +26,7 @@ import TripMedia from "@/components/trip/TripMedia";
 import TripCard from "@/components/trip/TripCard";
 import EnquiryPanel from "@/components/trip/EnquiryPanel";
 import ShareButton from "@/components/trip/ShareButton";
+import SaveButton from "@/components/trip/SaveButton";
 import { Button } from "@/components/ui/button";
 
 const DIFFICULTY_LABEL: Record<string, string> = {
@@ -160,7 +162,10 @@ export default function TripDetailClient({
 
             <div className="mt-3 flex items-start justify-between gap-4">
               <h1 className="text-2xl font-bold leading-tight md:text-3xl">{trip.title}</h1>
-              <ShareButton title={trip.title} className="mt-1 shrink-0" />
+              <div className="mt-1 flex shrink-0 items-center gap-2">
+                <SaveButton slug={trip.slug} variant="button" />
+                <ShareButton title={trip.title} />
+              </div>
             </div>
             {trip.summary && (
               <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
@@ -168,6 +173,18 @@ export default function TripDetailClient({
               </p>
             )}
           </header>
+
+          {trip.brochurePdfUrl && (
+            <a
+              href={trip.brochurePdfUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-4 inline-flex items-center gap-2 rounded-lg border border-border px-3.5 py-2 text-sm font-semibold transition-colors hover:border-primary hover:text-primary"
+            >
+              <FileDown className="h-4 w-4" />
+              Хөтөлбөр татах
+            </a>
+          )}
 
           {sections.length > 1 && (
             <nav

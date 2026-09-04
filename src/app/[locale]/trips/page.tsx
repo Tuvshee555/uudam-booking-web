@@ -34,6 +34,13 @@ async function publishedTrips(): Promise<Trip[]> {
   return JSON.parse(JSON.stringify(trips)) as Trip[];
 }
 
+/**
+ * Without this the page is prerendered once at build time and its data is
+ * frozen until the next deploy — staff edit trips daily, and the departures
+ * cutoff is a `new Date()` that would freeze with it.
+ */
+export const revalidate = 60;
+
 export default async function TripsPage() {
   return <TripsPageClient initialTrips={await publishedTrips()} />;
 }
