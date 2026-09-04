@@ -100,16 +100,28 @@ export type CategoryTrips = {
   trips: Trip[];
 };
 
-/** Trips within a category, including every descendant category. */
-export function useCategoryTrips(idOrSlug?: string, initialData?: CategoryTrips) {
+/**
+ * Trips within a category, including every descendant category.
+ *
+ * `includeDrafts` is admin-only (the API 403s a non-admin request that sets
+ * it) — use it from admin screens that need to see everything a category's
+ * own trip count includes, not just what a customer would see.
+ */
+export function useCategoryTrips(
+  idOrSlug?: string,
+  initialData?: CategoryTrips,
+  options?: { includeDrafts?: boolean },
+) {
   return useQuery<CategoryTrips>({
-    queryKey: ["categories", idOrSlug, "trips"],
+    queryKey: ["categories", idOrSlug, "trips", options?.includeDrafts ? "all" : "published"],
     enabled: Boolean(idOrSlug),
     queryFn: async () => {
-      const { data } = await api.get(`/categories/${idOrSlug}/trips`);
+      const { data } = await api.get(`/categories/${idOrSlug}/trips`, {
+        params: options?.includeDrafts ? { all: "true" } : undefined,
+      });
       return data;
     },
-    initialData,
+    initialData: options?.includeDrafts ? undefined : initialData,
     staleTime: 60_000,
   });
 }

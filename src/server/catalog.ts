@@ -29,7 +29,10 @@ export async function getPublishedTrips(): Promise<Trip[]> {
  * descendant walk exists in exactly one place rather than two copies that can
  * silently drift.
  */
-export async function getCategoryWithTrips(idOrSlug: string) {
+export async function getCategoryWithTrips(
+  idOrSlug: string,
+  { includeDrafts = false }: { includeDrafts?: boolean } = {},
+) {
   const categories = await prisma.category.findMany({
     select: { id: true, parentId: true, categoryName: true, slug: true },
   });
@@ -52,7 +55,10 @@ export async function getCategoryWithTrips(idOrSlug: string) {
   }
 
   const trips = await prisma.trip.findMany({
-    where: { categoryId: { in: Array.from(ids) }, isPublished: true },
+    where: {
+      categoryId: { in: Array.from(ids) },
+      ...(includeDrafts ? {} : { isPublished: true }),
+    },
     include: TRIP_INCLUDE,
     orderBy: { createdAt: "desc" },
   });

@@ -17,6 +17,7 @@ import {
 
 import { api, apiErrorMessage } from "@/lib/api";
 import { useCategoryTree, useCategoryTrips } from "@/hooks/useTrips";
+import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import AdminShell from "@/components/admin/AdminShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -425,7 +426,11 @@ function CategoryRow({
  * which is also where the category itself can be changed (i.e. "moved").
  */
 function CategoryTripsPanel({ categoryId }: { categoryId: string }) {
-  const { data, isLoading } = useCategoryTrips(categoryId);
+  const { locale } = useI18n();
+  // includeDrafts: true — otherwise this list disagrees with the row's own
+  // "N аялал" badge, which counts drafts too (that mismatch was the "some
+  // numbers are lying" bug: a category showing 3 would only list 2).
+  const { data, isLoading } = useCategoryTrips(categoryId, undefined, { includeDrafts: true });
 
   if (isLoading) {
     return (
@@ -448,7 +453,7 @@ function CategoryTripsPanel({ categoryId }: { categoryId: string }) {
       {data.trips.map((trip) => (
         <Link
           key={trip.id}
-          href={`../trips/${trip.id}/edit`}
+          href={`/${locale}/admin/trips/${trip.id}/edit`}
           className="flex items-center gap-2.5 rounded-lg py-1.5 pr-2 hover:bg-secondary/60"
         >
           <div className="relative h-9 w-12 shrink-0 overflow-hidden rounded-md bg-secondary">
@@ -459,6 +464,11 @@ function CategoryTripsPanel({ categoryId }: { categoryId: string }) {
             )}
           </div>
           <span className="min-w-0 flex-1 truncate text-sm">{trip.title}</span>
+          {!trip.isPublished && (
+            <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+              Ноорог
+            </span>
+          )}
           <Pencil className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         </Link>
       ))}
