@@ -17,7 +17,7 @@ import {
 import { api, apiErrorMessage } from "@/lib/api";
 import { CONTACT, hasLink } from "@/lib/contact";
 import { getVisitorId, track } from "@/lib/analytics";
-import { formatFare, formatMnt, lineTotal, resolvePrices } from "@/lib/pricing";
+import { formatFare, formatMnt, formatTripStartingPrice, hasKnownTripPrice, lineTotal, resolvePrices } from "@/lib/pricing";
 import { availability, upcomingDepartures } from "@/lib/departures";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -111,6 +111,7 @@ export default function EnquiryPanel({ trip }: { trip: Trip }) {
   const selected = openDepartures.find((departure) => departure.id === departureId) ?? null;
   const prices = resolvePrices(trip, selected);
   const estimate = lineTotal({ adults, children, infants }, prices);
+  const hasPrice = hasKnownTripPrice(prices.adult);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -193,13 +194,15 @@ export default function EnquiryPanel({ trip }: { trip: Trip }) {
     <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
       <div className="flex items-end justify-between">
         <div>
-          {trip.oldPrice && trip.oldPrice > trip.price && (
+          {hasKnownTripPrice(trip.price) && trip.oldPrice && trip.oldPrice > trip.price && (
             <div className="text-sm text-muted-foreground line-through">
               {formatMnt(trip.oldPrice)}
             </div>
           )}
-          <div className="text-2xl font-bold text-primary">{formatMnt(prices.adult)}</div>
-          <div className="text-xs text-muted-foreground">нэг том хүн</div>
+          <div className="text-2xl font-bold text-primary">{formatTripStartingPrice(prices.adult)}</div>
+          <div className="text-xs text-muted-foreground">
+            {hasPrice ? "нэг том хүн" : "ажилтнаас тодруулна"}
+          </div>
         </div>
         {typeof trip.discount === "number" && trip.discount > 0 && (
           <span className="rounded-full bg-destructive px-2.5 py-1 text-xs font-bold text-destructive-foreground">
@@ -294,7 +297,7 @@ export default function EnquiryPanel({ trip }: { trip: Trip }) {
 
         <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
           <span className="text-sm text-muted-foreground">Ойролцоо дүн</span>
-          <span className="text-xl font-bold text-primary">{formatMnt(estimate)}</span>
+          <span className="text-xl font-bold text-primary">{hasPrice ? formatMnt(estimate) : "Үнэ лавлах"}</span>
         </div>
         <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
           Урьдчилсан тооцоо. Эцсийн үнийг ажилтан тодруулж хэлнэ.

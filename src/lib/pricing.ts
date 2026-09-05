@@ -95,6 +95,16 @@ export function formatMnt(value: number | null | undefined): string {
   return `${MNT.format(Math.round(value))}₮`;
 }
 
+/** Imported chatbot rows use 0 when the source poster has no published base price. */
+export function hasKnownTripPrice(value: number | null | undefined): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
+
+/** Public trip-card price label. A missing source price must never read as free. */
+export function formatTripStartingPrice(value: number | null | undefined): string {
+  return hasKnownTripPrice(value) ? formatMnt(value) : "Үнэ лавлах";
+}
+
 /**
  * Fare label for a passenger type. Unpublished child/infant fares read
  * "Тодруулна уу" (ask us) instead of a misleading 0₮.

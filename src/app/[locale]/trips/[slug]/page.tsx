@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/server/prisma";
 import { TRIP_INCLUDE } from "@/server/tripInput";
 import { getSiteSettings } from "@/server/catalog";
-import { formatMnt } from "@/lib/pricing";
+import { formatTripStartingPrice, hasKnownTripPrice } from "@/lib/pricing";
 import { localeAlternates } from "@/lib/hreflang";
 import type { Trip } from "@/types/trip";
 import TripDetailClient from "./TripDetailClient";
@@ -63,7 +63,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description =
     trip.summary?.trim() || trip.description.slice(0, 160).trim() || undefined;
 
-  const title = `${trip.title} — ${formatMnt(trip.price)}`;
+  const title = `${trip.title} — ${formatTripStartingPrice(trip.price)}`;
+  const previewImages = trip.image ? [{ url: trip.image, width: 1200, height: 630, alt: trip.title }] : undefined;
 
   return {
     title,
@@ -72,13 +73,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title,
       description,
       type: "website",
-      images: [{ url: trip.image, width: 1200, height: 630, alt: trip.title }],
+      images: previewImages,
     },
     twitter: {
-      card: "summary_large_image",
+      card: previewImages ? "summary_large_image" : "summary",
       title,
       description,
-      images: [trip.image],
+      images: trip.image ? [trip.image] : undefined,
     },
     alternates: { languages: localeAlternates(`/trips/${slug}`) },
   };
@@ -98,17 +99,19 @@ export default async function TripDetailPage({ params }: Props) {
     "@type": "TouristTrip",
     name: trip.title,
     description: trip.summary?.trim() || trip.description.slice(0, 300).trim(),
-    image: trip.image,
+    image: trip.image || undefined,
     url: `${SITE_URL}/trips/${slug}`,
     touristType: trip.country ? `${[trip.city, trip.country].filter(Boolean).join(", ")}` : undefined,
     itinerary: { "@type": "ItemList", numberOfItems: trip.durationDays },
-    offers: {
-      "@type": "Offer",
-      price: trip.price,
-      priceCurrency: trip.currency,
-      availability: "https://schema.org/InStock",
-      url: `${SITE_URL}/trips/${slug}`,
-    },
+    offers: hasKnownTripPrice(trip.price)
+      ? {
+          "@type": "Offer",
+          price: trip.price,
+          priceCurrency: trip.currency,
+          availability: "https://schema.org/InStock",
+          url: `${SITE_URL}/trips/${slug}`,
+        }
+      : undefined,
     ...(trip.reviewCount > 0
       ? {
           aggregateRating: {

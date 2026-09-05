@@ -9,9 +9,7 @@
  *      database; the actual asset is the per-day photo extracted from the
  *      client's uploaded trip document.
  *   2. Deletes every existing Trip in booking-web (cascades ItineraryDay/
- *      Departure/Testimonial, detaches Enquiry/TripView via SetNull —
- *      verified beforehand: 0 real bookings/enquiries/testimonials
- *      currently reference any trip, so nothing real is lost).
+ *      Departure/Testimonial, detaches Enquiry/TripView via SetNull.
  *   3. Re-creates all 22 as new trips, sorted into the 5 existing categories
  *      by a hand-built lookup (the chatbot's own `category` column is
  *      generic "Аялал" on every row — it carries no signal), uploads each
@@ -337,7 +335,7 @@ async function main() {
       sourceTripId: source.id,
       sourceMetadata: extra,
       categoryId: category.id,
-      isPublished: hasPrice,
+      isPublished: true,
       isFeatured: false,
       itinerary: { create: itinerary },
       departures: { create: departures },
@@ -345,12 +343,12 @@ async function main() {
 
     if (DRY_RUN) {
       console.log(
-        `[dry-run] ${title} -> category="${category.categoryName}" price=${tripData.price}${hasPrice ? "" : " (DRAFT — no price)"} days=${itinerary.length} departures=${departures.length}`,
+        `[dry-run] ${title} -> category="${category.categoryName}" price=${tripData.price}${hasPrice ? "" : " (PRICE MISSING)"} days=${itinerary.length} departures=${departures.length}`,
       );
     } else {
       await prisma.trip.create({ data: tripData });
       console.log(
-        `✓ ${title} -> ${category.categoryName} | ${itinerary.length} days | ${departures.length} departures | ${extraImages.length + (heroImage ? 1 : 0)} photos${hasPrice ? "" : " [DRAFT]"}`,
+        `✓ ${title} -> ${category.categoryName} | ${itinerary.length} days | ${departures.length} departures | ${extraImages.length + (heroImage ? 1 : 0)} photos${hasPrice ? "" : " [PRICE MISSING]"}`,
       );
     }
 
@@ -361,7 +359,7 @@ async function main() {
   console.log(`Imported: ${report.imported.length} / ${chatbotTrips.length}`);
   console.log("By category:", JSON.stringify(report.categoryCounts, null, 2));
   if (report.drafts.length) {
-    console.log(`\nDRAFT (no price set — needs staff to fill in before publishing):`);
+    console.log(`\nPRICE MISSING (visible as \"Үнэ лавлах\" until staff fills it in):`);
     for (const t of report.drafts) console.log("  -", t);
   }
   if (report.uncategorized.length) {

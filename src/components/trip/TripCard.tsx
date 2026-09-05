@@ -5,7 +5,7 @@ import Image from "next/image";
 import { CalendarDays, Clock, MapPin, Play, Star, Users } from "lucide-react";
 
 import type { Trip } from "@/types/trip";
-import { formatMnt } from "@/lib/pricing";
+import { formatMnt, formatTripStartingPrice, hasKnownTripPrice } from "@/lib/pricing";
 import { availability, formatDepartureDate, nextDeparture } from "@/lib/departures";
 import SaveButton from "@/components/trip/SaveButton";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
@@ -128,13 +128,15 @@ export default function TripCard({ trip }: { trip: Trip }) {
 
         <div className="mt-auto flex items-end justify-between pt-4">
           <div>
-            {trip.oldPrice && trip.oldPrice > trip.price && (
+            {hasKnownTripPrice(trip.price) && trip.oldPrice && trip.oldPrice > trip.price && (
               <div className="text-xs text-muted-foreground line-through">
                 {formatMnt(trip.oldPrice)}
               </div>
             )}
-            <div className="text-[17px] font-bold text-primary">{formatMnt(trip.price)}</div>
-            <div className="text-[11px] text-muted-foreground">хүн/-с эхлэн</div>
+            <div className="text-[17px] font-bold text-primary">{formatTripStartingPrice(trip.price)}</div>
+            <div className="text-[11px] text-muted-foreground">
+              {hasKnownTripPrice(trip.price) ? "хүн/-с эхлэн" : "ажилтнаас тодруулна"}
+            </div>
           </div>
 
           <span className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold transition-colors group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground">

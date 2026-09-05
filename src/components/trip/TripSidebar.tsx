@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import type { Trip } from "@/types/trip";
+import { hasKnownTripPrice } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
 import BookingPanel from "./BookingPanel";
@@ -23,34 +24,38 @@ export default function TripSidebar({
   trip: Trip;
   bankDetails?: string | null;
 }) {
-  const [mode, setMode] = useState<Mode>("book");
+  const hasPrice = hasKnownTripPrice(trip.price);
+  const [selectedMode, setSelectedMode] = useState<Mode>("book");
+  const mode = hasPrice ? selectedMode : "ask";
 
   return (
     <div>
-      <div className="mb-3 grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1">
-        <button
-          type="button"
-          onClick={() => setMode("book")}
-          className={cn(
-            "rounded-lg py-2 text-sm font-semibold transition-colors",
-            mode === "book" ? "bg-card text-primary shadow-sm" : "text-muted-foreground",
-          )}
-        >
-          Онлайн захиалах
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode("ask")}
-          className={cn(
-            "rounded-lg py-2 text-sm font-semibold transition-colors",
-            mode === "ask" ? "bg-card text-primary shadow-sm" : "text-muted-foreground",
-          )}
-        >
-          Ажилтнаар холбогдох
-        </button>
-      </div>
+      {hasPrice && (
+        <div className="mb-3 grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1">
+          <button
+            type="button"
+            onClick={() => setSelectedMode("book")}
+            className={cn(
+              "rounded-lg py-2 text-sm font-semibold transition-colors",
+              mode === "book" ? "bg-card text-primary shadow-sm" : "text-muted-foreground",
+            )}
+          >
+            Онлайн захиалах
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedMode("ask")}
+            className={cn(
+              "rounded-lg py-2 text-sm font-semibold transition-colors",
+              mode === "ask" ? "bg-card text-primary shadow-sm" : "text-muted-foreground",
+            )}
+          >
+            Ажилтнаар холбогдох
+          </button>
+        </div>
+      )}
 
-      {mode === "book" ? (
+      {hasPrice && mode === "book" ? (
         <BookingPanel trip={trip} bankDetails={bankDetails} />
       ) : (
         <EnquiryPanel trip={trip} />

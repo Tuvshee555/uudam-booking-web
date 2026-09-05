@@ -7,7 +7,7 @@ import { BadgePercent, CalendarDays, MapPin, Search, SlidersHorizontal, Star, X 
 import { useTrips, useCategoryTree, useTags, usePriceBands } from "@/hooks/useTrips";
 import TripCard from "@/components/trip/TripCard";
 import { Input } from "@/components/ui/input";
-import { formatMnt } from "@/lib/pricing";
+import { formatMnt, hasKnownTripPrice } from "@/lib/pricing";
 import { soonestDepartureTime, upcomingDepartures } from "@/lib/departures";
 import type { Trip } from "@/types/trip";
 import { cn } from "@/lib/utils";
@@ -166,6 +166,7 @@ function TripsPageInner({ initialTrips }: { initialTrips?: Trip[] }) {
         if (activeDuration.max !== null && trip.durationDays > activeDuration.max) return false;
       }
       if (activeBand) {
+        if (!hasKnownTripPrice(trip.price)) return false;
         if (trip.price < activeBand.minPrice) return false;
         if (activeBand.maxPrice !== null && trip.price > activeBand.maxPrice) return false;
       }
@@ -180,10 +181,20 @@ function TripsPageInner({ initialTrips }: { initialTrips?: Trip[] }) {
 
     switch (sort) {
       case "price-asc":
-        sorted.sort((a, b) => a.price - b.price);
+        sorted.sort((a, b) => {
+          const aKnown = hasKnownTripPrice(a.price);
+          const bKnown = hasKnownTripPrice(b.price);
+          if (aKnown !== bKnown) return aKnown ? -1 : 1;
+          return a.price - b.price;
+        });
         break;
       case "price-desc":
-        sorted.sort((a, b) => b.price - a.price);
+        sorted.sort((a, b) => {
+          const aKnown = hasKnownTripPrice(a.price);
+          const bKnown = hasKnownTripPrice(b.price);
+          if (aKnown !== bKnown) return aKnown ? -1 : 1;
+          return b.price - a.price;
+        });
         break;
       case "duration-asc":
         sorted.sort((a, b) => a.durationDays - b.durationDays);
