@@ -119,6 +119,7 @@ export type ItineraryInput = {
   meals: string[];
   accommodation: string | null;
   image: string | null;
+  video: string | null;
 };
 
 /**
@@ -155,6 +156,7 @@ export function normalizeItinerary(value: unknown): ItineraryInput[] {
             ? day.accommodation.trim()
             : null,
         image: typeof day?.image === "string" && day.image.trim() ? day.image.trim() : null,
+        video: typeof day?.video === "string" && day.video.trim() ? day.video.trim() : null,
       } satisfies ItineraryInput;
     })
     .filter((day): day is ItineraryInput => day !== null)

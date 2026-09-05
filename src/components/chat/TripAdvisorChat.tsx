@@ -3,9 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Bot, Loader2, MessageSquareText, Send, X } from "lucide-react";
+import { Bot, Loader2, MessageCircle, MessageSquareText, Send, X } from "lucide-react";
 
 import { api } from "@/lib/api";
+import { CONTACT, hasLink } from "@/lib/contact";
+import { track } from "@/lib/analytics";
 import { formatMnt } from "@/lib/pricing";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { isAllowedImageHost } from "@/lib/imageHosts";
@@ -159,6 +161,19 @@ export default function TripAdvisorChat() {
               </div>
             )}
           </div>
+
+          {hasLink(CONTACT.messenger) && (
+            <a
+              href={CONTACT.messenger}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => track("messenger_click")}
+              className="flex items-center justify-center gap-2 border-t border-border bg-secondary/50 px-4 py-2.5 text-xs font-semibold text-primary hover:bg-secondary"
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              Ажилтантай шууд чатлах
+            </a>
+          )}
 
           <form
             onSubmit={(e) => {

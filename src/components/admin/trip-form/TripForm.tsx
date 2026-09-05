@@ -202,6 +202,7 @@ function tripToForm(trip: Trip): FormState {
       meals: day.meals.join(", "),
       accommodation: day.accommodation ?? "",
       image: day.image ?? "",
+      video: day.video ?? "",
     })),
     departures: trip.departures.map((dep) => ({
       id: dep.id,
@@ -286,6 +287,7 @@ function buildPayload(form: FormState) {
         description: day.description.trim() || undefined,
         location: day.location.trim() || undefined,
         image: day.image.trim() || undefined,
+        video: day.video.trim() || undefined,
         meals: day.meals
           .split(",")
           .map((m) => m.trim())

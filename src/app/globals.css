@@ -134,3 +134,63 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ---------------------------------------------------------------------------
+ * Print / "download this trip as PDF"
+ *
+ * Deliberately CSS rather than a generated PDF. A jsPDF build would have to
+ * embed a Cyrillic face before it could render Ө, Ү or ₮ at all — they are
+ * absent from its built-in fonts — and would then be a second copy of the
+ * trip layout that drifts from the real page. The browser already has the
+ * fonts, the photos and the layout, and every phone can "Share → Print →
+ * Save as PDF", so this prints the real page with the interactive chrome
+ * stripped out.
+ * ------------------------------------------------------------------------ */
+@media print {
+  /* Site chrome and anything you can't use on paper. */
+  header,
+  footer,
+  aside,
+  video,
+  [data-print="hide"] {
+    display: none !important;
+  }
+
+  /* The trip page is a two-column grid with a sticky booking panel; on paper
+     there is no second column, so let the content use the full width. */
+  .uudam-container {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  [class*="lg:grid-cols-"] {
+    display: block !important;
+  }
+
+  /* Keep photos: browsers drop background/colour printing by default, and a
+     trip brochure without its images is not worth printing. */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Don't split a day, a price block or a photo across two sheets. */
+  section,
+  li,
+  img {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  a[href]::after {
+    content: "";
+  }
+
+  body {
+    background: #fff !important;
+  }
+}
+
+@page {
+  margin: 14mm;
+}

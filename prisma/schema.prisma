@@ -171,6 +171,9 @@ model ItineraryDay {
   meals         String[] @default([])
   accommodation String?
   image         String?
+  /// Cloudinary URL. Uploaded the same signed, direct-to-Cloudinary way as
+  /// trip-level video, since day clips hit the same 4.5MB Vercel body ceiling.
+  video         String?
 
   trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
 

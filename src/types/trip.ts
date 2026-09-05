@@ -36,6 +36,7 @@ export type ItineraryDay = {
   meals: string[];
   accommodation: string | null;
   image: string | null;
+  video: string | null;
 };
 
 export type TripCategory = {

@@ -28,6 +28,8 @@ import EnquiryPanel from "@/components/trip/EnquiryPanel";
 import EnquiryTrustNote from "@/components/trust/EnquiryTrustNote";
 import ShareButton from "@/components/trip/ShareButton";
 import SaveButton from "@/components/trip/SaveButton";
+import DownloadTripButton from "@/components/trip/DownloadTripButton";
+import MessengerButton from "@/components/trip/MessengerButton";
 import { Button } from "@/components/ui/button";
 
 const DIFFICULTY_LABEL: Record<string, string> = {
@@ -172,9 +174,10 @@ export default function TripDetailClient({
 
             <div className="mt-3 flex items-start justify-between gap-4">
               <h1 className="text-2xl font-bold leading-tight md:text-3xl">{trip.title}</h1>
-              <div className="mt-1 flex shrink-0 items-center gap-2">
+              <div className="mt-1 flex shrink-0 items-center gap-2" data-print="hide">
                 <SaveButton slug={trip.slug} variant="button" />
                 <ShareButton title={trip.title} tripId={trip.id} />
+                <DownloadTripButton />
               </div>
             </div>
             {trip.summary && (
@@ -199,6 +202,7 @@ export default function TripDetailClient({
           {sections.length > 1 && (
             <nav
               aria-label="Хуудасны хэсгүүд"
+              data-print="hide"
               className="sticky top-[72px] z-20 -mx-4 mt-6 border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80"
             >
               <ul className="no-scrollbar flex gap-1 overflow-x-auto py-2">
@@ -274,6 +278,15 @@ export default function TripDetailClient({
                             className="object-cover"
                           />
                         </div>
+                      )}
+                      {day.video && (
+                        <video
+                          src={day.video}
+                          controls
+                          preload="metadata"
+                          playsInline
+                          className="mt-3 aspect-video w-full max-w-xl rounded-lg bg-black print:hidden"
+                        />
                       )}
                       {(day.meals.length > 0 || day.accommodation) && (
                         <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
@@ -497,12 +510,13 @@ export default function TripDetailClient({
 
         <aside className="lg:sticky lg:top-[124px] lg:h-fit">
           <EnquiryPanel trip={trip} />
+          <MessengerButton tripSlug={trip.slug} tripId={trip.id} className="mt-3 w-full" />
           <EnquiryTrustNote />
         </aside>
       </div>
 
       {related.length > 0 && (
-        <section className="mt-12">
+        <section className="mt-12" data-print="hide">
           <h2 className="text-lg font-bold">Санал болгох аялалууд</h2>
           <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {related.map((candidate) => (
