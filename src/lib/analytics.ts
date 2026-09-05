@@ -103,7 +103,9 @@ export function track(
     | "messenger_click"
     | "departure_select"
     | "custom_trip_submit"
-    | "gift_submit",
+    | "gift_submit"
+    | "booking_start"
+    | "booking_submit",
   options?: { tripId?: string; properties?: Record<string, unknown> },
 ) {
   try {

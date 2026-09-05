@@ -13,6 +13,8 @@ const EVENT_NAMES = new Set([
   "enquiry_start",
   "custom_trip_submit",
   "gift_submit",
+  "booking_start",
+  "booking_submit",
 ]);
 
 /**

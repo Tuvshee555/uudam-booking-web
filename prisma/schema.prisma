@@ -1,12 +1,21 @@
 // Uudam Travel Agency — booking platform schema.
 //
-// Business model note, because it shapes everything below: the agency sells
-// manually. The website is the catalogue and the lead capture; nobody pays
-// online. So there is no cart, no payment, no customer account — a visitor
-// reads a trip and sends an Enquiry, and staff ring them back.
+// Business model note, because it shapes everything below. The agency began
+// selling entirely by hand: the site was a catalogue plus lead capture, a
+// visitor sent an Enquiry and staff rang them back. In September 2026 the
+// client decided to sell online as well, which is where Booking, Traveler
+// and Payment come from.
 //
-// That is why there is no Payment/Order/PaymentMethod anywhere here, and why
-// Enquiry has no userId.
+// Both paths are live and neither replaces the other. Most customers here
+// still want a person on the phone, so Enquiry is not deprecated.
+//
+// Two things this app still does NOT do, deliberately:
+//   * It never takes money. Payment records a bank transfer that staff
+//     confirm by hand. QPay slots in behind the same model once the agency
+//     holds a merchant account.
+//   * There are no customer accounts. A booking is found by its reference,
+//     not by signing in — there is no SMS gateway wired up for phone OTP,
+//     and email-only accounts were not worth the friction.
 
 generator client {
   provider = "prisma-client-js"
@@ -34,6 +43,7 @@ model User {
   updatedAt        DateTime  @updatedAt
 
   handledEnquiries Enquiry[]
+  handledBookings  Booking[]
 
   @@index([role])
 }
@@ -124,6 +134,7 @@ model Trip {
   itinerary    ItineraryDay[]
   departures   Departure[]
   enquiries    Enquiry[]
+  bookings     Booking[]
   testimonials Testimonial[]
   views        TripView[]
 
@@ -154,6 +165,7 @@ model Departure {
 
   trip      Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
   enquiries Enquiry[]
+  bookings  Booking[]
 
   @@index([tripId])
   @@index([startDate])
@@ -296,6 +308,126 @@ model Enquiry {
   @@index([visitorId])
 }
 
+/// An actual online booking, as opposed to an Enquiry (which is only a
+/// request for a call back).
+///
+/// The agency historically sold entirely by phone; this exists because the
+/// client decided to sell online as well. Both paths stay live — a visitor
+/// can still just ask staff to ring them — so nothing here replaces Enquiry.
+///
+/// Money is never taken by this app. `Payment` records a bank transfer that
+/// staff confirm by hand; a card/QPay provider slots in behind the same
+/// model once the agency holds a merchant account.
+model Booking {
+  id String @id @default(uuid())
+  /// Human-quotable, same alphabet as an enquiry reference: "UUD-B-7K2Q9".
+  reference String @unique
+
+  tripId      String
+  departureId String
+
+  status BookingStatus @default(HELD)
+
+  adults   Int @default(1)
+  children Int @default(0)
+  infants  Int @default(0)
+
+  firstName String
+  lastName  String?
+  phone     String
+  email     String?
+  notes     String?
+
+  /// Snapshotted at booking time, never recomputed. If staff edit the trip's
+  /// price next week, what this customer agreed to must not silently change.
+  totalPrice Float
+  /// What the customer must transfer now to hold the seats. Null means the
+  /// full amount is due.
+  depositDue Float?
+  paidAmount Float  @default(0)
+  currency   String @default("MNT")
+
+  /// While a booking is HELD its seats are reserved but unpaid. Past this
+  /// moment a sweep releases them, so an abandoned checkout can't hold a seat
+  /// out of sale forever.
+  holdExpiresAt DateTime?
+
+  /// Who processed it, once staff pick it up.
+  handledById String?
+  handledBy   User?   @relation(fields: [handledById], references: [id])
+
+  source    String?
+  visitorId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  trip      Trip      @relation(fields: [tripId], references: [id])
+  departure Departure @relation(fields: [departureId], references: [id])
+
+  travelers Traveler[]
+  payments  Payment[]
+
+  @@index([status, createdAt])
+  @@index([departureId, status])
+  @@index([createdAt])
+}
+
+/// One person on a booking. Passport fields are deliberately optional and
+/// collected after the seat is held, not before: asking for a passport number
+/// to see a price is how you lose the booking.
+model Traveler {
+  id        String @id @default(uuid())
+  bookingId String
+
+  firstName String
+  lastName  String?
+  type      TravelerType @default(ADULT)
+
+  dateOfBirth DateTime?
+  nationality String?
+
+  /// Identity data. Stored because the agency needs it to issue tickets, and
+  /// nothing more is kept than that requires.
+  passportNumber String?
+  passportExpiry DateTime?
+
+  notes String?
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+}
+
+/// A transfer against a booking. Staff confirm bank transfers by hand today;
+/// `provider`/`providerRef` exist so an automated provider can be recorded
+/// the same way without a second model.
+model Payment {
+  id        String @id @default(uuid())
+  bookingId String
+
+  method PaymentMethod @default(BANK)
+  status PaymentStatus @default(PENDING)
+  amount Float
+
+  /// What the customer should write on the transfer, and what staff match
+  /// against the bank statement.
+  reference   String
+  provider    String?
+  providerRef String?
+
+  paidAt      DateTime?
+  confirmedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@index([status])
+}
+
 /// Customer feedback, entered by staff. There are no customer accounts, so
 /// these can't be self-service reviews.
 model Testimonial {
@@ -331,6 +463,12 @@ model SiteSettings {
   /// still exists for anything specific to that one trip; the two render
   /// together, this one first.
   tripNotice String?
+
+  /// Where a customer sends a bank transfer, free text so the client can
+  /// write it the way her bank actually words it (bank, account number,
+  /// account name). Editable in admin, never in code — she changes banks
+  /// and account names without a developer.
+  bankDetails String?
 
   updatedAt DateTime @updatedAt
 }
@@ -442,6 +580,40 @@ enum EnquiryStatus {
   CONFIRMED
   COMPLETED
   CANCELLED
+}
+
+enum BookingStatus {
+  /// Seats reserved, nothing paid. Expires — see Booking.holdExpiresAt.
+  HELD
+  /// Customer has been given transfer instructions.
+  PENDING_PAYMENT
+  /// Deposit received, balance outstanding.
+  PARTIALLY_PAID
+  /// Paid in full and confirmed by staff.
+  CONFIRMED
+  /// Travelled.
+  COMPLETED
+  CANCELLED
+  /// The hold ran out before payment arrived; seats went back on sale.
+  EXPIRED
+}
+
+enum TravelerType {
+  ADULT
+  CHILD
+  INFANT
+}
+
+enum PaymentMethod {
+  BANK
+  QPAY
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
 }
 
 enum EnquiryKind {

@@ -15,6 +15,7 @@ import {
   MessageSquareQuote,
   Newspaper,
   Settings,
+  ShoppingBag,
   Tag,
   Users,
 } from "lucide-react";
@@ -33,6 +34,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   const nav = [
     { href: base, label: "Хяналт", icon: LayoutDashboard, exact: true },
     { href: `${base}/enquiries`, label: "Хүсэлтүүд", icon: Inbox },
+    { href: `${base}/bookings`, label: "Захиалгууд", icon: ShoppingBag },
     { href: `${base}/trips`, label: "Аялалууд", icon: Map },
     { href: `${base}/categories`, label: "Ангилалууд", icon: FolderTree },
     { href: `${base}/tags`, label: "Шошгууд", icon: Tag },

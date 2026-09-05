@@ -127,11 +127,16 @@ export function useCategoryTrips(
 }
 
 /** The one site-wide setting the storefront reads: the standing trip notice. */
-export function useSiteSettings(initialData?: { tripNotice: string | null }) {
-  return useQuery<{ tripNotice: string | null }>({
+export function useSiteSettings(initialData?: {
+  tripNotice: string | null;
+  bankDetails?: string | null;
+}) {
+  return useQuery<{ tripNotice: string | null; bankDetails?: string | null }>({
     queryKey: ["settings"],
     queryFn: async () => {
-      const { data } = await api.get<{ tripNotice: string | null }>("/settings");
+      const { data } = await api.get<{ tripNotice: string | null; bankDetails?: string | null }>(
+        "/settings",
+      );
       return data;
     },
     initialData,

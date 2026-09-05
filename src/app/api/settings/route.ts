@@ -11,7 +11,7 @@ import { cached, invalidate } from "@/server/cache";
 export const GET = handler(async () => {
   const settings = await cached("settings:default", 30_000, async () => {
     const row = await prisma.siteSettings.findUnique({ where: { id: "default" } });
-    return { tripNotice: row?.tripNotice ?? null };
+    return { tripNotice: row?.tripNotice ?? null, bankDetails: row?.bankDetails ?? null };
   });
 
   return publicCache(NextResponse.json(settings));
@@ -23,14 +23,15 @@ export const PUT = handler(async (req: Request) => {
 
   const body = await readJson(req);
   const tripNotice = safeText(body.tripNotice, 2000);
+  const bankDetails = safeText(body.bankDetails, 2000);
 
   const row = await prisma.siteSettings.upsert({
     where: { id: "default" },
-    create: { id: "default", tripNotice },
-    update: { tripNotice },
+    create: { id: "default", tripNotice, bankDetails },
+    update: { tripNotice, bankDetails },
   });
 
   invalidate("settings");
 
-  return json({ tripNotice: row.tripNotice });
+  return json({ tripNotice: row.tripNotice, bankDetails: row.bankDetails });
 });

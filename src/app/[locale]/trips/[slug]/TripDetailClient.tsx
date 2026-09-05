@@ -24,7 +24,7 @@ import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { recordRecentlyViewed } from "@/lib/analytics";
 import TripMedia from "@/components/trip/TripMedia";
 import TripCard from "@/components/trip/TripCard";
-import EnquiryPanel from "@/components/trip/EnquiryPanel";
+import TripSidebar from "@/components/trip/TripSidebar";
 import EnquiryTrustNote from "@/components/trust/EnquiryTrustNote";
 import ShareButton from "@/components/trip/ShareButton";
 import SaveButton from "@/components/trip/SaveButton";
@@ -509,7 +509,7 @@ export default function TripDetailClient({
         </div>
 
         <aside className="lg:sticky lg:top-[124px] lg:h-fit">
-          <EnquiryPanel trip={trip} />
+          <TripSidebar trip={trip} bankDetails={siteSettings?.bankDetails} />
           <MessengerButton tripSlug={trip.slug} tripId={trip.id} className="mt-3 w-full" />
           <EnquiryTrustNote />
         </aside>

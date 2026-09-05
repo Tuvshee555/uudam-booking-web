@@ -96,9 +96,12 @@ export async function getPublishedTestimonials(limit = 9) {
 }
 
 /** Mirrors GET /api/settings. Missing row (nothing set yet) is not an error. */
-export async function getSiteSettings(): Promise<{ tripNotice: string | null }> {
+export async function getSiteSettings(): Promise<{
+  tripNotice: string | null;
+  bankDetails: string | null;
+}> {
   const row = await prisma.siteSettings.findUnique({ where: { id: "default" } });
-  return { tripNotice: row?.tripNotice ?? null };
+  return { tripNotice: row?.tripNotice ?? null, bankDetails: row?.bankDetails ?? null };
 }
 
 /** Mirrors GET /api/categories/tree, including its orphan-promotion rule. */
