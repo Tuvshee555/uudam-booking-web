@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/server/prisma";
+import { checkInvoice } from "@/server/qpay";
 import { lineTotal, resolvePrices, totalHeadcount } from "@/lib/pricing";
 
 /**
@@ -268,6 +269,55 @@ export async function createBooking(input: CreateBookingInput) {
     timeout: 10_000,
     maxWait: 10_000,
   });
+}
+
+/**
+ * Confirm (or re-confirm, harmlessly) a QPay payment against its invoice.
+ *
+ * Shared by the webhook and the customer's status poll — neither trusts its
+ * own trigger; both call this, and this is the only place that calls QPay's
+ * `checkInvoice` and is allowed to mark a booking paid. A webhook firing
+ * twice, or a poll racing the webhook, lands here twice and the second call
+ * sees `status !== "PENDING"` and does nothing.
+ *
+ * Full payment only for now, matching the invoice this project creates —
+ * QPay invoices are raised for a booking's whole outstanding balance, not a
+ * partial deposit, so "paid" here always means paid in full.
+ */
+export async function confirmQpayInvoicePayment(invoiceId: string): Promise<{
+  confirmed: boolean;
+  bookingReference: string | null;
+}> {
+  const payment = await prisma.payment.findFirst({
+    where: { providerRef: invoiceId, method: "QPAY" },
+    select: { id: true, status: true, bookingId: true, booking: { select: { reference: true, totalPrice: true } } },
+  });
+
+  if (!payment) return { confirmed: false, bookingReference: null };
+  if (payment.status === "PAID") {
+    return { confirmed: true, bookingReference: payment.booking.reference };
+  }
+
+  const result = await checkInvoice(invoiceId);
+
+  if (!result.paid) return { confirmed: false, bookingReference: payment.booking.reference };
+
+  await prisma.$transaction([
+    prisma.payment.update({
+      where: { id: payment.id },
+      data: { status: "PAID", paidAt: new Date(), providerRef: invoiceId },
+    }),
+    prisma.booking.update({
+      where: { id: payment.bookingId },
+      data: {
+        paidAmount: payment.booking.totalPrice,
+        status: "CONFIRMED",
+        holdExpiresAt: null,
+      },
+    }),
+  ]);
+
+  return { confirmed: true, bookingReference: payment.booking.reference };
 }
 
 /**

@@ -9,6 +9,7 @@ import { api, apiErrorMessage } from "@/lib/api";
 import { getVisitorId, track } from "@/lib/analytics";
 import { formatFare, formatMnt, lineTotal, resolvePrices } from "@/lib/pricing";
 import { availability, upcomingDepartures } from "@/lib/departures";
+import QpayPayButton, { QpayPaidBadge } from "./QpayPayButton";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,6 +106,7 @@ export default function BookingPanel({
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ reference: string; totalPrice: number } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [paidViaQpay, setPaidViaQpay] = useState(false);
 
   // Frozen at mount: reading the clock during render makes the component
   // impure, and departures shouldn't vanish while someone is mid-booking.
@@ -195,15 +197,25 @@ export default function BookingPanel({
           <span className="text-xl font-bold text-primary">{formatMnt(result.totalPrice)}</span>
         </div>
 
-        {bankDetails ? (
-          <div className="mt-4 whitespace-pre-line rounded-xl border border-gold/40 bg-gold/10 p-4 text-sm leading-relaxed">
-            <div className="font-semibold">Шилжүүлэг хийх данс</div>
-            {bankDetails}
+        {paidViaQpay ? (
+          <div className="mt-4">
+            <QpayPaidBadge />
           </div>
         ) : (
-          <p className="mt-4 rounded-xl bg-secondary p-3 text-xs leading-relaxed text-muted-foreground">
-            Төлбөрийн мэдээллийг ажилтан тантай холбогдож хэлнэ.
-          </p>
+          <div className="mt-4 space-y-3">
+            <QpayPayButton reference={result.reference} onPaid={() => setPaidViaQpay(true)} />
+
+            {bankDetails ? (
+              <div className="whitespace-pre-line rounded-xl border border-gold/40 bg-gold/10 p-4 text-sm leading-relaxed">
+                <div className="font-semibold">Эсвэл банкаар шилжүүлэх</div>
+                {bankDetails}
+              </div>
+            ) : (
+              <p className="rounded-xl bg-secondary p-3 text-xs leading-relaxed text-muted-foreground">
+                Банкны шилжүүлгийн мэдээллийг ажилтан тантай холбогдож хэлнэ.
+              </p>
+            )}
+          </div>
         )}
 
         <Button asChild variant="outline" className="mt-4 w-full">
