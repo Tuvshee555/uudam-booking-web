@@ -69,6 +69,32 @@ export async function getCategoryWithTrips(
   };
 }
 
+/**
+ * Recent published testimonials for the homepage's reviews section — mixed
+ * across trips rather than scoped to one, unlike the per-trip list a trip
+ * page already renders from `trip.testimonials`. Capped at 9: this is a
+ * trust signal, not an archive.
+ */
+export async function getPublishedTestimonials(limit = 9) {
+  const rows = await prisma.testimonial.findMany({
+    where: { isPublished: true },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    select: {
+      id: true,
+      authorName: true,
+      rating: true,
+      comment: true,
+      travelDate: true,
+      trip: { select: { title: true, slug: true } },
+    },
+  });
+
+  return JSON.parse(JSON.stringify(rows)) as (Omit<(typeof rows)[number], "travelDate"> & {
+    travelDate: string | null;
+  })[];
+}
+
 /** Mirrors GET /api/settings. Missing row (nothing set yet) is not an error. */
 export async function getSiteSettings(): Promise<{ tripNotice: string | null }> {
   const row = await prisma.siteSettings.findUnique({ where: { id: "default" } });

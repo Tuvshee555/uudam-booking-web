@@ -180,6 +180,7 @@ export default function HomeClient({
   initialTrips,
   initialCategories,
   trustBar,
+  reviewsSection,
 }: {
   initialTrips?: Trip[];
   initialCategories?: CategoryNode[];
@@ -189,6 +190,8 @@ export default function HomeClient({
    * can do but this Client Component cannot.
    */
   trustBar?: ReactNode;
+  /** Same reasoning as trustBar — reads Testimonial rows server-side. */
+  reviewsSection?: ReactNode;
 }) {
   const { locale } = useI18n();
   const base = `/${locale}`;
@@ -332,6 +335,8 @@ export default function HomeClient({
           </Button>
         </div>
       </section>
+
+      {reviewsSection}
 
       <CustomTripCta base={base} />
     </div>

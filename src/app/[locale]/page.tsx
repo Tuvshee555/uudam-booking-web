@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { getCategoryTree, getPublishedTrips } from "@/server/catalog";
 import { localeAlternates } from "@/lib/hreflang";
 import TrustBar from "@/components/trust/TrustBar";
+import ReviewsSection from "@/components/trust/ReviewsSection";
 import HomeClient from "./HomeClient";
 
 /**
@@ -17,7 +18,8 @@ export const metadata: Metadata = {
   alternates: { languages: localeAlternates("") },
 };
 
-export default async function HomePage() {
+export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
   const [trips, categories] = await Promise.all([getPublishedTrips(), getCategoryTree()]);
 
   return (
@@ -25,6 +27,7 @@ export default async function HomePage() {
       initialTrips={trips}
       initialCategories={categories}
       trustBar={<TrustBar />}
+      reviewsSection={<ReviewsSection locale={locale} />}
     />
   );
 }

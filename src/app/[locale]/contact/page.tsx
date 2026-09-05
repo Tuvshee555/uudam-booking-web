@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Clock, Facebook, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
+import { Clock, Facebook, Instagram, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 import { CONTACT, hasLink } from "@/lib/contact";
 import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
 
@@ -101,6 +101,17 @@ export default function ContactPage() {
           >
             <Facebook className="h-4 w-4" />
             Facebook
+          </a>
+        )}
+        {hasLink(CONTACT.instagram) && (
+          <a
+            href={CONTACT.instagram}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-medium transition-colors hover:border-primary hover:text-primary"
+          >
+            <Instagram className="h-4 w-4" />
+            Instagram
           </a>
         )}
       </div>
