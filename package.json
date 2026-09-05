@@ -4,7 +4,7 @@
   "private": true,
   "description": "Uudam Travel Agency — storefront, admin panel and API in one Next.js app.",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3500",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint .",
