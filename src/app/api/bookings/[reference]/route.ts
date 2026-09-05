@@ -1,6 +1,6 @@
 import { prisma } from "@/server/prisma";
 import { requireAdmin } from "@/server/auth";
-import { getPublicBookingStatus } from "@/server/booking";
+import { cancelBooking, getPublicBookingStatus } from "@/server/booking";
 import { handler, httpError, json, readJson, safeText } from "@/server/http";
 
 type Ctx = { params: Promise<{ reference: string }> };
@@ -42,6 +42,14 @@ export const PATCH = handler(async (req: Request, ctx: Ctx) => {
 
   if (paidAmount !== undefined && (!Number.isFinite(paidAmount) || paidAmount < 0)) {
     throw httpError(400, "Төлсөн дүн буруу байна");
+  }
+
+  // Cancelling goes through cancelBooking so a departure's seatsLeft is
+  // actually given back — a raw status write here would silently leave the
+  // seat marked taken forever.
+  if (status === "CANCELLED") {
+    const booking = await cancelBooking(existing.id, admin.id);
+    return json(booking);
   }
 
   const booking = await prisma.booking.update({

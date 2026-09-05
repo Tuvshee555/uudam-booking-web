@@ -23,72 +23,6 @@ export const SEAT_HOLDING_STATUSES = [
 export const HOLD_MINUTES = 60;
 
 /**
- * Seats already spoken for on a departure.
- *
- * Counts people, not bookings — infants included, because this is capacity
- * on a vehicle, and a departure's `seatsTotal` is a physical limit.
- */
-export async function seatsTaken(
-  departureId: string,
-  tx: Prisma.TransactionClient = prisma,
-): Promise<number> {
-  const now = new Date();
-
-  const rows = await tx.booking.findMany({
-    where: {
-      departureId,
-      status: { in: [...SEAT_HOLDING_STATUSES] },
-      // A HELD booking whose hold has lapsed is not holding anything, even if
-      // the sweep hasn't relabelled it yet. Availability must not wait on a
-      // background job to be correct.
-      NOT: { status: "HELD", holdExpiresAt: { lt: now } },
-    },
-    select: { adults: true, children: true, infants: true },
-  });
-
-  return rows.reduce((sum, r) => sum + r.adults + r.children + r.infants, 0);
-}
-
-export type Availability = {
-  /** Null when the departure has no declared capacity — unlimited. */
-  capacity: number | null;
-  taken: number;
-  /** Null when capacity is null. */
-  remaining: number | null;
-  bookable: boolean;
-};
-
-export async function departureAvailability(
-  departureId: string,
-  tx: Prisma.TransactionClient = prisma,
-): Promise<Availability | null> {
-  const departure = await tx.departure.findUnique({
-    where: { id: departureId },
-    select: { seatsTotal: true, status: true, startDate: true },
-  });
-
-  if (!departure) return null;
-
-  const taken = await seatsTaken(departureId, tx);
-  const capacity = departure.seatsTotal;
-
-  const sellableStatus =
-    departure.status !== "CANCELLED" &&
-    departure.status !== "DEPARTED" &&
-    departure.status !== "SOLD_OUT";
-
-  const inFuture = departure.startDate.getTime() > Date.now();
-  const remaining = capacity === null ? null : Math.max(0, capacity - taken);
-
-  return {
-    capacity,
-    taken,
-    remaining,
-    bookable: sellableStatus && inFuture && (remaining === null || remaining > 0),
-  };
-}
-
-/**
  * The public booking-status lookup — shared by GET /api/bookings/:reference
  * and the status page's server render, so the shape can't drift between the
  * two the way it would if each hand-wrote its own `select`.
@@ -186,6 +120,9 @@ export async function createBooking(input: CreateBookingInput) {
         price: true,
         childPrice: true,
         infantPrice: true,
+        status: true,
+        startDate: true,
+        seatsLeft: true,
       },
     });
 
@@ -208,17 +145,39 @@ export async function createBooking(input: CreateBookingInput) {
     // down trip must not still be sellable to anyone holding its link.
     if (!trip || !trip.isPublished) throw new BookingError("Аялал олдсонгүй", 404);
 
-    const availability = await departureAvailability(input.departureId, tx);
-    if (!availability?.bookable) {
+    const sellableStatus =
+      departure.status !== "CANCELLED" &&
+      departure.status !== "DEPARTED" &&
+      departure.status !== "SOLD_OUT";
+    const inFuture = departure.startDate.getTime() > Date.now();
+
+    if (!sellableStatus || !inFuture) {
       throw new BookingError("Энэ огноонд захиалга авах боломжгүй байна", 409);
     }
-    if (availability.remaining !== null && availability.remaining < seats) {
-      throw new BookingError(
-        availability.remaining === 0
-          ? "Энэ огноо дүүрсэн байна"
-          : `Энэ огноонд ${availability.remaining} суудал үлдсэн байна`,
-        409,
-      );
+
+    // seatsLeft is the one number every surface in the app already reads —
+    // TripCard, the departure picker, the departures calendar, staff's own
+    // dashboard — and staff already decrement it by hand for phone sales.
+    // Booking here has to decrement the *same* field, under the *same* row
+    // lock, or the two channels silently oversell against each other: a
+    // departure staff sold out by phone (seatsLeft = 0) but never flipped to
+    // SOLD_OUT would otherwise still take online bookings, because nothing
+    // online ever looked at seatsLeft at all before this. `null` still means
+    // "no declared capacity" — unlimited, same convention as everywhere else.
+    if (departure.seatsLeft !== null) {
+      if (departure.seatsLeft < seats) {
+        throw new BookingError(
+          departure.seatsLeft === 0
+            ? "Энэ огноо дүүрсэн байна"
+            : `Энэ огноонд ${departure.seatsLeft} суудал үлдсэн байна`,
+          409,
+        );
+      }
+
+      await tx.departure.update({
+        where: { id: departure.id },
+        data: { seatsLeft: { decrement: seats } },
+      });
     }
 
     const prices = resolvePrices(trip, departure);
@@ -321,15 +280,82 @@ export async function confirmQpayInvoicePayment(invoiceId: string): Promise<{
 }
 
 /**
- * Relabel holds that ran out. Availability already ignores lapsed holds, so
- * this is bookkeeping rather than correctness — it keeps the admin list
- * honest about which bookings are actually alive.
+ * Give a booking's seats back to its departure. Called whenever a booking
+ * leaves a seat-holding status without becoming COMPLETED — an expired hold
+ * or a cancellation. `seatsLeft` was decremented at creation time under a
+ * row lock; giving it back takes the same lock, for the same reason: two
+ * releases (or a release racing a new booking) must not corrupt the count.
+ */
+async function releaseSeats(bookingId: string, tx: Prisma.TransactionClient) {
+  const booking = await tx.booking.findUnique({
+    where: { id: bookingId },
+    select: { departureId: true, adults: true, children: true, infants: true },
+  });
+  if (!booking) return;
+
+  const seats = booking.adults + booking.children + booking.infants;
+
+  await tx.$queryRaw`SELECT id FROM "Departure" WHERE id = ${booking.departureId} FOR UPDATE`;
+  await tx.departure.updateMany({
+    where: { id: booking.departureId, seatsLeft: { not: null } },
+    data: { seatsLeft: { increment: seats } },
+  });
+}
+
+/**
+ * Cancel a booking, releasing its seats if it was holding any.
+ *
+ * Idempotent: cancelling an already-cancelled or already-expired booking is
+ * a no-op rather than a double release. `handledById` is optional so the
+ * same function covers a staff action (admin PATCH) and any future
+ * system-initiated cancellation.
+ */
+export async function cancelBooking(bookingId: string, handledById?: string) {
+  return prisma.$transaction(async (tx) => {
+    const booking = await tx.booking.findUnique({
+      where: { id: bookingId },
+      select: { status: true },
+    });
+    if (!booking) throw new BookingError("Захиалга олдсонгүй", 404);
+
+    if (booking.status === "CANCELLED" || booking.status === "EXPIRED") {
+      return tx.booking.findUniqueOrThrow({ where: { id: bookingId } });
+    }
+
+    if ((SEAT_HOLDING_STATUSES as readonly string[]).includes(booking.status)) {
+      await releaseSeats(bookingId, tx);
+    }
+
+    return tx.booking.update({
+      where: { id: bookingId },
+      data: {
+        status: "CANCELLED",
+        holdExpiresAt: null,
+        ...(handledById ? { handledById } : {}),
+      },
+    });
+  });
+}
+
+/**
+ * Relabel holds that ran out and give their seats back.
+ *
+ * One booking at a time rather than a blind `updateMany`: each release needs
+ * its own row lock on that booking's departure, and a batch update can't
+ * take one.
  */
 export async function expireStaleHolds(): Promise<number> {
-  const result = await prisma.booking.updateMany({
+  const stale = await prisma.booking.findMany({
     where: { status: "HELD", holdExpiresAt: { lt: new Date() } },
-    data: { status: "EXPIRED" },
+    select: { id: true },
   });
 
-  return result.count;
+  for (const { id } of stale) {
+    await prisma.$transaction(async (tx) => {
+      await releaseSeats(id, tx);
+      await tx.booking.update({ where: { id }, data: { status: "EXPIRED" } });
+    });
+  }
+
+  return stale.length;
 }
