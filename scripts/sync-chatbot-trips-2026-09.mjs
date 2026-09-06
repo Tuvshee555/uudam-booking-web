@@ -126,11 +126,66 @@ const CATEGORY_SLUG_BY_ROUTE_KEYWORD = [
   { match: /шанхай|хайнан|жэжү|чежү|бээжин|юниверсал|тэнгэрийн\s*хаалга|хүжөү|ханжоу|пүюань/i, slug: "shuud-nislegtei-ayalal" },
 ];
 
+const HERO_IMAGE_FALLBACKS = [
+  {
+    match: /дисней/i,
+    url: "https://images.unsplash.com/photo-1696977225357-6857a8a7f809?auto=format&fit=crop&w=1800&q=82",
+  },
+  {
+    match: /усан\s*парк/i,
+    url: "https://images.unsplash.com/photo-1716796929823-917b4ccbb58c?auto=format&fit=crop&w=1800&q=82",
+  },
+  {
+    match: /шанхай/i,
+    url: "https://images.unsplash.com/photo-1548919973-5cef591cdbc9?auto=format&fit=crop&w=1800&q=82",
+  },
+];
+
 function guessCategorySlug(routeName) {
   for (const rule of CATEGORY_SLUG_BY_ROUTE_KEYWORD) {
     if (rule.match.test(routeName)) return rule.slug;
   }
   return null; // caller decides the fallback
+}
+
+function fallbackHeroImage(title) {
+  return HERO_IMAGE_FALLBACKS.find((item) => item.match.test(title))?.url ?? null;
+}
+
+const WEEKDAY_RULES = [
+  { match: /ням\s*гараг/i, day: 0 },
+  { match: /даваа\s*гараг/i, day: 1 },
+  { match: /мягмар\s*гараг/i, day: 2 },
+  { match: /лхагва\s*гараг/i, day: 3 },
+  { match: /пүрэв\s*гар(?:а|и)г/i, day: 4 },
+  { match: /баасан\s*гараг/i, day: 5 },
+  { match: /бямба\s*гараг/i, day: 6 },
+];
+
+function addDays(date, days) {
+  const next = new Date(date);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next;
+}
+
+function buildRecurringDepartures(text, durationDays, now, count = 12) {
+  const rule = WEEKDAY_RULES.find((item) => item.match.test(compact(text)));
+  if (!rule) return [];
+
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 3, 0, 0));
+  let offset = (rule.day - today.getUTCDay() + 7) % 7;
+  const firstStart = addDays(today, offset);
+  if (firstStart.getTime() < now.getTime()) offset += 7;
+
+  return Array.from({ length: count }, (_, index) => {
+    const startDate = addDays(today, offset + index * 7);
+    return {
+      label: text,
+      startDate,
+      endDate: addDays(startDate, Math.max(durationDays - 1, 0)),
+      status: "OPEN",
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -274,7 +329,7 @@ async function main() {
       }
     }
 
-    const heroImage = uploadedPhotos.find(Boolean) ?? null;
+    const heroImage = uploadedPhotos.find(Boolean) ?? fallbackHeroImage(title);
     const extraImages = uploadedPhotos.filter((url) => url && url !== heroImage);
 
     const itinerary = itineraryDaysSource.map((day, index) => {
@@ -297,15 +352,25 @@ async function main() {
       ? extra.departure_dates_resolved
       : [];
 
-    const departures = departureDatesResolved
+    let departures = departureDatesResolved
       .map((d) => new Date(d.ymd))
       .filter((date) => !Number.isNaN(date.getTime()) && date.getTime() >= now.getTime())
       .map((startDate) => ({
         startDate,
+        endDate: new Date(startDate.getTime() + Math.max(durationDays - 1, 0) * 24 * 60 * 60 * 1000),
         seatsTotal: typeof source.seats_total === "number" ? source.seats_total : null,
         seatsLeft: typeof source.seats_left === "number" ? source.seats_left : null,
         status: "OPEN",
       }));
+
+    if (!departures.length) {
+      const recurringText = departureDatesResolved.find((d) => d?.ymd == null && compact(d?.text))?.text;
+      departures = buildRecurringDepartures(recurringText, durationDays, now).map((departure) => ({
+        ...departure,
+        seatsTotal: typeof source.seats_total === "number" ? source.seats_total : null,
+        seatsLeft: typeof source.seats_left === "number" ? source.seats_left : null,
+      }));
+    }
 
     const description =
       compact(source.notes) ||
