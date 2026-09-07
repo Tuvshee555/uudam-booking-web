@@ -7,7 +7,7 @@ import { ArrowRight, Compass, Headphones, ImageOff, PhoneCall, Sparkles } from "
 
 import { useTrips, useCategoryTree } from "@/hooks/useTrips";
 import type { CategoryNode, Trip } from "@/types/trip";
-import { availability, upcomingDepartures } from "@/lib/departures";
+import { availability, formatMonthShort, upcomingDepartures } from "@/lib/departures";
 import TripCard from "@/components/trip/TripCard";
 import RecentlyViewedStrip from "@/components/trip/RecentlyViewedStrip";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
@@ -129,7 +129,7 @@ function DepartingSoon({ trips, base }: { trips: Trip[]; base: string }) {
                   {new Date(departure.startDate).getDate()}
                 </span>
                 <span className="mt-0.5 text-[11px] text-muted-foreground">
-                  {new Date(departure.startDate).toLocaleDateString("mn-MN", { month: "short" })}
+                  {formatMonthShort(departure.startDate)}
                 </span>
               </div>
               <div className="min-w-0 flex-1">

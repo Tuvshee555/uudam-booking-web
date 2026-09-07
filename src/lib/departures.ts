@@ -80,10 +80,46 @@ export function availability(departure: Departure): Availability {
   return { label: "Захиалга нээлттэй", tone: "open", selectable: true };
 }
 
-/** Short "12-р сарын 5" style label used on cards and departure rows. */
+/**
+ * Static Mongolian month labels, deliberately not `Intl`/`toLocaleDateString`.
+ *
+ * `toLocaleDateString("mn-MN", { month: "short" })` renders correctly on the
+ * server (Node ships full ICU data) but a browser's built-in ICU is often
+ * reduced and silently falls back to something else instead of throwing —
+ * confirmed directly: the server produced "9-р сар", the browser "Sept", for
+ * the identical call. React then declares a hydration mismatch and discards
+ * the server-rendered tree. A static lookup can never disagree with itself.
+ */
+const MONTH_SHORT_MN = [
+  "1-р сар", "2-р сар", "3-р сар", "4-р сар", "5-р сар", "6-р сар",
+  "7-р сар", "8-р сар", "9-р сар", "10-р сар", "11-р сар", "12-р сар",
+];
+const MONTH_GENITIVE_MN = MONTH_SHORT_MN.map((m) => `${m}ын`);
+
+export function formatMonthShort(value: string | Date): string {
+  const date = typeof value === "string" ? new Date(value) : value;
+  return MONTH_SHORT_MN[date.getMonth()];
+}
+
+/** Ordinal month names, for headings like "2026 оны есдүгээр сар". */
+const MONTH_ORDINAL_MN = [
+  "нэгдүгээр", "хоёрдугаар", "гуравдугаар", "дөрөвдүгээр", "тавдугаар", "зургаадугаар",
+  "долдугаар", "наймдугаар", "есдүгээр", "аравдугаар", "арван нэгдүгээр", "арван хоёрдугаар",
+];
+
+export function formatYearMonthLong(value: string | Date): string {
+  const date = typeof value === "string" ? new Date(value) : value;
+  return `${date.getFullYear()} оны ${MONTH_ORDINAL_MN[date.getMonth()]} сар`;
+}
+
+/** "2026 оны 9-р сарын 5" — full date, admin lists and confirmations. */
+export function formatFullDate(value: string | Date): string {
+  const date = typeof value === "string" ? new Date(value) : value;
+  return `${date.getFullYear()} оны ${formatDepartureDate(date.toISOString())}`;
+}
+
+/** Short "9-р сарын 5" style label used on cards and departure rows. */
 export function formatDepartureDate(value: string): string {
-  return new Date(value).toLocaleDateString("mn-MN", {
-    month: "short",
-    day: "numeric",
-  });
+  const date = new Date(value);
+  return `${MONTH_GENITIVE_MN[date.getMonth()]} ${date.getDate()}`;
 }

@@ -9,6 +9,7 @@ import { CalendarDays, Phone, Users } from "lucide-react";
 import { api, apiErrorMessage } from "@/lib/api";
 import AdminShell from "@/components/admin/AdminShell";
 import { formatMnt } from "@/lib/pricing";
+import { formatFullDate } from "@/lib/departures";
 import { cn } from "@/lib/utils";
 
 type Booking = {
@@ -56,9 +57,7 @@ const STATUS_LABEL: Record<string, string> = Object.fromEntries(
   FILTERS.filter((f) => f.key !== "ALL").map((f) => [f.key, f.label]),
 );
 
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("mn-MN", { year: "numeric", month: "short", day: "numeric" });
-}
+const formatDate = formatFullDate;
 
 export default function BookingsClient() {
   const queryClient = useQueryClient();

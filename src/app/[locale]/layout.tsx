@@ -30,7 +30,8 @@ export default async function LocaleLayout({
   let messages: Record<string, unknown>;
   try {
     messages = (await import(`../../messages/${locale}.json`)).default;
-  } catch {
+  } catch (err) {
+    console.error("LOCALE LAYOUT: messages import failed for", locale, err);
     return notFound();
   }
 

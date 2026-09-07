@@ -6,7 +6,7 @@ import Image from "next/image";
 import { CalendarDays, Clock, ImageOff, MapPin } from "lucide-react";
 
 import type { Trip } from "@/types/trip";
-import { availability, upcomingDepartures } from "@/lib/departures";
+import { availability, formatMonthShort, formatYearMonthLong, upcomingDepartures } from "@/lib/departures";
 import { formatMnt } from "@/lib/pricing";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { cn } from "@/lib/utils";
@@ -50,7 +50,7 @@ export default function DeparturesPageClient({ trips }: { trips: Trip[] }) {
 
       if (!grouped.has(key)) {
         grouped.set(key, {
-          label: date.toLocaleDateString("mn-MN", { year: "numeric", month: "long" }),
+          label: formatYearMonthLong(date),
           rows: [],
         });
       }
@@ -104,7 +104,7 @@ export default function DeparturesPageClient({ trips }: { trips: Trip[] }) {
                         <div className="flex w-14 shrink-0 flex-col items-center rounded-xl bg-secondary py-2">
                           <span className="text-lg font-bold leading-none">{date.getDate()}</span>
                           <span className="mt-0.5 text-[11px] text-muted-foreground">
-                            {date.toLocaleDateString("mn-MN", { month: "short" })}
+                            {formatMonthShort(date)}
                           </span>
                         </div>
 
