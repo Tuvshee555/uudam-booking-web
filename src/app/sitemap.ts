@@ -14,6 +14,7 @@ const STATIC_PATHS = [
   "/custom-trip",
   "/gift",
   "/guide",
+  "/discover",
   "/about",
   "/contact",
   "/faq",
@@ -26,7 +27,7 @@ const STATIC_PATHS = [
  * static pages. /admin is deliberately excluded — see robots.ts.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [trips, categories, posts] = await Promise.all([
+  const [trips, categories, posts, articles] = await Promise.all([
     prisma.trip.findMany({
       where: { isPublished: true },
       select: { slug: true, updatedAt: true },
@@ -35,6 +36,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       select: { id: true, slug: true },
     }),
     prisma.post.findMany({
+      where: { isPublished: true },
+      select: { slug: true, updatedAt: true },
+    }),
+    prisma.knowledgeArticle.findMany({
       where: { isPublished: true },
       select: { slug: true, updatedAt: true },
     }),
@@ -64,6 +69,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       entries.push({
         url: `${SITE_URL}/${locale}/guide/${post.slug}`,
         lastModified: post.updatedAt,
+        changeFrequency: "monthly",
+        priority: 0.5,
+      });
+    }
+
+    for (const article of articles) {
+      entries.push({
+        url: `${SITE_URL}/${locale}/discover/${article.slug}`,
+        lastModified: article.updatedAt,
         changeFrequency: "monthly",
         priority: 0.5,
       });

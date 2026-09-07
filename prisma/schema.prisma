@@ -521,6 +521,41 @@ model Post {
   @@index([isPublished, publishedAt])
 }
 
+/// A "did you know" piece — the Great Wall's real length, how deep Khövsgöl
+/// is, that kind of thing. Distinct from Post (practical trip-planning
+/// advice: visas, baggage, payments): this is content people read for its
+/// own sake, the reason to keep browsing rather than leave the site. Same
+/// admin-authored, staff-only-write shape as Post for the same reason —
+/// there is no user-generated content anywhere on this site.
+model KnowledgeArticle {
+  id      String  @id @default(uuid())
+  slug    String  @unique
+  title   String
+  excerpt String?
+
+  /// Plain text, not rich-text — same reasoning as Post: a broken WYSIWYG
+  /// payload is unrecoverable for a non-technical client.
+  body String?
+
+  /// The bullet-point facts themselves — "Урт нь 21,196 км", etc. This is
+  /// the actual content people came to read; body is optional framing text
+  /// around it.
+  facts String[] @default([])
+
+  coverImage String?
+  video      String?
+
+  /// Defaults false, like Post — publishing a half-written piece isn't
+  /// something to do by accident.
+  isPublished Boolean   @default(false)
+  publishedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isPublished, publishedAt])
+}
+
 /// One page view. First-party analytics — no third-party script, and nothing
 /// personally identifying: `visitorId` is a random id the browser generates for
 /// itself, never an IP or a fingerprint.

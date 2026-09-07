@@ -40,6 +40,7 @@ export default function SiteHeader() {
     { href: `${base}/departures`, label: "Хуваарь" },
     { href: `${base}/custom-trip`, label: "Захиалгат аялал" },
     { href: `${base}/guide`, label: "Зөвлөгөө" },
+    { href: `${base}/discover`, label: "Танин мэдэхүй" },
     { href: `${base}/about`, label: "Бидний тухай" },
     { href: `${base}/contact`, label: "Холбоо барих" },
   ];
