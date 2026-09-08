@@ -18,7 +18,7 @@ import { api, apiErrorMessage } from "@/lib/api";
 import { CONTACT, hasLink } from "@/lib/contact";
 import { getVisitorId, track } from "@/lib/analytics";
 import { formatFare, formatMnt, formatTripStartingPrice, hasKnownTripPrice, lineTotal, resolvePrices } from "@/lib/pricing";
-import { availability, upcomingDepartures } from "@/lib/departures";
+import { availability, formatFullDate, formatDepartureDate, upcomingDepartures } from "@/lib/departures";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,17 +26,9 @@ import type { Departure, Trip } from "@/types/trip";
 import { cn } from "@/lib/utils";
 
 function formatRange(departure: Departure) {
-  const start = new Date(departure.startDate);
-  const startText = start.toLocaleDateString("mn-MN", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
+  const startText = formatFullDate(departure.startDate);
   if (!departure.endDate) return startText;
-
-  const end = new Date(departure.endDate);
-  return `${startText} — ${end.toLocaleDateString("mn-MN", { month: "long", day: "numeric" })}`;
+  return `${startText} — ${formatDepartureDate(departure.endDate)}`;
 }
 
 function Counter({

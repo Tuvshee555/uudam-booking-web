@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { api, apiErrorMessage } from "@/lib/api";
 import { getVisitorId, track } from "@/lib/analytics";
 import { formatFare, formatMnt, lineTotal, resolvePrices } from "@/lib/pricing";
-import { availability, upcomingDepartures } from "@/lib/departures";
+import { availability, formatFullDate, formatDepartureDate, upcomingDepartures } from "@/lib/departures";
 import QpayPayButton, { QpayPaidBadge } from "./QpayPayButton";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { Button } from "@/components/ui/button";
@@ -20,15 +20,9 @@ import { cn } from "@/lib/utils";
 type Step = "select" | "details" | "done";
 
 function formatRange(departure: Departure) {
-  const start = new Date(departure.startDate);
-  const startText = start.toLocaleDateString("mn-MN", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const startText = formatFullDate(departure.startDate);
   if (!departure.endDate) return startText;
-  const end = new Date(departure.endDate);
-  return `${startText} — ${end.toLocaleDateString("mn-MN", { month: "long", day: "numeric" })}`;
+  return `${startText} — ${formatDepartureDate(departure.endDate)}`;
 }
 
 function Counter({

@@ -6,6 +6,7 @@ import { AlertCircle, CalendarDays, Loader2 } from "lucide-react";
 
 import { api } from "@/lib/api";
 import { formatMnt } from "@/lib/pricing";
+import { formatFullDate } from "@/lib/departures";
 import { CONTACT, hasLink } from "@/lib/contact";
 import { Button } from "@/components/ui/button";
 
@@ -99,11 +100,7 @@ export default function BookingStatusClient({
           {data.departure && (
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <CalendarDays className="h-3.5 w-3.5" />
-              {new Date(data.departure.startDate).toLocaleDateString("mn-MN", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
+              {formatFullDate(data.departure.startDate)}
             </div>
           )}
           <div className="text-muted-foreground">
