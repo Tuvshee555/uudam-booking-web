@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import ImageUploadField from "@/components/admin/trip-form/ImageUploadField";
 import {
   Dialog,
   DialogContent,
@@ -272,15 +273,11 @@ export default function AdminCategoriesPage() {
             />
           </div>
 
-          <div>
-            <Label htmlFor="image">Зургийн URL (заавал биш)</Label>
-            <Input
-              id="image"
-              value={form.image}
-              onChange={(e) => setForm((f) => ({ ...f, image: e.target.value }))}
-              placeholder="https://…"
-            />
-          </div>
+          <ImageUploadField
+            label="Зураг (заавал биш)"
+            value={form.image}
+            onChange={(image) => setForm((f) => ({ ...f, image }))}
+          />
         </div>
 
         <DialogFooter>
