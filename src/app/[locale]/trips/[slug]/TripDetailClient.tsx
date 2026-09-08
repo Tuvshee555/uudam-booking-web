@@ -32,6 +32,20 @@ import DownloadTripButton from "@/components/trip/DownloadTripButton";
 import MessengerButton from "@/components/trip/MessengerButton";
 import { Button } from "@/components/ui/button";
 
+/**
+ * Trips imported from the chatbot project carry sourceTripId="trip-<poster
+ * id>" — reusing its poster-pdf endpoint means every migrated trip gets a
+ * real, photo-filled itinerary download without staff uploading a separate
+ * brochurePdfUrl (which is what brochurePdfUrl-only trips fall back to).
+ */
+function chatbotPosterPdfUrl(sourceTripId: string | null): string | null {
+  if (!sourceTripId?.startsWith("trip-")) return null;
+  const base = process.env.NEXT_PUBLIC_CHATBOT_URL;
+  if (!base) return null;
+  const posterId = sourceTripId.slice("trip-".length);
+  return `${base}/api/poster-pdf?id=${encodeURIComponent(posterId)}`;
+}
+
 const DIFFICULTY_LABEL: Record<string, string> = {
   EASY: "Хөнгөн",
   MODERATE: "Дунд",
@@ -187,9 +201,9 @@ export default function TripDetailClient({
             )}
           </header>
 
-          {trip.brochurePdfUrl && (
+          {(trip.brochurePdfUrl || chatbotPosterPdfUrl(trip.sourceTripId)) && (
             <a
-              href={trip.brochurePdfUrl}
+              href={trip.brochurePdfUrl || chatbotPosterPdfUrl(trip.sourceTripId)!}
               target="_blank"
               rel="noreferrer"
               className="mt-4 inline-flex items-center gap-2 rounded-lg border border-border px-3.5 py-2 text-sm font-semibold transition-colors hover:border-primary hover:text-primary"
