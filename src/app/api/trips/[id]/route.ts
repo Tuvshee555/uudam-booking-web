@@ -196,7 +196,7 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
       },
       include: TRIP_INCLUDE,
     });
-  });
+  }, { timeout: 15_000 });
 
   invalidateCatalog();
 
