@@ -8,7 +8,6 @@ import { ArrowDown, ArrowUp, Coins, Loader2, Pencil, Plus, Trash2 } from "lucide
 import { api, apiErrorMessage } from "@/lib/api";
 import { usePriceBands, type PriceBand } from "@/hooks/useTrips";
 import { formatMnt } from "@/lib/pricing";
-import AdminShell from "@/components/admin/AdminShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -137,7 +136,7 @@ export default function AdminPriceBandsPage() {
   const saving = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <AdminShell>
+    <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Үнийн ангилал</h1>
@@ -152,125 +151,125 @@ export default function AdminPriceBandsPage() {
       </div>
 
       <div className="mt-5 rounded-2xl border border-border bg-card p-2">
-        {isPending ? (
-          <div className="space-y-2 p-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-11 animate-pulse rounded-xl bg-secondary" />
-            ))}
-          </div>
-        ) : !bands?.length ? (
-          <div className="flex flex-col items-center gap-2 py-16 text-center text-sm text-muted-foreground">
-            <Coins className="h-8 w-8 opacity-40" />
-            Үнийн ангилал алга байна.
-          </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {bands.map((band, index) => (
-              <div key={band.id} className="flex items-center gap-2 rounded-xl px-3 py-2.5 hover:bg-secondary/60">
-                <div className="flex shrink-0 flex-col">
-                  <button
-                    type="button"
-                    disabled={index === 0}
-                    onClick={() => move(index, -1)}
-                    className="rounded p-0.5 text-muted-foreground hover:text-primary disabled:opacity-20"
-                    aria-label="Дээш"
-                  >
-                    <ArrowUp className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    disabled={index === bands.length - 1}
-                    onClick={() => move(index, 1)}
-                    className="rounded p-0.5 text-muted-foreground hover:text-primary disabled:opacity-20"
-                    aria-label="Доош"
-                  >
-                    <ArrowDown className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-
-                <span className="min-w-0 flex-1 truncate text-sm font-medium">{band.name}</span>
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  {formatMnt(band.minPrice)} – {band.maxPrice !== null ? formatMnt(band.maxPrice) : "∞"}
-                </span>
-
-                <div className="flex shrink-0 items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => openEdit(band)}
-                    className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-primary"
-                    aria-label="Засах"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => askDelete(band)}
-                    className="rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                    aria-label="Устгах"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
+      {isPending ? (
+        <div className="space-y-2 p-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-11 animate-pulse rounded-xl bg-secondary" />
+          ))}
+        </div>
+      ) : !bands?.length ? (
+        <div className="flex flex-col items-center gap-2 py-16 text-center text-sm text-muted-foreground">
+          <Coins className="h-8 w-8 opacity-40" />
+          Үнийн ангилал алга байна.
+        </div>
+      ) : (
+        <div className="divide-y divide-border">
+          {bands.map((band, index) => (
+            <div key={band.id} className="flex items-center gap-2 rounded-xl px-3 py-2.5 hover:bg-secondary/60">
+              <div className="flex shrink-0 flex-col">
+                <button
+                  type="button"
+                  disabled={index === 0}
+                  onClick={() => move(index, -1)}
+                  className="rounded p-0.5 text-muted-foreground hover:text-primary disabled:opacity-20"
+                  aria-label="Дээш"
+                >
+                  <ArrowUp className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  disabled={index === bands.length - 1}
+                  onClick={() => move(index, 1)}
+                  className="rounded p-0.5 text-muted-foreground hover:text-primary disabled:opacity-20"
+                  aria-label="Доош"
+                >
+                  <ArrowDown className="h-3.5 w-3.5" />
+                </button>
               </div>
-            ))}
+
+              <span className="min-w-0 flex-1 truncate text-sm font-medium">{band.name}</span>
+              <span className="shrink-0 text-xs text-muted-foreground">
+                {formatMnt(band.minPrice)} – {band.maxPrice !== null ? formatMnt(band.maxPrice) : "∞"}
+              </span>
+
+              <div className="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => openEdit(band)}
+                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-primary"
+                  aria-label="Засах"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => askDelete(band)}
+                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  aria-label="Устгах"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+
+    <Dialog open={dialogMode !== null} onOpenChange={(open) => !open && closeDialog()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{dialogMode === "edit" ? "Ангилал засах" : "Шинэ үнийн ангилал"}</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="bandName">Нэр</Label>
+            <Input
+              id="bandName"
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              placeholder="ж: 0–1 сая"
+              autoFocus
+            />
           </div>
-        )}
-      </div>
-
-      <Dialog open={dialogMode !== null} onOpenChange={(open) => !open && closeDialog()}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{dialogMode === "edit" ? "Ангилал засах" : "Шинэ үнийн ангилал"}</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="bandName">Нэр</Label>
+              <Label htmlFor="minPrice">Доод үнэ (₮)</Label>
               <Input
-                id="bandName"
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="ж: 0–1 сая"
-                autoFocus
+                id="minPrice"
+                type="number"
+                min={0}
+                value={form.minPrice}
+                onChange={(e) => setForm((f) => ({ ...f, minPrice: e.target.value }))}
+                placeholder="0"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="minPrice">Доод үнэ (₮)</Label>
-                <Input
-                  id="minPrice"
-                  type="number"
-                  min={0}
-                  value={form.minPrice}
-                  onChange={(e) => setForm((f) => ({ ...f, minPrice: e.target.value }))}
-                  placeholder="0"
-                />
-              </div>
-              <div>
-                <Label htmlFor="maxPrice">Дээд үнэ (₮)</Label>
-                <Input
-                  id="maxPrice"
-                  type="number"
-                  min={0}
-                  value={form.maxPrice}
-                  onChange={(e) => setForm((f) => ({ ...f, maxPrice: e.target.value }))}
-                  placeholder="хязгааргүй бол хоосон орхино"
-                />
-              </div>
+            <div>
+              <Label htmlFor="maxPrice">Дээд үнэ (₮)</Label>
+              <Input
+                id="maxPrice"
+                type="number"
+                min={0}
+                value={form.maxPrice}
+                onChange={(e) => setForm((f) => ({ ...f, maxPrice: e.target.value }))}
+                placeholder="хязгааргүй бол хоосон орхино"
+              />
             </div>
           </div>
+        </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={closeDialog} disabled={saving}>
-              Цуцлах
-            </Button>
-            <Button onClick={submit} disabled={saving} className="gap-1.5">
-              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-              {dialogMode === "edit" ? "Хадгалах" : "Үүсгэх"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={closeDialog} disabled={saving}>
+            Цуцлах
+          </Button>
+          <Button onClick={submit} disabled={saving} className="gap-1.5">
+            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+            {dialogMode === "edit" ? "Хадгалах" : "Үүсгэх"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
       </Dialog>
-    </AdminShell>
+    </>
   );
 }

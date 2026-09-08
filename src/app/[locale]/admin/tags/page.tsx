@@ -7,7 +7,6 @@ import { Loader2, Pencil, Plus, Tag as TagIcon, Trash2 } from "lucide-react";
 
 import { api, apiErrorMessage } from "@/lib/api";
 import { useTags } from "@/hooks/useTrips";
-import AdminShell from "@/components/admin/AdminShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -104,7 +103,7 @@ export default function AdminTagsPage() {
   const saving = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <AdminShell>
+    <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Шошгууд</h1>
@@ -119,79 +118,79 @@ export default function AdminTagsPage() {
       </div>
 
       <div className="mt-5 rounded-2xl border border-border bg-card p-2">
-        {isPending ? (
-          <div className="space-y-2 p-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-11 animate-pulse rounded-xl bg-secondary" />
-            ))}
-          </div>
-        ) : !tags?.length ? (
-          <div className="flex flex-col items-center gap-2 py-16 text-center text-sm text-muted-foreground">
-            <TagIcon className="h-8 w-8 opacity-40" />
-            Шошго алга байна. Эхний шошгоо нэмнэ үү.
-          </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {tags.map((tag) => (
-              <div key={tag.id} className="flex items-center gap-2 rounded-xl px-3 py-2.5 hover:bg-secondary/60">
-                <span className="min-w-0 flex-1 truncate text-sm font-medium">{tag.name}</span>
-                <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[11px] text-muted-foreground">
-                  {tag.tripCount} аялал
-                </span>
-                <div className="flex shrink-0 items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => openEdit(tag.id, tag.name)}
-                    className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-primary"
-                    aria-label="Засах"
-                    title="Засах"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => askDelete(tag.id, tag.name, tag.tripCount)}
-                    className="rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                    aria-label="Устгах"
-                    title="Устгах"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
+      {isPending ? (
+        <div className="space-y-2 p-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-11 animate-pulse rounded-xl bg-secondary" />
+          ))}
+        </div>
+      ) : !tags?.length ? (
+        <div className="flex flex-col items-center gap-2 py-16 text-center text-sm text-muted-foreground">
+          <TagIcon className="h-8 w-8 opacity-40" />
+          Шошго алга байна. Эхний шошгоо нэмнэ үү.
+        </div>
+      ) : (
+        <div className="divide-y divide-border">
+          {tags.map((tag) => (
+            <div key={tag.id} className="flex items-center gap-2 rounded-xl px-3 py-2.5 hover:bg-secondary/60">
+              <span className="min-w-0 flex-1 truncate text-sm font-medium">{tag.name}</span>
+              <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[11px] text-muted-foreground">
+                {tag.tripCount} аялал
+              </span>
+              <div className="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => openEdit(tag.id, tag.name)}
+                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-primary"
+                  aria-label="Засах"
+                  title="Засах"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => askDelete(tag.id, tag.name, tag.tripCount)}
+                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  aria-label="Устгах"
+                  title="Устгах"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
 
-      <Dialog open={dialogMode !== null} onOpenChange={(open) => !open && closeDialog()}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{dialogMode === "edit" ? "Шошго засах" : "Шинэ шошго"}</DialogTitle>
-          </DialogHeader>
+    <Dialog open={dialogMode !== null} onOpenChange={(open) => !open && closeDialog()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{dialogMode === "edit" ? "Шошго засах" : "Шинэ шошго"}</DialogTitle>
+        </DialogHeader>
 
-          <div>
-            <Label htmlFor="tagName">Нэр</Label>
-            <Input
-              id="tagName"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="ж: Галт тэрэг, Хямдралтай, Хосолсон аялал"
-              autoFocus
-            />
-          </div>
+        <div>
+          <Label htmlFor="tagName">Нэр</Label>
+          <Input
+            id="tagName"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="ж: Галт тэрэг, Хямдралтай, Хосолсон аялал"
+            autoFocus
+          />
+        </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={closeDialog} disabled={saving}>
-              Цуцлах
-            </Button>
-            <Button onClick={submit} disabled={saving} className="gap-1.5">
-              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-              {dialogMode === "edit" ? "Хадгалах" : "Үүсгэх"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={closeDialog} disabled={saving}>
+            Цуцлах
+          </Button>
+          <Button onClick={submit} disabled={saving} className="gap-1.5">
+            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+            {dialogMode === "edit" ? "Хадгалах" : "Үүсгэх"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
       </Dialog>
-    </AdminShell>
+    </>
   );
 }

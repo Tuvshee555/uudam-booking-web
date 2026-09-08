@@ -18,7 +18,6 @@ import {
 import { api, apiErrorMessage } from "@/lib/api";
 import { useCategoryTree, useCategoryTrips } from "@/hooks/useTrips";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
-import AdminShell from "@/components/admin/AdminShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -182,7 +181,7 @@ export default function AdminCategoriesPage() {
   const saving = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <AdminShell>
+    <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Ангилалууд</h1>
         <Button onClick={() => openCreate(null)} className="gap-1.5">
@@ -192,109 +191,109 @@ export default function AdminCategoriesPage() {
       </div>
 
       <div className="mt-5 rounded-2xl border border-border bg-card p-2">
-        {isPending ? (
-          <div className="space-y-2 p-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-11 animate-pulse rounded-xl bg-secondary" />
-            ))}
-          </div>
-        ) : !tree?.length ? (
-          <div className="flex flex-col items-center gap-2 py-16 text-center text-sm text-muted-foreground">
-            <FolderTree className="h-8 w-8 opacity-40" />
-            Ангилал алга байна.
-          </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {tree.map((node) => (
-              <CategoryRow
-                key={node.id}
-                node={node}
-                depth={0}
-                expanded={expanded}
-                onToggle={toggle}
-                expandedTrips={expandedTrips}
-                onToggleTrips={toggleTrips}
-                onAddChild={openCreate}
-                onEdit={openEdit}
-                onDelete={askDelete}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      {isPending ? (
+        <div className="space-y-2 p-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-11 animate-pulse rounded-xl bg-secondary" />
+          ))}
+        </div>
+      ) : !tree?.length ? (
+        <div className="flex flex-col items-center gap-2 py-16 text-center text-sm text-muted-foreground">
+          <FolderTree className="h-8 w-8 opacity-40" />
+          Ангилал алга байна.
+        </div>
+      ) : (
+        <div className="divide-y divide-border">
+          {tree.map((node) => (
+            <CategoryRow
+              key={node.id}
+              node={node}
+              depth={0}
+              expanded={expanded}
+              onToggle={toggle}
+              expandedTrips={expandedTrips}
+              onToggleTrips={toggleTrips}
+              onAddChild={openCreate}
+              onEdit={openEdit}
+              onDelete={askDelete}
+            />
+          ))}
+        </div>
+      )}
+    </div>
 
-      <Dialog open={dialogMode !== null} onOpenChange={(open) => !open && closeDialog()}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {dialogMode === "edit" ? "Ангилал засах" : "Шинэ ангилал"}
-            </DialogTitle>
-          </DialogHeader>
+    <Dialog open={dialogMode !== null} onOpenChange={(open) => !open && closeDialog()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>
+            {dialogMode === "edit" ? "Ангилал засах" : "Шинэ ангилал"}
+          </DialogTitle>
+        </DialogHeader>
 
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="categoryName">Нэр</Label>
-              <Input
-                id="categoryName"
-                value={form.categoryName}
-                onChange={(e) => setForm((f) => ({ ...f, categoryName: e.target.value }))}
-                autoFocus
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="parentId">Эцэг ангилал</Label>
-              <select
-                id="parentId"
-                value={form.parentId ?? ""}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, parentId: e.target.value || null }))
-                }
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              >
-                <option value="">— Үндсэн ангилал —</option>
-                {flatOptions
-                  .filter((opt) => opt.id !== editingId)
-                  .map((opt) => (
-                    <option key={opt.id} value={opt.id}>
-                      {opt.label}
-                    </option>
-                  ))}
-              </select>
-            </div>
-
-            <div>
-              <Label htmlFor="description">Тайлбар (заавал биш)</Label>
-              <Textarea
-                id="description"
-                rows={2}
-                value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="image">Зургийн URL (заавал биш)</Label>
-              <Input
-                id="image"
-                value={form.image}
-                onChange={(e) => setForm((f) => ({ ...f, image: e.target.value }))}
-                placeholder="https://…"
-              />
-            </div>
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="categoryName">Нэр</Label>
+            <Input
+              id="categoryName"
+              value={form.categoryName}
+              onChange={(e) => setForm((f) => ({ ...f, categoryName: e.target.value }))}
+              autoFocus
+            />
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={closeDialog} disabled={saving}>
-              Цуцлах
-            </Button>
-            <Button onClick={submit} disabled={saving}>
-              {dialogMode === "edit" ? "Хадгалах" : "Үүсгэх"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+          <div>
+            <Label htmlFor="parentId">Эцэг ангилал</Label>
+            <select
+              id="parentId"
+              value={form.parentId ?? ""}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, parentId: e.target.value || null }))
+              }
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            >
+              <option value="">— Үндсэн ангилал —</option>
+              {flatOptions
+                .filter((opt) => opt.id !== editingId)
+                .map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {opt.label}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          <div>
+            <Label htmlFor="description">Тайлбар (заавал биш)</Label>
+            <Textarea
+              id="description"
+              rows={2}
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="image">Зургийн URL (заавал биш)</Label>
+            <Input
+              id="image"
+              value={form.image}
+              onChange={(e) => setForm((f) => ({ ...f, image: e.target.value }))}
+              placeholder="https://…"
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={closeDialog} disabled={saving}>
+            Цуцлах
+          </Button>
+          <Button onClick={submit} disabled={saving}>
+            {dialogMode === "edit" ? "Хадгалах" : "Үүсгэх"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
       </Dialog>
-    </AdminShell>
+    </>
   );
 }
 

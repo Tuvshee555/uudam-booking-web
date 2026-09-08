@@ -6,7 +6,6 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { api, apiErrorMessage } from "@/lib/api";
-import AdminShell from "@/components/admin/AdminShell";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
@@ -34,7 +33,7 @@ export default function AdminSettingsPage() {
   });
 
   return (
-    <AdminShell>
+    <>
       <h1 className="text-xl font-bold">Тохиргоо</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Энд бичсэн зүйл бүх аяллын хуудсан дээр харагдана. Тухайн нэг аялалд л
@@ -67,6 +66,6 @@ export default function AdminSettingsPage() {
           Хадгалах
         </Button>
       </div>
-    </AdminShell>
+    </>
   );
 }

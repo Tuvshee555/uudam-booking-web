@@ -19,7 +19,6 @@ import {
 import { api } from "@/lib/api";
 import { useAuth } from "@/app/[locale]/provider/AuthProvider";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
-import AdminShell from "@/components/admin/AdminShell";
 import EnquiryStatusBadge from "@/components/admin/EnquiryStatusBadge";
 import { Button } from "@/components/ui/button";
 import { formatMnt } from "@/lib/pricing";
@@ -79,9 +78,7 @@ export default function AdminDashboard() {
 
   if (isPending) {
     return (
-      <AdminShell>
-        <div className="h-40 animate-pulse rounded-2xl bg-card" />
-      </AdminShell>
+      <div className="h-40 animate-pulse rounded-2xl bg-card" />
     );
   }
 
@@ -91,22 +88,20 @@ export default function AdminDashboard() {
     const status = (error as { response?: { status?: number } })?.response?.status;
 
     return (
-      <AdminShell>
-        <div className="py-20 text-center">
-          <h1 className="text-2xl font-bold">
-            {status === 403 ? "Админ эрх алга" : "Мэдээлэл ачаалж чадсангүй"}
-          </h1>
-          <Button
-            className="mt-6"
-            onClick={() => {
-              setAuthToken(null);
-              window.location.href = `/${locale}/admin/log-in`;
-            }}
-          >
-            Гарах
-          </Button>
-        </div>
-      </AdminShell>
+      <div className="py-20 text-center">
+        <h1 className="text-2xl font-bold">
+          {status === 403 ? "Админ эрх алга" : "Мэдээлэл ачаалж чадсангүй"}
+        </h1>
+        <Button
+          className="mt-6"
+          onClick={() => {
+            setAuthToken(null);
+            window.location.href = `/${locale}/admin/log-in`;
+          }}
+        >
+          Гарах
+        </Button>
+      </div>
     );
   }
 
@@ -120,7 +115,7 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <AdminShell>
+    <>
       <h1 className="text-2xl font-bold">Хяналтын самбар</h1>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -297,6 +292,6 @@ export default function AdminDashboard() {
           </ul>
         </section>
       )}
-    </AdminShell>
+    </>
   );
 }

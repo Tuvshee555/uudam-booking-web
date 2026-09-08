@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { CalendarDays, Phone, Users } from "lucide-react";
 
 import { api, apiErrorMessage } from "@/lib/api";
-import AdminShell from "@/components/admin/AdminShell";
 import { formatMnt } from "@/lib/pricing";
 import { formatFullDate } from "@/lib/departures";
 import { cn } from "@/lib/utils";
@@ -95,7 +94,7 @@ export default function BookingsClient() {
   });
 
   return (
-    <AdminShell>
+    <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold">Захиалгууд</h1>
@@ -108,135 +107,135 @@ export default function BookingsClient() {
 
       <div className="mt-4 flex flex-wrap gap-2">
         {FILTERS.map((f) => (
-          <button
-            key={f.key}
-            type="button"
-            onClick={() => setFilter(f.key)}
-            className={cn(
-              "rounded-full border px-3.5 py-1.5 text-sm transition-colors",
-              filter === f.key
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border hover:border-primary/40",
-            )}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
+        <button
+          key={f.key}
+          type="button"
+          onClick={() => setFilter(f.key)}
+          className={cn(
+            "rounded-full border px-3.5 py-1.5 text-sm transition-colors",
+            filter === f.key
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border hover:border-primary/40",
+          )}
+        >
+          {f.label}
+        </button>
+      ))}
+    </div>
 
-      <div className="mt-5 space-y-2">
-        {isPending ? (
-          Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-24 animate-pulse rounded-xl bg-secondary" />
-          ))
-        ) : !data?.length ? (
-          <div className="rounded-2xl border border-dashed border-border py-16 text-center text-sm text-muted-foreground">
-            Захиалга алга.
-          </div>
-        ) : (
-          data.map((booking) => {
-            const balance = booking.totalPrice - booking.paidAmount;
+    <div className="mt-5 space-y-2">
+      {isPending ? (
+        Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-24 animate-pulse rounded-xl bg-secondary" />
+        ))
+      ) : !data?.length ? (
+        <div className="rounded-2xl border border-dashed border-border py-16 text-center text-sm text-muted-foreground">
+          Захиалга алга.
+        </div>
+      ) : (
+        data.map((booking) => {
+          const balance = booking.totalPrice - booking.paidAmount;
 
-            return (
-              <div key={booking.id} className="rounded-2xl border border-border p-4">
-                <div className="flex items-start gap-3">
-                  <div className="relative h-14 w-20 shrink-0 overflow-hidden rounded-lg bg-secondary">
-                    {booking.trip.image && (
-                      <Image
-                        src={booking.trip.image}
-                        alt={booking.trip.title}
-                        fill
-                        sizes="80px"
-                        className="object-cover"
-                      />
-                    )}
+          return (
+            <div key={booking.id} className="rounded-2xl border border-border p-4">
+              <div className="flex items-start gap-3">
+                <div className="relative h-14 w-20 shrink-0 overflow-hidden rounded-lg bg-secondary">
+                  {booking.trip.image && (
+                    <Image
+                      src={booking.trip.image}
+                      alt={booking.trip.title}
+                      fill
+                      sizes="80px"
+                      className="object-cover"
+                    />
+                  )}
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-sm font-bold text-primary">
+                      {booking.reference}
+                    </span>
+                    <span
+                      className={cn(
+                        "rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                        STATUS_STYLE[booking.status] ?? "bg-secondary",
+                      )}
+                    >
+                      {STATUS_LABEL[booking.status] ?? booking.status}
+                    </span>
                   </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-sm font-bold text-primary">
-                        {booking.reference}
-                      </span>
-                      <span
-                        className={cn(
-                          "rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                          STATUS_STYLE[booking.status] ?? "bg-secondary",
-                        )}
-                      >
-                        {STATUS_LABEL[booking.status] ?? booking.status}
-                      </span>
-                    </div>
-                    <div className="mt-0.5 truncate text-sm font-medium">{booking.trip.title}</div>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <CalendarDays className="h-3 w-3" />
-                        {formatDate(booking.departure.startDate)}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Users className="h-3 w-3" />
-                        {booking.adults + booking.children + booking.infants} хүн
-                      </span>
-                      <a href={`tel:${booking.phone}`} className="flex items-center gap-1 hover:text-primary">
-                        <Phone className="h-3 w-3" />
-                        {booking.firstName} · {booking.phone}
-                      </a>
-                    </div>
-                  </div>
-
-                  <div className="shrink-0 text-right">
-                    <div className="text-sm font-bold">{formatMnt(booking.totalPrice)}</div>
-                    {balance > 0 ? (
-                      <div className="text-xs text-destructive">Үлдэгдэл {formatMnt(balance)}</div>
-                    ) : (
-                      <div className="text-xs text-emerald-600">Бүрэн төлсөн</div>
-                    )}
+                  <div className="mt-0.5 truncate text-sm font-medium">{booking.trip.title}</div>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <CalendarDays className="h-3 w-3" />
+                      {formatDate(booking.departure.startDate)}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Users className="h-3 w-3" />
+                      {booking.adults + booking.children + booking.infants} хүн
+                    </span>
+                    <a href={`tel:${booking.phone}`} className="flex items-center gap-1 hover:text-primary">
+                      <Phone className="h-3 w-3" />
+                      {booking.firstName} · {booking.phone}
+                    </a>
                   </div>
                 </div>
 
-                {(booking.status === "HELD" || booking.status === "PENDING_PAYMENT") && (
-                  <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        markPaid.mutate({ reference: booking.reference, amount: booking.totalPrice })
-                      }
-                      disabled={markPaid.isPending}
-                      className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground disabled:opacity-50"
-                    >
-                      Төлбөр орсон — баталгаажуулах
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        updateStatus.mutate({ reference: booking.reference, status: "CANCELLED" })
-                      }
-                      disabled={updateStatus.isPending}
-                      className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-destructive hover:border-destructive disabled:opacity-50"
-                    >
-                      Цуцлах
-                    </button>
-                  </div>
-                )}
-
-                {booking.status === "CONFIRMED" && (
-                  <div className="mt-3 border-t border-border pt-3">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        updateStatus.mutate({ reference: booking.reference, status: "COMPLETED" })
-                      }
-                      disabled={updateStatus.isPending}
-                      className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:border-primary hover:text-primary disabled:opacity-50"
-                    >
-                      Аялал дууссан гэж тэмдэглэх
-                    </button>
-                  </div>
-                )}
+                <div className="shrink-0 text-right">
+                  <div className="text-sm font-bold">{formatMnt(booking.totalPrice)}</div>
+                  {balance > 0 ? (
+                    <div className="text-xs text-destructive">Үлдэгдэл {formatMnt(balance)}</div>
+                  ) : (
+                    <div className="text-xs text-emerald-600">Бүрэн төлсөн</div>
+                  )}
+                </div>
               </div>
-            );
-          })
-        )}
-      </div>
-    </AdminShell>
+
+              {(booking.status === "HELD" || booking.status === "PENDING_PAYMENT") && (
+                <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      markPaid.mutate({ reference: booking.reference, amount: booking.totalPrice })
+                    }
+                    disabled={markPaid.isPending}
+                    className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+                  >
+                    Төлбөр орсон — баталгаажуулах
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateStatus.mutate({ reference: booking.reference, status: "CANCELLED" })
+                    }
+                    disabled={updateStatus.isPending}
+                    className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-destructive hover:border-destructive disabled:opacity-50"
+                  >
+                    Цуцлах
+                  </button>
+                </div>
+              )}
+
+              {booking.status === "CONFIRMED" && (
+                <div className="mt-3 border-t border-border pt-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateStatus.mutate({ reference: booking.reference, status: "COMPLETED" })
+                    }
+                    disabled={updateStatus.isPending}
+                    className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:border-primary hover:text-primary disabled:opacity-50"
+                  >
+                    Аялал дууссан гэж тэмдэглэх
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })
+      )}
+    </div>
+    </>
   );
 }

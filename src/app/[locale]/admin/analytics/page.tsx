@@ -17,7 +17,6 @@ import {
 
 import { api } from "@/lib/api";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
-import AdminShell from "@/components/admin/AdminShell";
 import EnquiryStatusBadge, { type EnquiryStatus } from "@/components/admin/EnquiryStatusBadge";
 import { cn } from "@/lib/utils";
 
@@ -117,7 +116,7 @@ export default function AnalyticsPage() {
   const peak = data ? Math.max(1, ...data.daily.map((day) => day.views)) : 1;
 
   return (
-    <AdminShell>
+    <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Хандалтын тайлан</h1>
 
@@ -396,6 +395,6 @@ export default function AnalyticsPage() {
           )}
         </>
       )}
-    </AdminShell>
+    </>
   );
 }

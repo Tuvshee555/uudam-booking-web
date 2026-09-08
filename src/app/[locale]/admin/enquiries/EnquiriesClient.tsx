@@ -9,7 +9,6 @@ import { CalendarDays, Phone, Search, Users } from "lucide-react";
 
 import { api, apiErrorMessage } from "@/lib/api";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
-import AdminShell from "@/components/admin/AdminShell";
 import EnquiryStatusBadge, {
   ENQUIRY_STATUS,
   type EnquiryStatus,
@@ -84,7 +83,7 @@ export default function EnquiriesClient() {
   });
 
   return (
-    <AdminShell>
+    <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Хүсэлтүүд</h1>
         {data && (
@@ -111,130 +110,130 @@ export default function EnquiriesClient() {
 
       <div className="mt-3 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
         {FILTERS.map((filter) => (
-          <button
-            key={filter.key}
-            type="button"
-            onClick={() => {
-              setStatus(filter.key);
-              setPage(1);
-            }}
-            className={cn(
-              "shrink-0 rounded-full border px-3.5 py-1.5 text-sm transition-colors",
-              status === filter.key
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border bg-card hover:border-primary/40",
-            )}
-          >
-            {filter.label}
-          </button>
-        ))}
+        <button
+          key={filter.key}
+          type="button"
+          onClick={() => {
+            setStatus(filter.key);
+            setPage(1);
+          }}
+          className={cn(
+            "shrink-0 rounded-full border px-3.5 py-1.5 text-sm transition-colors",
+            status === filter.key
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border bg-card hover:border-primary/40",
+          )}
+        >
+          {filter.label}
+        </button>
+      ))}
       </div>
 
       <div className="mt-5 space-y-3">
-        {isPending ? (
-          Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="h-32 animate-pulse rounded-2xl bg-card" />
-          ))
-        ) : !data?.enquiries.length ? (
-          <div className="rounded-2xl border border-dashed border-border py-16 text-center text-sm text-muted-foreground">
-            Хүсэлт олдсонгүй.
-          </div>
-        ) : (
-          data.enquiries.map((enquiry) => (
-            <div key={enquiry.id} className="rounded-2xl border border-border bg-card p-5">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold">
-                      {[enquiry.firstName, enquiry.lastName].filter(Boolean).join(" ")}
-                    </span>
-                    <EnquiryStatusBadge status={enquiry.status} />
-                    <span className="text-xs text-muted-foreground">{enquiry.reference}</span>
-                  </div>
-
-                  <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                    <a
-                      href={`tel:${enquiry.phone.replace(/[^\d+]/g, "")}`}
-                      className="flex items-center gap-1 font-semibold text-primary hover:underline"
-                    >
-                      <Phone className="h-3 w-3" />
-                      {enquiry.phone}
-                    </a>
-                    <span className="flex items-center gap-1">
-                      <Users className="h-3 w-3" />
-                      {[
-                        enquiry.adults ? `${enquiry.adults} том` : null,
-                        enquiry.children ? `${enquiry.children} хүүхэд` : null,
-                        enquiry.infants ? `${enquiry.infants} нярай` : null,
-                      ]
-                        .filter(Boolean)
-                        .join(", ")}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <CalendarDays className="h-3 w-3" />
-                      {enquiry.departureDate
-                        ? new Date(enquiry.departureDate).toLocaleDateString("mn-MN", {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          })
-                        : "Огноо тодруулаагүй"}
-                    </span>
-                  </div>
-
-                  {enquiry.trip && (
-                    <Link
-                      href={`/${locale}/trips/${enquiry.trip.slug}`}
-                      target="_blank"
-                      className="mt-1.5 inline-block text-sm font-medium hover:text-primary"
-                    >
-                      {enquiry.trip.title}
-                    </Link>
-                  )}
-
-                  {enquiry.message && (
-                    <p className="mt-2 rounded-lg bg-secondary p-3 text-sm text-muted-foreground">
-                      {enquiry.message}
-                    </p>
-                  )}
+      {isPending ? (
+        Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="h-32 animate-pulse rounded-2xl bg-card" />
+        ))
+      ) : !data?.enquiries.length ? (
+        <div className="rounded-2xl border border-dashed border-border py-16 text-center text-sm text-muted-foreground">
+          Хүсэлт олдсонгүй.
+        </div>
+      ) : (
+        data.enquiries.map((enquiry) => (
+          <div key={enquiry.id} className="rounded-2xl border border-border bg-card p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold">
+                    {[enquiry.firstName, enquiry.lastName].filter(Boolean).join(" ")}
+                  </span>
+                  <EnquiryStatusBadge status={enquiry.status} />
+                  <span className="text-xs text-muted-foreground">{enquiry.reference}</span>
                 </div>
 
-                <div className="shrink-0 text-right">
-                  {enquiry.estimatedTotal != null && (
-                    <div className="text-sm font-bold text-primary">
-                      ~{formatMnt(enquiry.estimatedTotal)}
-                    </div>
-                  )}
-                  <div className="mt-0.5 text-xs text-muted-foreground">
-                    {new Date(enquiry.createdAt).toLocaleDateString("mn-MN", {
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </div>
+                <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  <a
+                    href={`tel:${enquiry.phone.replace(/[^\d+]/g, "")}`}
+                    className="flex items-center gap-1 font-semibold text-primary hover:underline"
+                  >
+                    <Phone className="h-3 w-3" />
+                    {enquiry.phone}
+                  </a>
+                  <span className="flex items-center gap-1">
+                    <Users className="h-3 w-3" />
+                    {[
+                      enquiry.adults ? `${enquiry.adults} том` : null,
+                      enquiry.children ? `${enquiry.children} хүүхэд` : null,
+                      enquiry.infants ? `${enquiry.infants} нярай` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(", ")}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <CalendarDays className="h-3 w-3" />
+                    {enquiry.departureDate
+                      ? new Date(enquiry.departureDate).toLocaleDateString("mn-MN", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })
+                      : "Огноо тодруулаагүй"}
+                  </span>
                 </div>
+
+                {enquiry.trip && (
+                  <Link
+                    href={`/${locale}/trips/${enquiry.trip.slug}`}
+                    target="_blank"
+                    className="mt-1.5 inline-block text-sm font-medium hover:text-primary"
+                  >
+                    {enquiry.trip.title}
+                  </Link>
+                )}
+
+                {enquiry.message && (
+                  <p className="mt-2 rounded-lg bg-secondary p-3 text-sm text-muted-foreground">
+                    {enquiry.message}
+                  </p>
+                )}
               </div>
 
-              <div className="mt-4 flex flex-wrap gap-1.5 border-t border-border pt-3">
-                {(Object.keys(ENQUIRY_STATUS) as EnquiryStatus[]).map((next) => (
-                  <button
-                    key={next}
-                    type="button"
-                    disabled={next === enquiry.status || update.isPending}
-                    onClick={() => update.mutate({ id: enquiry.id, status: next })}
-                    className={cn(
-                      "rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-40",
-                      next === enquiry.status
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-border hover:border-primary/40",
-                    )}
-                  >
-                    {ENQUIRY_STATUS[next].label}
-                  </button>
-                ))}
+              <div className="shrink-0 text-right">
+                {enquiry.estimatedTotal != null && (
+                  <div className="text-sm font-bold text-primary">
+                    ~{formatMnt(enquiry.estimatedTotal)}
+                  </div>
+                )}
+                <div className="mt-0.5 text-xs text-muted-foreground">
+                  {new Date(enquiry.createdAt).toLocaleDateString("mn-MN", {
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </div>
               </div>
             </div>
-          ))
-        )}
+
+            <div className="mt-4 flex flex-wrap gap-1.5 border-t border-border pt-3">
+              {(Object.keys(ENQUIRY_STATUS) as EnquiryStatus[]).map((next) => (
+                <button
+                  key={next}
+                  type="button"
+                  disabled={next === enquiry.status || update.isPending}
+                  onClick={() => update.mutate({ id: enquiry.id, status: next })}
+                  className={cn(
+                    "rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-40",
+                    next === enquiry.status
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-border hover:border-primary/40",
+                  )}
+                >
+                  {ENQUIRY_STATUS[next].label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))
+      )}
       </div>
 
       {data && data.pagination.totalPages > 1 && (
@@ -260,6 +259,6 @@ export default function EnquiriesClient() {
           </button>
         </div>
       )}
-    </AdminShell>
+    </>
   );
 }
