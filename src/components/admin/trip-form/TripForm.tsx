@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
 import { api, apiErrorMessage } from "@/lib/api";
+import { ageBandsFor } from "@/lib/pricing";
 import { isAllowedImageHost } from "@/lib/imageHosts";
 import { useCategoryTree, useTags, useTrip } from "@/hooks/useTrips";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
@@ -329,6 +330,7 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
   }, [mode, existingTrip]);
 
   const categoryOptions = flattenCategories(categoryTree ?? []);
+  const ageBands = ageBandsFor(existingTrip?.sourceMetadata);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -563,6 +565,13 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
             <Input type="number" min={0} value={form.singleSupplement} onChange={(e) => set("singleSupplement", e.target.value)} />
           </div>
         </div>
+        <p className="mt-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          Насны ангилал (хэн нярай, хэн хүүхэд, хэн том хүн) аялал тус бүрээр өөр байна:{" "}
+          <span className="font-medium text-foreground">
+            Нярай {ageBands.infant} · Хүүхэд {ageBands.child} · Том хүн {ageBands.adult}
+          </span>
+          . Үүнийг chatbot админаас засна — энд засвал дараагийн sync дарж бичнэ.
+        </p>
       </Section>
 
       <Section title="Дэлгэрэнгүй">

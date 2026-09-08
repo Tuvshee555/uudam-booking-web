@@ -114,3 +114,30 @@ export function formatFare(value: number | null | undefined): string {
   if (value === 0) return "Үнэгүй";
   return formatMnt(value);
 }
+
+export type AgeBands = { infant: string; child: string; adult: string };
+
+/** Shown when a trip carries no bands of its own. */
+export const DEFAULT_AGE_BANDS: AgeBands = {
+  infant: "0-23 сар",
+  child: "2-11 нас",
+  adult: "12+ нас",
+};
+
+/**
+ * Who counts as an infant/child/adult on THIS trip.
+ *
+ * The bands differ per trip (one sells "2-6 нас" as a child, another "2-11"),
+ * so they travel from the chatbot admin inside `sourceMetadata.age_rules`.
+ * A trip that has never had them set falls back to the house defaults rather
+ * than showing nothing.
+ */
+export function ageBandsFor(sourceMetadata: Record<string, unknown> | null | undefined): AgeBands {
+  const raw = sourceMetadata?.age_rules;
+  const bands = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const pick = (key: keyof AgeBands) => {
+    const value = bands[key];
+    return typeof value === "string" && value.trim() ? value.trim() : DEFAULT_AGE_BANDS[key];
+  };
+  return { infant: pick("infant"), child: pick("child"), adult: pick("adult") };
+}

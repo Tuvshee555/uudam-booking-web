@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 import { api, apiErrorMessage } from "@/lib/api";
 import { getVisitorId, track } from "@/lib/analytics";
-import { formatFare, formatMnt, lineTotal, resolvePrices } from "@/lib/pricing";
+import { ageBandsFor, formatFare, formatMnt, lineTotal, resolvePrices } from "@/lib/pricing";
 import { availability, formatFullDate, formatDepartureDate, upcomingDepartures } from "@/lib/departures";
 import QpayPayButton, { QpayPaidBadge } from "./QpayPayButton";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
@@ -109,6 +109,7 @@ export default function BookingPanel({
 
   const selected = openDepartures.find((d) => d.id === departureId) ?? null;
   const prices = resolvePrices(trip, selected);
+  const ageBands = ageBandsFor(trip.sourceMetadata);
   const total = lineTotal({ adults, children, infants }, prices);
 
   async function submit(event: React.FormEvent) {
@@ -303,9 +304,9 @@ export default function BookingPanel({
           )}
 
           <div className="mt-4 divide-y divide-border border-t border-border">
-            <Counter label="Том хүн" hint="12+ нас" value={adults} onChange={setAdults} min={1} />
-            <Counter label="Хүүхэд" hint="2-11 нас" value={children} onChange={setChildren} />
-            <Counter label="Нярай" hint="0-2 нас" value={infants} onChange={setInfants} />
+            <Counter label="Том хүн" hint={ageBands.adult} value={adults} onChange={setAdults} min={1} />
+            <Counter label="Хүүхэд" hint={ageBands.child} value={children} onChange={setChildren} />
+            <Counter label="Нярай" hint={ageBands.infant} value={infants} onChange={setInfants} />
           </div>
 
           <div className="mt-4 flex items-center justify-between border-t border-border pt-4">

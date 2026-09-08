@@ -17,7 +17,7 @@ import {
 import { api, apiErrorMessage } from "@/lib/api";
 import { CONTACT, hasLink } from "@/lib/contact";
 import { getVisitorId, track } from "@/lib/analytics";
-import { formatFare, formatMnt, formatTripStartingPrice, hasKnownTripPrice, lineTotal, resolvePrices } from "@/lib/pricing";
+import { ageBandsFor, formatFare, formatMnt, formatTripStartingPrice, hasKnownTripPrice, lineTotal, resolvePrices } from "@/lib/pricing";
 import { availability, formatFullDate, formatDepartureDate, upcomingDepartures } from "@/lib/departures";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -102,6 +102,7 @@ export default function EnquiryPanel({ trip }: { trip: Trip }) {
 
   const selected = openDepartures.find((departure) => departure.id === departureId) ?? null;
   const prices = resolvePrices(trip, selected);
+  const ageBands = ageBandsFor(trip.sourceMetadata);
   const estimate = lineTotal({ adults, children, infants }, prices);
   const hasPrice = hasKnownTripPrice(prices.adult);
 
@@ -282,9 +283,9 @@ export default function EnquiryPanel({ trip }: { trip: Trip }) {
         )}
 
         <div className="mt-4 divide-y divide-border border-t border-border">
-          <Counter label="Том хүн" hint="12+ нас" value={adults} onChange={setAdults} min={1} />
-          <Counter label="Хүүхэд" hint="2-11 нас" value={children} onChange={setChildren} />
-          <Counter label="Нярай" hint="0-2 нас" value={infants} onChange={setInfants} />
+          <Counter label="Том хүн" hint={ageBands.adult} value={adults} onChange={setAdults} min={1} />
+          <Counter label="Хүүхэд" hint={ageBands.child} value={children} onChange={setChildren} />
+          <Counter label="Нярай" hint={ageBands.infant} value={infants} onChange={setInfants} />
         </div>
 
         <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
