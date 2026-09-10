@@ -148,7 +148,8 @@ export async function createBooking(input: CreateBookingInput) {
     const sellableStatus =
       departure.status !== "CANCELLED" &&
       departure.status !== "DEPARTED" &&
-      departure.status !== "SOLD_OUT";
+      departure.status !== "SOLD_OUT" &&
+      departure.status !== "PAUSED";
     const inFuture = departure.startDate.getTime() > Date.now();
 
     if (!sellableStatus || !inFuture) {

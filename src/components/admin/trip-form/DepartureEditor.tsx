@@ -44,6 +44,7 @@ const SEAT_TIERS = [
 ] as const;
 
 const OTHER_STATUS_OPTIONS = [
+  { value: "PAUSED", label: "Одоогоор идэвхгүй" },
   { value: "CANCELLED", label: "Цуцлагдсан" },
   { value: "DEPARTED", label: "Явсан" },
 ];

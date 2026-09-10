@@ -9,6 +9,7 @@ export type DepartureStatus =
   | "OPEN"
   | "ALMOST_FULL"
   | "SOLD_OUT"
+  | "PAUSED"
   | "CANCELLED"
   | "DEPARTED";
 

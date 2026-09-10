@@ -63,6 +63,9 @@ export function availability(departure: Departure): Availability {
   if (status === "SOLD_OUT") {
     return { label: "Дүүрсэн", tone: "closed", selectable: false };
   }
+  if (status === "PAUSED") {
+    return { label: "Одоогоор идэвхгүй", tone: "closed", selectable: false };
+  }
   if (status === "ALMOST_FULL") {
     return { label: "Цөөн суудал", tone: "tight", selectable: true };
   }
