@@ -1,6 +1,7 @@
 import { cache } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import Script from "next/script";
 
 import { prisma } from "@/server/prisma";
 import { TRIP_INCLUDE } from "@/server/tripInput";
@@ -126,7 +127,8 @@ export default async function TripDetailPage({ params }: Props) {
   return (
     <>
       {jsonLd && (
-        <script
+        <Script
+          id={`trip-json-ld-${slug}`}
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />

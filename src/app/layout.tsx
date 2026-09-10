@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { CONTACT, hasLink } from "@/lib/contact";
 
@@ -58,7 +59,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="mn" suppressHydrationWarning>
       <body className={`${manrope.variable} font-sans antialiased`}>
-        <script
+        <Script
+          id="business-json-ld"
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(businessJsonLd) }}
         />
