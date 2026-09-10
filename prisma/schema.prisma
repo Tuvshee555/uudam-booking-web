@@ -115,6 +115,13 @@ model Trip {
   categoryId String?
   category   Category? @relation(fields: [categoryId], references: [id])
 
+  /// Stamped by the chatbot-side sync every time it writes this trip's
+  /// content fields (title/description/hotel/included/excluded/notes/
+  /// images). If updatedAt is newer than this, staff edited the trip here
+  /// on the website since the last sync, and the next sync must not
+  /// silently overwrite that edit — see src/lib/websiteTripSync.ts.
+  lastSyncedAt DateTime?
+
   /// Free-form, admin-authored labels ("Галт тэрэг", "Хосолсон аялал" …) —
   /// unlike Category (one tree, one slot per trip) a trip can carry any
   /// number of these, and staff create the tags themselves. Nothing is
