@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { Play } from "lucide-react";
 
@@ -42,6 +42,20 @@ export default function TripMedia({ trip }: { trip: Trip }) {
   const [active, setActive] = useState(0);
   const current = slides[active];
 
+  useEffect(() => {
+    if (slides.length <= 1) return;
+    const timer = window.setInterval(() => {
+      setActive((currentIndex) => {
+        for (let step = 1; step <= slides.length; step += 1) {
+          const next = (currentIndex + step) % slides.length;
+          if (slides[next]?.kind === "image") return next;
+        }
+        return currentIndex;
+      });
+    }, 6500);
+    return () => window.clearInterval(timer);
+  }, [slides]);
+
   if (!current) {
     return (
       <div className="flex aspect-[16/10] items-center justify-center rounded-2xl bg-secondary text-sm text-muted-foreground">
@@ -59,7 +73,7 @@ export default function TripMedia({ trip }: { trip: Trip }) {
             alt={trip.title}
             fill
             sizes="(max-width: 1024px) 100vw, 66vw"
-            className="object-cover"
+            className="uudam-hero-kenburns object-cover"
             priority
           />
         ) : youtubeEmbed(current.src) ? (
@@ -99,7 +113,7 @@ export default function TripMedia({ trip }: { trip: Trip }) {
               aria-label={`${index + 1}-р медиа`}
             >
               {slide.kind === "image" ? (
-                <Image src={slide.src} alt="" fill sizes="96px" className="object-cover" />
+                <Image src={slide.src} alt="" fill sizes="96px" className="object-cover transition-transform duration-500 hover:scale-110" />
               ) : (
                 <span className="flex h-full w-full items-center justify-center bg-navy-deep text-white">
                   <Play className="h-5 w-5 fill-current" />

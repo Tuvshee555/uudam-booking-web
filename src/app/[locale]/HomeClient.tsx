@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ArrowRight, Compass, Headphones, ImageOff, PhoneCall, Sparkles } from "lucide-react";
 
 import { useTrips, useCategoryTree } from "@/hooks/useTrips";
@@ -32,9 +32,76 @@ function CategoryThumb({ src, alt }: { src: string | null | undefined; alt: stri
       alt={alt}
       fill
       sizes="(max-width: 640px) 100vw, 25vw"
-      className="object-cover transition-transform duration-500 group-hover:scale-105"
+      className="uudam-photo-drift object-cover transition-transform duration-700 group-hover:scale-110"
       onError={() => setFailed(true)}
     />
+  );
+}
+
+const FALLBACK_HERO_IMAGES = [
+  "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=85",
+  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1800&q=85",
+  "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=1800&q=85",
+  "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1800&q=85",
+];
+
+function HeroSlideshow({ trips }: { trips?: Trip[] }) {
+  const images = useMemo(() => {
+    const tripImages =
+      trips
+        ?.flatMap((trip) => [trip.image, ...trip.extraImages])
+        .filter((src): src is string => typeof src === "string" && src.startsWith("https://"))
+        .slice(0, 8) ?? [];
+
+    return tripImages.length >= 3 ? tripImages : FALLBACK_HERO_IMAGES;
+  }, [trips]);
+
+  const [active, setActive] = useState(0);
+
+  useEffect(() => {
+    if (images.length <= 1) return;
+    const timer = window.setInterval(() => {
+      setActive((current) => (current + 1) % images.length);
+    }, 5200);
+    return () => window.clearInterval(timer);
+  }, [images.length]);
+
+  return (
+    <div className="relative hidden aspect-[4/3] overflow-hidden rounded-3xl shadow-xl shadow-primary/10 lg:block">
+      {images.map((src, index) => (
+        <Image
+          key={`${src}-${index}`}
+          src={src}
+          alt=""
+          fill
+          sizes="45vw"
+          className={
+            "object-cover transition-opacity duration-1000 " +
+            (index === active ? "opacity-100 uudam-hero-kenburns" : "opacity-0")
+          }
+          priority={index === 0}
+        />
+      ))}
+      <div className="absolute inset-0 bg-gradient-to-t from-navy-deep/40 via-transparent to-transparent" />
+      <div className="absolute bottom-4 left-4 flex items-center gap-2 rounded-full bg-background/90 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm backdrop-blur">
+        <span className="h-1.5 w-1.5 rounded-full bg-gold" />
+        Шинэ аялалууд долоо бүр нэмэгдэнэ
+      </div>
+      <div className="absolute bottom-4 right-4 flex gap-1.5">
+        {images.map((src, index) => (
+          <button
+            key={`${src}-dot-${index}`}
+            type="button"
+            onClick={() => setActive(index)}
+            className={
+              "h-1.5 rounded-full transition-all " +
+              (index === active ? "w-6 bg-white" : "w-1.5 bg-white/55 hover:bg-white")
+            }
+            aria-label={`${index + 1}-р зураг`}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -227,21 +294,7 @@ export default function HomeClient({
             </div>
           </div>
 
-          <div className="relative hidden aspect-[4/3] overflow-hidden rounded-3xl shadow-xl shadow-primary/10 lg:block">
-            <Image
-              src="https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=1400&q=80"
-              alt=""
-              fill
-              sizes="45vw"
-              className="object-cover"
-              priority
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-navy-deep/30 via-transparent to-transparent" />
-            <div className="absolute bottom-4 left-4 flex items-center gap-2 rounded-full bg-background/90 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm backdrop-blur">
-              <span className="h-1.5 w-1.5 rounded-full bg-gold" />
-              Шинэ аялалууд долоо бүр нэмэгдэнэ
-            </div>
-          </div>
+          <HeroSlideshow trips={initialTrips} />
         </div>
       </section>
 

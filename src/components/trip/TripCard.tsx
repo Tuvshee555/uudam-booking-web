@@ -30,7 +30,7 @@ export default function TripCard({ trip }: { trip: Trip }) {
             alt={trip.title}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            className="uudam-photo-drift object-cover transition-transform duration-700 group-hover:scale-110"
           />
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">

@@ -135,6 +135,43 @@
   scrollbar-width: none;
 }
 
+@keyframes uudam-kenburns {
+  0% {
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+  100% {
+    transform: scale(1.08) translate3d(-1.5%, -1%, 0);
+  }
+}
+
+@keyframes uudam-photo-drift {
+  0%, 100% {
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+  50% {
+    transform: scale(1.035) translate3d(-0.8%, -0.5%, 0);
+  }
+}
+
+.uudam-hero-kenburns {
+  animation: uudam-kenburns 7s ease-out both;
+  will-change: transform;
+}
+
+.uudam-photo-drift {
+  animation: uudam-photo-drift 16s ease-in-out infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .uudam-hero-kenburns,
+  .uudam-photo-drift {
+    animation: none !important;
+    transform: none !important;
+    will-change: auto;
+  }
+}
+
 /* ---------------------------------------------------------------------------
  * Print / "download this trip as PDF"
  *

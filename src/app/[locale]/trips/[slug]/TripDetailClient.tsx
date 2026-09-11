@@ -258,19 +258,19 @@ export default function TripDetailClient({
           {trip.itinerary.length > 0 && (
             <section id="itinerary" className="mt-8 scroll-mt-28">
               <h2 className="text-lg font-bold">Өдөр тутмын хөтөлбөр</h2>
-              <ol className="mt-4 space-y-0">
+              <ol className="mt-4 space-y-3">
                 {trip.itinerary.map((day, index) => (
-                  <li key={day.id} className="relative flex gap-4 pb-6 last:pb-0">
+                  <li key={day.id} className="relative flex gap-3 sm:gap-4">
                     {/* Timeline rail, hidden on the last day so it doesn't
                         trail off into nothing. */}
                     {index < trip.itinerary.length - 1 && (
-                      <span className="absolute left-[15px] top-9 h-full w-px bg-border" />
+                      <span className="absolute left-[18px] top-11 h-[calc(100%+0.75rem)] w-px bg-border" />
                     )}
-                    <span className="z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                    <span className="z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground shadow-sm ring-4 ring-background">
                       {day.dayNumber}
                     </span>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-[15px] font-semibold">{day.title}</h3>
+                    <div className="min-w-0 flex-1 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/25 sm:p-5">
+                      <h3 className="text-base font-bold leading-snug text-primary">{day.title}</h3>
                       {day.location && (
                         <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
                           <MapPin className="h-3 w-3" />
@@ -278,7 +278,7 @@ export default function TripDetailClient({
                         </div>
                       )}
                       {day.description && (
-                        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                        <p className="mt-2 whitespace-pre-line text-[15px] leading-7 text-foreground/80">
                           {day.description}
                         </p>
                       )}
@@ -289,7 +289,7 @@ export default function TripDetailClient({
                             alt={day.title}
                             fill
                             sizes="(max-width: 640px) 100vw, 576px"
-                            className="object-cover"
+                            className="uudam-photo-drift object-cover transition-transform duration-700 hover:scale-105"
                           />
                         </div>
                       )}
