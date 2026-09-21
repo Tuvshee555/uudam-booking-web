@@ -3,7 +3,16 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { ArrowRight, Compass, Headphones, ImageOff, PhoneCall, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  Compass,
+  Headphones,
+  ImageOff,
+  PhoneCall,
+  Sparkles,
+} from "lucide-react";
 
 import { useTrips, useCategoryTree } from "@/hooks/useTrips";
 import type { CategoryNode, Trip } from "@/types/trip";
@@ -63,40 +72,72 @@ function HeroSlideshow({ trips }: { trips?: Trip[] }) {
     if (images.length <= 1) return;
     const timer = window.setInterval(() => {
       setActive((current) => (current + 1) % images.length);
-    }, 5200);
+    }, 6500);
     return () => window.clearInterval(timer);
   }, [images.length]);
 
+  const goToPrevious = () => {
+    setActive((current) => (current - 1 + images.length) % images.length);
+  };
+
+  const goToNext = () => {
+    setActive((current) => (current + 1) % images.length);
+  };
+
   return (
-    <div className="relative hidden aspect-[4/3] overflow-hidden rounded-3xl shadow-xl shadow-primary/10 lg:block">
+    <div className="absolute inset-0 overflow-hidden">
       {images.map((src, index) => (
         <Image
           key={`${src}-${index}`}
           src={src}
           alt=""
           fill
-          sizes="45vw"
+          sizes="100vw"
           className={
-            "object-cover transition-opacity duration-1000 " +
+            "object-cover transition-opacity duration-[1600ms] " +
             (index === active ? "opacity-100 uudam-hero-kenburns" : "opacity-0")
           }
           priority={index === 0}
         />
       ))}
-      <div className="absolute inset-0 bg-gradient-to-t from-navy-deep/40 via-transparent to-transparent" />
-      <div className="absolute bottom-4 left-4 flex items-center gap-2 rounded-full bg-background/90 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm backdrop-blur">
+      <div className="absolute inset-0 bg-gradient-to-r from-navy-deep/90 via-navy-deep/45 to-navy-deep/15" />
+      <div className="absolute inset-0 bg-gradient-to-t from-navy-deep/75 via-transparent to-black/25" />
+
+      {images.length > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={goToPrevious}
+            className="absolute left-3 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/35 bg-black/20 text-white shadow-lg backdrop-blur transition hover:bg-white hover:text-navy-deep md:flex"
+            aria-label="Өмнөх зураг"
+          >
+            <ChevronLeft className="h-6 w-6" />
+          </button>
+          <button
+            type="button"
+            onClick={goToNext}
+            className="absolute right-3 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/35 bg-black/20 text-white shadow-lg backdrop-blur transition hover:bg-white hover:text-navy-deep md:flex"
+            aria-label="Дараагийн зураг"
+          >
+            <ChevronRight className="h-6 w-6" />
+          </button>
+        </>
+      )}
+
+      <div className="absolute bottom-5 right-4 z-20 hidden items-center gap-2 rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-navy-deep shadow-sm backdrop-blur sm:flex">
         <span className="h-1.5 w-1.5 rounded-full bg-gold" />
         Шинэ аялалууд долоо бүр нэмэгдэнэ
       </div>
-      <div className="absolute bottom-4 right-4 flex gap-1.5">
+
+      <div className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 gap-2">
         {images.map((src, index) => (
           <button
             key={`${src}-dot-${index}`}
             type="button"
             onClick={() => setActive(index)}
             className={
-              "h-1.5 rounded-full transition-all " +
-              (index === active ? "w-6 bg-white" : "w-1.5 bg-white/55 hover:bg-white")
+              "h-2 rounded-full transition-all " +
+              (index === active ? "w-8 bg-white" : "w-2 bg-white/55 hover:bg-white")
             }
             aria-label={`${index + 1}-р зураг`}
           />
@@ -269,35 +310,38 @@ export default function HomeClient({
 
   return (
     <div>
-      {/* Hero — white-first: a real photo carries the atmosphere, navy and
-          gold only touch type and the two buttons. */}
-      <section className="relative overflow-hidden bg-background">
-        <div className="uudam-container grid gap-10 py-16 md:py-24 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-          <div className="relative z-10 max-w-2xl">
+      <section className="relative isolate flex min-h-[560px] overflow-hidden bg-navy-deep text-white md:min-h-[660px] lg:min-h-[calc(100vh-132px)] lg:max-h-[820px]">
+        <HeroSlideshow trips={initialTrips} />
+
+        <div className="uudam-container relative z-10 flex min-h-[560px] items-center py-20 md:min-h-[660px] lg:min-h-[calc(100vh-132px)] lg:max-h-[820px]">
+          <div className="max-w-3xl">
             <span className="uudam-eyebrow">Uudam Travel Agency</span>
-            <h1 className="mt-3 text-4xl font-bold leading-[1.1] tracking-tight text-foreground md:text-5xl lg:text-6xl">
+            <h1 className="mt-3 max-w-2xl text-5xl font-bold leading-[0.98] tracking-tight text-white sm:text-6xl lg:text-7xl">
               Дараагийн аялалаа
-              <span className="block text-primary">эндээс эхлүүл</span>
+              <span className="block text-gold">эндээс эхлүүл</span>
             </h1>
-            <p className="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg">
+            <p className="mt-6 max-w-xl text-base leading-relaxed text-white/85 md:text-lg">
               Хөтөлбөр, үнэ, хөдлөх огноо, үлдсэн суудал — бүгд ил тод. Хүссэн аялалаа
               сонгоод шууд захиал.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
-              <Button asChild size="lg">
+              <Button asChild size="lg" className="bg-white text-navy-deep hover:bg-white/90">
                 <Link href={`${base}/trips`}>
                   Аялал үзэх
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
-              <Button asChild size="lg" variant="outline">
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="border-white/45 bg-white/10 text-white backdrop-blur hover:bg-white hover:text-navy-deep"
+              >
                 <Link href={`${base}/contact`}>Зөвлөгөө авах</Link>
               </Button>
             </div>
           </div>
-
-          <HeroSlideshow trips={initialTrips} />
         </div>
       </section>
 
