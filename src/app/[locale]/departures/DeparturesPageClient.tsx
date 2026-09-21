@@ -140,6 +140,7 @@ export default function DeparturesPageClient({ trips }: { trips: Trip[] }) {
                             <span
                               className={cn(
                                 seats.tone === "tight" && "font-semibold text-destructive",
+                                seats.tone === "closed" && "font-semibold text-destructive",
                               )}
                             >
                               {seats.label}

@@ -287,7 +287,7 @@ export default function BookingPanel({
                     className={cn(
                       "flex w-full items-center justify-between rounded-xl border p-3 text-left transition-colors",
                       active ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",
-                      !seats.selectable && "cursor-not-allowed opacity-50",
+                      !seats.selectable && "cursor-not-allowed border-destructive/25 bg-destructive/5",
                     )}
                   >
                     <div className="min-w-0">
@@ -296,6 +296,7 @@ export default function BookingPanel({
                         className={cn(
                           "mt-0.5 flex items-center gap-1 text-xs text-muted-foreground",
                           seats.tone === "tight" && "font-semibold text-destructive",
+                          seats.tone === "closed" && "font-semibold text-destructive",
                         )}
                       >
                         <Users className="h-3 w-3" />

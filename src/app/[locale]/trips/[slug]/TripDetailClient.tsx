@@ -23,7 +23,7 @@ import { useTrip, useTrips, useSiteSettings } from "@/hooks/useTrips";
 import type { Trip } from "@/types/trip";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { recordRecentlyViewed } from "@/lib/analytics";
-import { nextDeparture } from "@/lib/departures";
+import { availability, nextDeparture, upcomingDepartures } from "@/lib/departures";
 import {
   isSoldOutDeparture,
   marketingSeatFacts,
@@ -149,6 +149,8 @@ export default function TripDetailClient({
   const detailSaleLabel = saleBadgeLabel(trip);
   const detailSeatFacts = marketingSeatFacts(trip);
   const detailSoldOut = isSoldOutDeparture(nextDeparture(trip));
+  const selectableDeparture = upcomingDepartures(trip).some((departure) => availability(departure).selectable);
+  const mobileCtaClosed = detailSoldOut && !selectableDeparture;
 
   return (
     <div className="uudam-container py-8">
@@ -185,7 +187,7 @@ export default function TripDetailClient({
                   Суудал дүүрсэн
                 </span>
               )}
-              {detailSeatFacts.map((fact) => (
+              {detailSeatFacts.filter((fact) => fact !== "Суудал дүүрсэн").map((fact) => (
                 <span
                   key={fact}
                   className="rounded-full bg-gold/15 px-2.5 py-1 font-semibold text-navy-deep ring-1 ring-gold/25 dark:text-gold"
@@ -231,10 +233,15 @@ export default function TripDetailClient({
 
             <a
               href="#booking-panel"
-              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 lg:hidden"
+              className={
+                "mt-4 inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-90 lg:hidden " +
+                (mobileCtaClosed
+                  ? "bg-destructive text-destructive-foreground"
+                  : "bg-primary text-primary-foreground")
+              }
             >
               <CalendarDays className="h-4 w-4" />
-              Огноо сонгох
+              {mobileCtaClosed ? "Суудал дүүрсэн" : "Огноо сонгох"}
             </a>
           </header>
 

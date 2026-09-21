@@ -237,7 +237,10 @@ function DepartingSoon({ trips, base }: { trips: Trip[]; base: string }) {
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold">{trip.title}</div>
                 <div className="mt-0.5 text-xs text-muted-foreground">
-                  {trip.durationDays} хоног · {seats.label}
+                  {trip.durationDays} хоног ·{" "}
+                  <span className={seats.tone === "closed" ? "font-semibold text-destructive" : ""}>
+                    {seats.label}
+                  </span>
                   {exactSeats && exactSeats !== seats.label && ` · ${exactSeats}`}
                 </div>
               </div>
