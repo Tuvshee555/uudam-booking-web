@@ -5,6 +5,7 @@ import Image from "next/image";
 import {
   AlertCircle,
   BedDouble,
+  CalendarDays,
   Check,
   Clock,
   FileDown,
@@ -227,6 +228,14 @@ export default function TripDetailClient({
                 {trip.summary}
               </p>
             )}
+
+            <a
+              href="#booking-panel"
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 lg:hidden"
+            >
+              <CalendarDays className="h-4 w-4" />
+              Огноо сонгох
+            </a>
           </header>
 
           {(trip.brochurePdfUrl || chatbotPosterPdfUrl(trip.sourceTripId)) && (
@@ -550,7 +559,7 @@ export default function TripDetailClient({
           )}
         </div>
 
-        <aside className="lg:sticky lg:top-[124px] lg:h-fit">
+        <aside id="booking-panel" className="scroll-mt-28 lg:sticky lg:top-[124px] lg:h-fit">
           <TripSidebar trip={trip} bankDetails={siteSettings?.bankDetails} />
           <MessengerButton tripSlug={trip.slug} tripId={trip.id} className="mt-3 w-full" />
           <EnquiryTrustNote />

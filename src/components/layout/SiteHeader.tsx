@@ -18,6 +18,7 @@ export default function SiteHeader() {
   const pathname = usePathname();
   const { locale } = useI18n();
   const { data: categories } = useCategoryTree();
+  const visibleCategories = categories?.filter((category) => category.tripCount > 0) ?? [];
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -127,10 +128,10 @@ export default function SiteHeader() {
         </div>
       </div>
 
-      {categories && categories.length > 0 && (
+      {visibleCategories.length > 0 && (
         <div className="hidden border-b border-border bg-background lg:block">
           <div className="uudam-container flex h-11 items-center gap-1 overflow-x-auto no-scrollbar">
-            {categories.map((category) => (
+            {visibleCategories.map((category) => (
               <Link
                 key={category.id}
                 href={`${base}/category/${category.slug ?? category.id}`}
@@ -186,12 +187,12 @@ export default function SiteHeader() {
             ))}
           </nav>
 
-          {categories && categories.length > 0 && (
+          {visibleCategories.length > 0 && (
             <div className="border-t border-border p-3">
               <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Ангилал
               </p>
-              {categories.map((category) => (
+              {visibleCategories.map((category) => (
                 <Link
                   key={category.id}
                   href={`${base}/category/${category.slug ?? category.id}`}

@@ -7,11 +7,7 @@ import {
   ArrowRight,
   ChevronLeft,
   ChevronRight,
-  Compass,
-  Headphones,
   ImageOff,
-  PhoneCall,
-  Sparkles,
 } from "lucide-react";
 
 import { useTrips, useCategoryTree } from "@/hooks/useTrips";
@@ -303,6 +299,8 @@ export default function HomeClient({
   const { locale } = useI18n();
   const base = `/${locale}`;
   const { data: categories } = useCategoryTree(initialCategories);
+  const visibleCategories = categories?.filter((category) => category.tripCount > 0) ?? [];
+  const featuredTrips = initialTrips?.filter((trip) => trip.isFeatured) ?? [];
 
   return (
     <div>
@@ -341,36 +339,14 @@ export default function HomeClient({
         </div>
       </section>
 
-      {/* Trust strip */}
-      <section className="border-b border-border bg-secondary/30">
-        <div className="uudam-container grid gap-6 py-8 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            { icon: Compass, title: "Мэргэжлийн хөтөч", text: "Туршлагатай хөтөч дагалдана" },
-            { icon: PhoneCall, title: "Ажилтантай шууд", text: "Утсаар холбогдож баталгаажуулна" },
-            { icon: Sparkles, title: "Ил тод үнэ", text: "Нуугдмал төлбөргүй" },
-            { icon: Headphones, title: "24/7 тусламж", text: "Аяллын турш холбоотой" },
-          ].map(({ icon: Icon, title, text }) => (
-            <div key={title} className="flex items-start gap-3">
-              <span className="rounded-xl bg-primary/10 p-2.5 text-primary">
-                <Icon className="h-5 w-5" />
-              </span>
-              <div>
-                <div className="text-sm font-semibold">{title}</div>
-                <div className="text-xs text-muted-foreground">{text}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {trustBar}
 
       {/* Categories */}
-      {categories && categories.length > 0 && (
+      {visibleCategories.length > 0 && (
         <section className="uudam-container py-14">
           <h2 className="text-2xl font-bold md:text-3xl">Чиглэлээр нь сонгох</h2>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {categories.slice(0, 8).map((category) => (
+            {visibleCategories.slice(0, 8).map((category) => (
               <Link
                 key={category.id}
                 href={`${base}/category/${category.slug ?? category.id}`}
@@ -395,25 +371,27 @@ export default function HomeClient({
       <RecentlyViewedStrip />
 
       {/* Featured */}
-      <section className="uudam-container pb-6">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <span className="uudam-eyebrow text-primary">Онцлох</span>
-            <h2 className="mt-1 text-2xl font-bold md:text-3xl">Хамгийн эрэлттэй аялалууд</h2>
+      {featuredTrips.length > 0 && (
+        <section className="uudam-container pb-6">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <span className="uudam-eyebrow text-primary">Онцлох</span>
+              <h2 className="mt-1 text-2xl font-bold md:text-3xl">Хамгийн эрэлттэй аялалууд</h2>
+            </div>
+            <Link
+              href={`${base}/trips`}
+              className="hidden shrink-0 items-center gap-1 text-sm font-semibold text-primary hover:underline sm:flex"
+            >
+              Бүгдийг үзэх
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
-          <Link
-            href={`${base}/trips`}
-            className="hidden shrink-0 items-center gap-1 text-sm font-semibold text-primary hover:underline sm:flex"
-          >
-            Бүгдийг үзэх
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
 
-        <div className="mt-6">
-          <TripGrid featured initialTrips={initialTrips} />
-        </div>
-      </section>
+          <div className="mt-6">
+            <TripGrid featured initialTrips={initialTrips} />
+          </div>
+        </section>
+      )}
 
       {/* All trips */}
       <section className="uudam-container py-14">

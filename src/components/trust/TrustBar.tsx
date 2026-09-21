@@ -1,4 +1,4 @@
-import { MapPin, Phone, ShieldCheck } from "lucide-react";
+import { Compass, MapPin, Phone, ShieldCheck } from "lucide-react";
 
 import { CONTACT, hasLink } from "@/lib/contact";
 import { prisma } from "@/server/prisma";
@@ -15,6 +15,11 @@ export default async function TrustBar() {
   const tripCount = await prisma.trip.count({ where: { isPublished: true } });
 
   const facts = [
+    {
+      icon: Compass,
+      title: "Мэргэжлийн хөтөч",
+      text: "Туршлагатай хөтөч дагалдана.",
+    },
     {
       icon: ShieldCheck,
       title: "Ил тод үнэ",
@@ -35,8 +40,8 @@ export default async function TrustBar() {
   ];
 
   return (
-    <section className="border-y border-border bg-secondary/30">
-      <div className="uudam-container grid gap-6 py-10 sm:grid-cols-3">
+    <section className="border-b border-border bg-secondary/30">
+      <div className="uudam-container grid gap-6 py-8 sm:grid-cols-2 lg:grid-cols-4">
         {facts.map(({ icon: Icon, title, text }) => (
           <div key={title} className="flex items-start gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">

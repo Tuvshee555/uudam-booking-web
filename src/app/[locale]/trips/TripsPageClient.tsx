@@ -73,6 +73,7 @@ function TripsPageInner({ initialTrips }: { initialTrips?: Trip[] }) {
   const { data: tags } = useTags();
   const { data: priceBands } = usePriceBands();
   const { data: trips, isLoading } = useTrips(undefined, initialTrips);
+  const visibleCategories = categories?.filter((category) => category.tripCount > 0) ?? [];
 
   const activeBand = priceBands?.find((band) => band.id === bandId) ?? null;
   const activeDuration = DURATIONS.find((entry) => entry.key === durationKey) ?? null;
@@ -311,7 +312,7 @@ function TripsPageInner({ initialTrips }: { initialTrips?: Trip[] }) {
         </div>
       </div>
 
-      {categories && categories.length > 0 && (
+      {visibleCategories.length > 0 && (
         <div className="mt-4 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
           <button
             type="button"
@@ -325,7 +326,7 @@ function TripsPageInner({ initialTrips }: { initialTrips?: Trip[] }) {
           >
             Бүгд
           </button>
-          {categories.map((category) => (
+          {visibleCategories.map((category) => (
             <button
               key={category.id}
               type="button"
