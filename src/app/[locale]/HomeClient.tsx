@@ -48,23 +48,18 @@ function CategoryThumb({ src, alt }: { src: string | null | undefined; alt: stri
   );
 }
 
-const FALLBACK_HERO_IMAGES = [
-  "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=85",
-  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1800&q=85",
-  "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=1800&q=85",
-  "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1800&q=85",
+const CURATED_HERO_IMAGES = [
+  "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=2400&q=90",
+  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=2400&q=90",
+  "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=2400&q=90",
+  "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=2400&q=90",
+  "https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=2400&q=90",
 ];
 
-function HeroSlideshow({ trips }: { trips?: Trip[] }) {
-  const images = useMemo(() => {
-    const tripImages =
-      trips
-        ?.flatMap((trip) => [trip.image, ...trip.extraImages])
-        .filter((src): src is string => typeof src === "string" && src.startsWith("https://"))
-        .slice(0, 8) ?? [];
-
-    return tripImages.length >= 3 ? tripImages : FALLBACK_HERO_IMAGES;
-  }, [trips]);
+function HeroSlideshow() {
+  // Keep the homepage hero visually consistent even when a trip has a small
+  // or compressed upload. Trip photos still appear on the catalogue cards.
+  const images = CURATED_HERO_IMAGES;
 
   const [active, setActive] = useState(0);
 
@@ -97,6 +92,7 @@ function HeroSlideshow({ trips }: { trips?: Trip[] }) {
             "object-cover transition-opacity duration-[1600ms] " +
             (index === active ? "opacity-100 uudam-hero-kenburns" : "opacity-0")
           }
+          quality={90}
           priority={index === 0}
         />
       ))}
@@ -310,10 +306,10 @@ export default function HomeClient({
 
   return (
     <div>
-      <section className="relative isolate flex min-h-[560px] overflow-hidden bg-navy-deep text-white md:min-h-[660px] lg:min-h-[calc(100vh-132px)] lg:max-h-[820px]">
-        <HeroSlideshow trips={initialTrips} />
+      <section className="relative isolate flex min-h-[430px] overflow-hidden bg-navy-deep text-white md:min-h-[500px] lg:min-h-[540px]">
+        <HeroSlideshow />
 
-        <div className="uudam-container relative z-10 flex min-h-[560px] items-center py-20 md:min-h-[660px] lg:min-h-[calc(100vh-132px)] lg:max-h-[820px]">
+        <div className="uudam-container relative z-10 flex min-h-[430px] items-center py-14 md:min-h-[500px] lg:min-h-[540px]">
           <div className="max-w-3xl">
             <span className="uudam-eyebrow">Uudam Travel Agency</span>
             <h1 className="mt-3 max-w-2xl text-5xl font-bold leading-[0.98] tracking-tight text-white sm:text-6xl lg:text-7xl">
