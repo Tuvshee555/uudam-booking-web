@@ -94,6 +94,18 @@ export default async function TripDetailPage({ params }: Props) {
   // 404 for real (search engines, unfurl bots), not render a 200 page whose
   // content happens to say "not found" — that was a soft-404.
   if (!trip) notFound();
+  const visibleDepartures = trip.departures.filter(
+    (departure) =>
+      departure.status !== "CANCELLED" &&
+      departure.status !== "DEPARTED",
+  );
+  const allUpcomingSoldOut =
+    visibleDepartures.length > 0 &&
+    visibleDepartures.every(
+      (departure) =>
+        departure.status === "SOLD_OUT" ||
+        (typeof departure.seatsLeft === "number" && departure.seatsLeft <= 0),
+    );
 
   const jsonLd = trip && {
     "@context": "https://schema.org",
@@ -109,7 +121,9 @@ export default async function TripDetailPage({ params }: Props) {
           "@type": "Offer",
           price: trip.price,
           priceCurrency: trip.currency,
-          availability: "https://schema.org/InStock",
+          availability: allUpcomingSoldOut
+            ? "https://schema.org/SoldOut"
+            : "https://schema.org/InStock",
           url: `${SITE_URL}/trips/${slug}`,
         }
       : undefined,

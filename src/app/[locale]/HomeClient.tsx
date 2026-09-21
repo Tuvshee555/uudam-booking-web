@@ -8,6 +8,7 @@ import { ArrowRight, Compass, Headphones, ImageOff, PhoneCall, Sparkles } from "
 import { useTrips, useCategoryTree } from "@/hooks/useTrips";
 import type { CategoryNode, Trip } from "@/types/trip";
 import { availability, formatMonthShort, upcomingDepartures } from "@/lib/departures";
+import { departureSeatFact } from "@/lib/tripMarketing";
 import TripCard from "@/components/trip/TripCard";
 import RecentlyViewedStrip from "@/components/trip/RecentlyViewedStrip";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
@@ -184,6 +185,7 @@ function DepartingSoon({ trips, base }: { trips: Trip[]; base: string }) {
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {soon.map(({ trip, departure }) => {
           const seats = availability(departure);
+          const exactSeats = departureSeatFact(departure);
 
           return (
             <Link
@@ -203,6 +205,7 @@ function DepartingSoon({ trips, base }: { trips: Trip[]; base: string }) {
                 <div className="truncate text-sm font-semibold">{trip.title}</div>
                 <div className="mt-0.5 text-xs text-muted-foreground">
                   {trip.durationDays} хоног · {seats.label}
+                  {exactSeats && exactSeats !== seats.label && ` · ${exactSeats}`}
                 </div>
               </div>
             </Link>

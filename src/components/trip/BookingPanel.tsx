@@ -9,6 +9,7 @@ import { api, apiErrorMessage } from "@/lib/api";
 import { getVisitorId, track } from "@/lib/analytics";
 import { ageBandsFor, formatFare, formatMnt, lineTotal, resolvePrices } from "@/lib/pricing";
 import { availability, formatFullDate, formatDepartureDate, upcomingDepartures } from "@/lib/departures";
+import { departureSeatFact, saleBadgeLabel } from "@/lib/tripMarketing";
 import QpayPayButton, { QpayPaidBadge } from "./QpayPayButton";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { Button } from "@/components/ui/button";
@@ -111,6 +112,7 @@ export default function BookingPanel({
   const prices = resolvePrices(trip, selected);
   const ageBands = ageBandsFor(trip.sourceMetadata);
   const total = lineTotal({ adults, children, infants }, prices);
+  const saleLabel = saleBadgeLabel(trip);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -227,9 +229,16 @@ export default function BookingPanel({
           <div className="text-2xl font-bold text-primary">{formatMnt(prices.adult)}</div>
           <div className="text-xs text-muted-foreground">нэг том хүн</div>
         </div>
-        <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
-          Онлайн захиалга
-        </span>
+        <div className="flex flex-col items-end gap-1.5">
+          {saleLabel && (
+            <span className="rounded-full bg-destructive px-2.5 py-1 text-[11px] font-bold text-destructive-foreground">
+              {saleLabel}
+            </span>
+          )}
+          <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
+            Онлайн захиалга
+          </span>
+        </div>
       </div>
 
       <div className="mt-4 space-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
@@ -258,6 +267,7 @@ export default function BookingPanel({
             <div className="mt-2 space-y-2">
               {openDepartures.map((departure) => {
                 const seats = availability(departure);
+                const exactSeats = departureSeatFact(departure);
                 const active = departure.id === departureId;
 
                 return (
@@ -290,6 +300,9 @@ export default function BookingPanel({
                       >
                         <Users className="h-3 w-3" />
                         {seats.label}
+                        {exactSeats && exactSeats !== seats.label && (
+                          <span className="text-muted-foreground">· {exactSeats}</span>
+                        )}
                       </div>
                     </div>
                     {departure.price != null && departure.price !== trip.price && (

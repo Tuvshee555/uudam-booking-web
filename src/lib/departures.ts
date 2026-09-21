@@ -61,7 +61,7 @@ export function availability(departure: Departure): Availability {
     return { label: "Хөдөлсөн", tone: "closed", selectable: false };
   }
   if (status === "SOLD_OUT") {
-    return { label: "Дүүрсэн", tone: "closed", selectable: false };
+    return { label: "Суудал дүүрсэн", tone: "closed", selectable: false };
   }
   if (status === "PAUSED") {
     return { label: "Одоогоор идэвхгүй", tone: "closed", selectable: false };
@@ -74,7 +74,7 @@ export function availability(departure: Departure): Availability {
   // status, so treat a small number as the same "few places" signal.
   const seatsLeft = departure.seatsLeft;
   if (seatsLeft !== null && seatsLeft <= 0) {
-    return { label: "Дүүрсэн", tone: "closed", selectable: false };
+    return { label: "Суудал дүүрсэн", tone: "closed", selectable: false };
   }
   if (seatsLeft !== null && seatsLeft <= 5) {
     return { label: "Цөөн суудал", tone: "tight", selectable: true };

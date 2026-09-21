@@ -22,6 +22,12 @@ import { useTrip, useTrips, useSiteSettings } from "@/hooks/useTrips";
 import type { Trip } from "@/types/trip";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { recordRecentlyViewed } from "@/lib/analytics";
+import { nextDeparture } from "@/lib/departures";
+import {
+  isSoldOutDeparture,
+  marketingSeatFacts,
+  saleBadgeLabel,
+} from "@/lib/tripMarketing";
 import TripMedia from "@/components/trip/TripMedia";
 import TripCard from "@/components/trip/TripCard";
 import TripSidebar from "@/components/trip/TripSidebar";
@@ -139,6 +145,10 @@ export default function TripDetailClient({
     );
   }
 
+  const detailSaleLabel = saleBadgeLabel(trip);
+  const detailSeatFacts = marketingSeatFacts(trip);
+  const detailSoldOut = isSoldOutDeparture(nextDeparture(trip));
+
   return (
     <div className="uudam-container py-8">
       <nav className="mb-5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
@@ -164,6 +174,24 @@ export default function TripDetailClient({
 
           <header className="mt-6">
             <div className="flex flex-wrap items-center gap-2 text-xs">
+              {detailSaleLabel && (
+                <span className="rounded-full bg-destructive px-2.5 py-1 font-bold text-destructive-foreground">
+                  {detailSaleLabel}
+                </span>
+              )}
+              {detailSoldOut && (
+                <span className="rounded-full bg-destructive/10 px-2.5 py-1 font-bold text-destructive ring-1 ring-destructive/20">
+                  Суудал дүүрсэн
+                </span>
+              )}
+              {detailSeatFacts.map((fact) => (
+                <span
+                  key={fact}
+                  className="rounded-full bg-gold/15 px-2.5 py-1 font-semibold text-navy-deep ring-1 ring-gold/25 dark:text-gold"
+                >
+                  {fact}
+                </span>
+              ))}
               {trip.country && (
                 <span className="flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 font-medium">
                   <MapPin className="h-3 w-3" />

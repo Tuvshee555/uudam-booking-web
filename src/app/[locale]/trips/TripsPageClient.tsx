@@ -9,6 +9,7 @@ import TripCard from "@/components/trip/TripCard";
 import { Input } from "@/components/ui/input";
 import { formatMnt, hasKnownTripPrice } from "@/lib/pricing";
 import { soonestDepartureTime, upcomingDepartures } from "@/lib/departures";
+import { isSaleTrip } from "@/lib/tripMarketing";
 import type { Trip } from "@/types/trip";
 import { cn } from "@/lib/utils";
 
@@ -151,7 +152,7 @@ function TripsPageInner({ initialTrips }: { initialTrips?: Trip[] }) {
       if (featuredOnly && !trip.isFeatured) return false;
       if (categoryId && trip.categoryId !== categoryId) return false;
       if (country && trip.country !== country) return false;
-      if (onSaleOnly && !(typeof trip.discount === "number" && trip.discount > 0)) return false;
+      if (onSaleOnly && !isSaleTrip(trip)) return false;
       if (tagIds.length > 0 && !trip.tags.some((tag) => tagIds.includes(tag.id))) return false;
       if (month) {
         const departsThatMonth = upcomingDepartures(trip, now).some((departure) => {

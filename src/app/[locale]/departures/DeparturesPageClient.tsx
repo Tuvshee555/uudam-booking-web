@@ -7,6 +7,7 @@ import { CalendarDays, Clock, ImageOff, MapPin } from "lucide-react";
 
 import type { Trip } from "@/types/trip";
 import { availability, formatMonthShort, formatYearMonthLong, upcomingDepartures } from "@/lib/departures";
+import { departureSeatFact } from "@/lib/tripMarketing";
 import { formatMnt } from "@/lib/pricing";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { cn } from "@/lib/utils";
@@ -93,6 +94,7 @@ export default function DeparturesPageClient({ trips }: { trips: Trip[] }) {
               <ul className="mt-3 divide-y divide-border rounded-2xl border border-border">
                 {month.rows.map(({ key, trip, departure }) => {
                   const seats = availability(departure);
+                  const exactSeats = departureSeatFact(departure);
                   const date = new Date(departure.startDate);
 
                   return (
@@ -141,6 +143,9 @@ export default function DeparturesPageClient({ trips }: { trips: Trip[] }) {
                               )}
                             >
                               {seats.label}
+                              {exactSeats && exactSeats !== seats.label && (
+                                <span className="text-muted-foreground"> · {exactSeats}</span>
+                              )}
                             </span>
                           </div>
                         </div>

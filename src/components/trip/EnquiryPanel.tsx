@@ -19,6 +19,7 @@ import { CONTACT, hasLink } from "@/lib/contact";
 import { getVisitorId, track } from "@/lib/analytics";
 import { ageBandsFor, formatFare, formatMnt, formatTripStartingPrice, hasKnownTripPrice, lineTotal, resolvePrices } from "@/lib/pricing";
 import { availability, formatFullDate, formatDepartureDate, upcomingDepartures } from "@/lib/departures";
+import { departureSeatFact, saleBadgeLabel } from "@/lib/tripMarketing";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -105,6 +106,7 @@ export default function EnquiryPanel({ trip }: { trip: Trip }) {
   const ageBands = ageBandsFor(trip.sourceMetadata);
   const estimate = lineTotal({ adults, children, infants }, prices);
   const hasPrice = hasKnownTripPrice(prices.adult);
+  const saleLabel = saleBadgeLabel(trip);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -197,9 +199,9 @@ export default function EnquiryPanel({ trip }: { trip: Trip }) {
             {hasPrice ? "нэг том хүн" : "ажилтнаас тодруулна"}
           </div>
         </div>
-        {typeof trip.discount === "number" && trip.discount > 0 && (
+        {saleLabel && (
           <span className="rounded-full bg-destructive px-2.5 py-1 text-xs font-bold text-destructive-foreground">
-            -{trip.discount}%
+            {saleLabel}
           </span>
         )}
       </div>
@@ -240,6 +242,7 @@ export default function EnquiryPanel({ trip }: { trip: Trip }) {
           <div className="mt-2 space-y-2">
             {openDepartures.map((departure) => {
               const seats = availability(departure);
+              const exactSeats = departureSeatFact(departure);
               const soldOut = !seats.selectable;
               const active = departure.id === departureId;
 
@@ -269,6 +272,9 @@ export default function EnquiryPanel({ trip }: { trip: Trip }) {
                     >
                       <Users className="h-3 w-3" />
                       {seats.label}
+                      {exactSeats && exactSeats !== seats.label && (
+                        <span className="text-muted-foreground">· {exactSeats}</span>
+                      )}
                     </div>
                   </div>
                   {departure.price != null && departure.price !== trip.price && (

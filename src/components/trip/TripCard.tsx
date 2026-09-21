@@ -7,6 +7,11 @@ import { CalendarDays, Clock, MapPin, Play, Star, Users } from "lucide-react";
 import type { Trip } from "@/types/trip";
 import { formatMnt, formatTripStartingPrice, hasKnownTripPrice } from "@/lib/pricing";
 import { availability, formatDepartureDate, nextDeparture } from "@/lib/departures";
+import {
+  isSoldOutDeparture,
+  marketingSeatFacts,
+  saleBadgeLabel,
+} from "@/lib/tripMarketing";
 import SaveButton from "@/components/trip/SaveButton";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { cn } from "@/lib/utils";
@@ -17,6 +22,9 @@ export default function TripCard({ trip }: { trip: Trip }) {
   const hasVideo = Boolean(trip.video) || trip.videos.length > 0;
 
   const seats = departure ? availability(departure) : null;
+  const saleLabel = saleBadgeLabel(trip);
+  const seatFacts = marketingSeatFacts(trip);
+  const soldOut = isSoldOutDeparture(departure);
 
   return (
     <Link
@@ -44,9 +52,14 @@ export default function TripCard({ trip }: { trip: Trip }) {
               Онцлох
             </span>
           )}
-          {typeof trip.discount === "number" && trip.discount > 0 && (
+          {saleLabel && (
             <span className="rounded-full bg-destructive px-2.5 py-1 text-[11px] font-bold text-destructive-foreground">
-              -{trip.discount}%
+              {saleLabel}
+            </span>
+          )}
+          {soldOut && (
+            <span className="rounded-full bg-black/70 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-sm">
+              Суудал дүүрсэн
             </span>
           )}
         </div>
@@ -101,6 +114,24 @@ export default function TripCard({ trip }: { trip: Trip }) {
           </div>
         )}
 
+        {seatFacts.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {seatFacts.map((fact) => (
+              <span
+                key={fact}
+                className={cn(
+                  "rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                  fact === "Суудал дүүрсэн"
+                    ? "border-destructive/25 bg-destructive/10 text-destructive"
+                    : "border-gold/30 bg-gold/10 text-navy-deep dark:text-gold",
+                )}
+              >
+                {fact}
+              </span>
+            ))}
+          </div>
+        )}
+
         <div className="mt-3 flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <Clock className="h-3.5 w-3.5" />
@@ -117,7 +148,7 @@ export default function TripCard({ trip }: { trip: Trip }) {
               className={cn(
                 "flex items-center gap-1",
                 seats.tone === "tight" && "font-semibold text-destructive",
-                seats.tone === "closed" && "text-muted-foreground/70",
+                seats.tone === "closed" && "font-semibold text-destructive",
               )}
             >
               <Users className="h-3.5 w-3.5" />
