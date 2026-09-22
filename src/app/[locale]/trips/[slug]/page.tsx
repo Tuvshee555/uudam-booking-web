@@ -8,6 +8,7 @@ import { TRIP_INCLUDE } from "@/server/tripInput";
 import { getSiteSettings } from "@/server/catalog";
 import { formatTripStartingPrice, hasKnownTripPrice } from "@/lib/pricing";
 import { localeAlternates } from "@/lib/hreflang";
+import { formatTripTitle } from "@/lib/tripDisplay";
 import type { Trip } from "@/types/trip";
 import TripDetailClient from "./TripDetailClient";
 
@@ -64,8 +65,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description =
     trip.summary?.trim() || trip.description.slice(0, 160).trim() || undefined;
 
-  const title = `${trip.title} — ${formatTripStartingPrice(trip.price)}`;
-  const previewImages = trip.image ? [{ url: trip.image, width: 1200, height: 630, alt: trip.title }] : undefined;
+  const displayTitle = formatTripTitle(trip.title);
+  const title = `${displayTitle} — ${formatTripStartingPrice(trip.price)}`;
+  const previewImages = trip.image ? [{ url: trip.image, width: 1200, height: 630, alt: displayTitle }] : undefined;
 
   return {
     title,
@@ -110,7 +112,7 @@ export default async function TripDetailPage({ params }: Props) {
   const jsonLd = trip && {
     "@context": "https://schema.org",
     "@type": "TouristTrip",
-    name: trip.title,
+    name: formatTripTitle(trip.title),
     description: trip.summary?.trim() || trip.description.slice(0, 300).trim(),
     image: trip.image || undefined,
     url: `${SITE_URL}/trips/${slug}`,

@@ -14,6 +14,7 @@ import { useTrips, useCategoryTree } from "@/hooks/useTrips";
 import type { CategoryNode, Trip } from "@/types/trip";
 import { availability, formatMonthShort, upcomingDepartures } from "@/lib/departures";
 import { departureSeatFact } from "@/lib/tripMarketing";
+import { formatTripTitle } from "@/lib/tripDisplay";
 import TripCard from "@/components/trip/TripCard";
 import RecentlyViewedStrip from "@/components/trip/RecentlyViewedStrip";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
@@ -38,6 +39,7 @@ function CategoryThumb({ src, alt }: { src: string | null | undefined; alt: stri
       alt={alt}
       fill
       sizes="(max-width: 640px) 100vw, 25vw"
+      quality={90}
       className="uudam-photo-drift object-cover transition-transform duration-700 group-hover:scale-110"
       onError={() => setFailed(true)}
     />
@@ -92,8 +94,8 @@ function HeroSlideshow() {
           priority={index === 0}
         />
       ))}
-      <div className="absolute inset-0 bg-gradient-to-r from-navy-deep/90 via-navy-deep/45 to-navy-deep/15" />
-      <div className="absolute inset-0 bg-gradient-to-t from-navy-deep/75 via-transparent to-black/25" />
+      <div className="absolute inset-0 bg-gradient-to-r from-navy-deep/80 via-navy-deep/30 to-navy-deep/5" />
+      <div className="absolute inset-0 bg-gradient-to-t from-navy-deep/55 via-transparent to-black/10" />
 
       {images.length > 1 && (
         <>
@@ -224,7 +226,7 @@ function DepartingSoon({ trips, base }: { trips: Trip[]; base: string }) {
             <Link
               key={`${trip.id}:${departure.id}`}
               href={`${base}/trips/${trip.slug}`}
-              className="flex items-center gap-3 rounded-2xl border border-border p-3.5 transition-colors hover:border-primary/40 hover:bg-secondary/40"
+              className="flex min-w-0 items-center gap-3 rounded-2xl border border-border p-3.5 transition-colors hover:border-primary/40 hover:bg-secondary/40"
             >
               <div className="flex w-14 shrink-0 flex-col items-center rounded-xl bg-secondary py-2">
                 <span className="text-lg font-bold leading-none">
@@ -235,7 +237,7 @@ function DepartingSoon({ trips, base }: { trips: Trip[]; base: string }) {
                 </span>
               </div>
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold">{trip.title}</div>
+                <div className="truncate text-sm font-semibold">{formatTripTitle(trip.title)}</div>
                 <div className="mt-0.5 text-xs text-muted-foreground">
                   {trip.durationDays} хоног ·{" "}
                   <span className={seats.tone === "closed" ? "font-semibold text-destructive" : ""}>
@@ -355,7 +357,10 @@ export default function HomeClient({
                 href={`${base}/category/${category.slug ?? category.id}`}
                 className="group relative aspect-[16/9] overflow-hidden rounded-2xl border border-border bg-secondary"
               >
-                <CategoryThumb src={category.image} alt={category.categoryName} />
+                <CategoryThumb
+                  src={initialTrips?.find((trip) => trip.categoryId === category.id && trip.image)?.image ?? category.image}
+                  alt={category.categoryName}
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 p-4">
                   <div className="text-base font-semibold text-white">{category.categoryName}</div>

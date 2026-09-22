@@ -73,6 +73,7 @@ export default function TripMedia({ trip }: { trip: Trip }) {
             alt={trip.title}
             fill
             sizes="(max-width: 1024px) 100vw, 66vw"
+            quality={90}
             className="uudam-hero-kenburns object-cover"
             priority
           />
@@ -113,7 +114,7 @@ export default function TripMedia({ trip }: { trip: Trip }) {
               aria-label={`${index + 1}-р медиа`}
             >
               {slide.kind === "image" ? (
-                <Image src={slide.src} alt="" fill sizes="96px" className="object-cover transition-transform duration-500 hover:scale-110" />
+                <Image src={slide.src} alt="" fill sizes="96px" quality={85} className="object-cover transition-transform duration-500 hover:scale-110" />
               ) : (
                 <span className="flex h-full w-full items-center justify-center bg-navy-deep text-white">
                   <Play className="h-5 w-5 fill-current" />

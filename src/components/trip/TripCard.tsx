@@ -15,6 +15,7 @@ import {
 import SaveButton from "@/components/trip/SaveButton";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { cn } from "@/lib/utils";
+import { formatTripTitle } from "@/lib/tripDisplay";
 
 export default function TripCard({ trip }: { trip: Trip }) {
   const { locale } = useI18n();
@@ -38,6 +39,7 @@ export default function TripCard({ trip }: { trip: Trip }) {
             alt={trip.title}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+            quality={90}
             className="uudam-photo-drift object-cover transition-transform duration-700 group-hover:scale-110"
           />
         ) : (
@@ -85,7 +87,7 @@ export default function TripCard({ trip }: { trip: Trip }) {
       <div className="flex flex-1 flex-col p-4">
         <div className="flex items-start justify-between gap-3">
           <h3 className="line-clamp-2 flex-1 text-[15px] font-semibold leading-snug">
-            {trip.title}
+            {formatTripTitle(trip.title)}
           </h3>
           {trip.reviewCount > 0 && (
             <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground">

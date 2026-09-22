@@ -23,6 +23,7 @@ import { useTrip, useTrips, useSiteSettings } from "@/hooks/useTrips";
 import type { Trip } from "@/types/trip";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { recordRecentlyViewed } from "@/lib/analytics";
+import { formatTripTitle } from "@/lib/tripDisplay";
 import { availability, nextDeparture, upcomingDepartures } from "@/lib/departures";
 import {
   isSoldOutDeparture,
@@ -218,10 +219,10 @@ export default function TripDetailClient({
             </div>
 
             <div className="mt-3 flex items-start justify-between gap-4">
-              <h1 className="text-2xl font-bold leading-tight md:text-3xl">{trip.title}</h1>
+              <h1 className="text-2xl font-bold leading-tight md:text-3xl">{formatTripTitle(trip.title)}</h1>
               <div className="mt-1 flex shrink-0 items-center gap-2" data-print="hide">
                 <SaveButton slug={trip.slug} variant="button" />
-                <ShareButton title={trip.title} tripId={trip.id} />
+                <ShareButton title={formatTripTitle(trip.title)} tripId={trip.id} />
                 <DownloadTripButton />
               </div>
             </div>
