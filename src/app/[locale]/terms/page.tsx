@@ -1,37 +1,17 @@
 import type { Metadata } from "next";
 
+import { prisma } from "@/server/prisma";
+import { DEFAULT_TERMS_SECTIONS, parseTermsSections } from "@/lib/siteContent";
+
 export const metadata: Metadata = {
   title: "Үйлчилгээний нөхцөл",
 };
 
-const SECTIONS = [
-  {
-    title: "1. Хүсэлт ба баталгаажуулалт",
-    body: "Энэ сайтаар илгээсэн хүсэлт нь захиалга биш — аялал сонирхож буй хүсэлт бөгөөд суудал автоматаар хадгалагдахгүй. Хүсэлт илгээсний дараа манай ажилтан утсаар тантай холбогдож, эцсийн үнэ, огноо, нөхцөлийг тодруулсны дараа л захиалга баталгаажина.",
-  },
-  {
-    title: "2. Төлбөр",
-    body: "Энэ сайт дээр төлбөр тооцоо хийгдэхгүй. Төлбөрийн хэлбэр (бэлнээр, дансаар гэх мэт), хэмжээ, урьдчилгааны нөхцөлийг манай ажилтантай утсаар ярилцаж тохирно. Аяллын хуудсан дахь үнэ нь урьдчилсан тооцоо бөгөөд эцсийн үнийг ажилтан тодруулж хэлнэ.",
-  },
-  {
-    title: "3. Үнэд багтах зүйл",
-    body: "Аялал бүрийн хуудсанд багцад багтсан болон багтаагүй зүйлсийг тусад нь жагсаасан байна. Виз, хувийн зардал, нэмэлт үйлчилгээ нь тухайн аялалд тусгайлан заагаагүй бол багцад ороогүй болно.",
-  },
-  {
-    title: "4. Цуцлалт ба буцаалт",
-    body: "Цуцлалтын нөхцөл аялал тус бүрээр өөр байж болох тул тухайн аяллын хуудсан дахь цуцлалтын нөхцөлийг уншина уу. Төлбөр манай ажилтантай шууд тохиролцсоны үндсэн дээр хийгддэг тул цуцлалт, буцаалтын нарийвчилсан нөхцөлийг захиалга баталгаажих үед ажилтнаас тодруулна уу.",
-  },
-  {
-    title: "5. Аялагчийн үүрэг",
-    body: "Аялагч нь гадаад паспорт, виз болон бусад шаардлагатай бичиг баримтаа хүчинтэй эсэхийг өөрөө хариуцна. Бичиг баримтын дутагдлаас үүдэн аялалд оролцох боломжгүй болсон тохиолдолд төлбөр буцаагдахгүй.",
-  },
-  {
-    title: "6. Хувийн мэдээлэл",
-    body: "Захиалгын явцад цуглуулсан мэдээллийг зөвхөн аяллын зохион байгуулалт, холбоо барих зорилгоор ашиглана. Гуравдагч этгээдэд аяллын үйлчилгээ үзүүлэхэд шаардлагатайгаас бусад тохиолдолд дамжуулахгүй.",
-  },
-];
+export default async function TermsPage() {
+  const settings = await prisma.siteSettings.findUnique({ where: { id: "default" } });
+  const parsed = parseTermsSections(settings?.termsSections);
+  const sections = parsed && parsed.length > 0 ? parsed : DEFAULT_TERMS_SECTIONS;
 
-export default function TermsPage() {
   return (
     <div className="uudam-container max-w-3xl py-12">
       <h1 className="text-3xl font-bold">Үйлчилгээний нөхцөл</h1>
@@ -40,8 +20,8 @@ export default function TermsPage() {
       </p>
 
       <div className="mt-8 space-y-7">
-        {SECTIONS.map((section) => (
-          <section key={section.title}>
+        {sections.map((section, index) => (
+          <section key={`${section.title}-${index}`}>
             <h2 className="text-lg font-semibold">{section.title}</h2>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{section.body}</p>
           </section>

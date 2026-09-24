@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+import { prisma } from "@/server/prisma";
+import { DEFAULT_CUSTOM_TRIP_BODY, DEFAULT_CUSTOM_TRIP_TITLE } from "@/lib/siteContent";
 import LeadForm from "@/components/lead/LeadForm";
 
 export const metadata: Metadata = {
@@ -18,16 +20,16 @@ export const metadata: Metadata = {
  * misses every departure simply leaves — and 11 of the catalogue's trips have
  * no published departure at all, so that visitor is not rare.
  */
-export default function CustomTripPage() {
+export default async function CustomTripPage() {
+  const settings = await prisma.siteSettings.findUnique({ where: { id: "default" } });
+  const title = settings?.customTripTitle || DEFAULT_CUSTOM_TRIP_TITLE;
+  const body = settings?.customTripBody || DEFAULT_CUSTOM_TRIP_BODY;
+
   return (
     <div className="uudam-container max-w-2xl py-10">
       <header className="text-center">
-        <h1 className="text-2xl font-bold md:text-3xl">Огноо тохирохгүй байна уу?</h1>
-        <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
-          Гэр бүл, найз нөхөд, хамт олондоо зориулж өөрийн огноогоор аялал зохион байгуулж
-          өгнө. Хүссэн чиглэл, ойролцоо огноогоо үлдээгээрэй — ажилтан тантай холбогдож
-          нарийвчилсан хөтөлбөр, үнийн санал бэлдэнэ.
-        </p>
+        <h1 className="text-2xl font-bold md:text-3xl">{title}</h1>
+        <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">{body}</p>
       </header>
 
       <div className="mt-8">

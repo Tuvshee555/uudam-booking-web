@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+import { prisma } from "@/server/prisma";
+import { DEFAULT_GIFT_BODY, DEFAULT_GIFT_TITLE } from "@/lib/siteContent";
 import LeadForm from "@/components/lead/LeadForm";
 
 export const metadata: Metadata = {
@@ -18,16 +20,16 @@ export const metadata: Metadata = {
  * checkout here by design, so this captures the lead and staff arrange payment
  * the same way they close every other sale.
  */
-export default function GiftPage() {
+export default async function GiftPage() {
+  const settings = await prisma.siteSettings.findUnique({ where: { id: "default" } });
+  const title = settings?.giftTitle || DEFAULT_GIFT_TITLE;
+  const body = settings?.giftBody || DEFAULT_GIFT_BODY;
+
   return (
     <div className="uudam-container max-w-2xl py-10">
       <header className="text-center">
-        <h1 className="text-2xl font-bold md:text-3xl">Аялал бэлэглээрэй 🎁</h1>
-        <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
-          Төрсөн өдөр, ой, баярт өдөрт зориулж аяллын бэлгийн эрхийн бичиг захиалаарай.
-          Тодорхой аяллаар эсвэл өөрийн сонгосон дүнгээр болно. Ажилтан тантай холбогдож
-          төлбөр, хүлээн авагчийн мэдээллийг тохирно.
-        </p>
+        <h1 className="text-2xl font-bold md:text-3xl">{title}</h1>
+        <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">{body}</p>
       </header>
 
       <div className="mt-8">

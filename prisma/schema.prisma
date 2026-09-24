@@ -490,6 +490,34 @@ model SiteSettings {
   /// falls back to the original hardcoded 4 cards, same reason as above.
   aboutValues Json?
 
+  /// Homepage hero — the single most visible copy on the site. `TitleAccent`
+  /// is the second line, rendered in gold (see HomeClient.tsx's hero).
+  homeHeroTitle       String?
+  homeHeroTitleAccent String?
+  homeHeroSubtitle    String?
+
+  /// The "dates don't work" escape hatch — appears twice: a short teaser CTA
+  /// on the homepage (homeCustomCta*) and the full header on its own page
+  /// (customTrip*). Two fields because the two spots wanted different
+  /// wording even before this was editable; kept separate rather than
+  /// force one piece of copy into two visual contexts.
+  homeCustomCtaTitle String?
+  homeCustomCtaBody  String?
+  customTripTitle    String?
+  customTripBody     String?
+
+  /// The gift-voucher request page's header.
+  giftTitle String?
+  giftBody  String?
+
+  /// /faq — {q, a}[]. Null falls back to the original hardcoded list.
+  faqs Json?
+
+  /// /terms — {title, body}[]. Null falls back to the original hardcoded
+  /// sections. Policy wording (cancellation terms, payment terms) is exactly
+  /// what a client most wants to self-edit without a developer.
+  termsSections Json?
+
   updatedAt DateTime @updatedAt
 }
 

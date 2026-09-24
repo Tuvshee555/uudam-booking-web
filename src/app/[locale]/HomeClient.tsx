@@ -15,6 +15,13 @@ import type { CategoryNode, Trip } from "@/types/trip";
 import { availability, formatMonthShort, upcomingDepartures } from "@/lib/departures";
 import { departureSeatFact } from "@/lib/tripMarketing";
 import { formatTripTitle } from "@/lib/tripDisplay";
+import {
+  DEFAULT_HOME_CUSTOM_CTA_BODY,
+  DEFAULT_HOME_CUSTOM_CTA_TITLE,
+  DEFAULT_HOME_HERO_SUBTITLE,
+  DEFAULT_HOME_HERO_TITLE,
+  DEFAULT_HOME_HERO_TITLE_ACCENT,
+} from "@/lib/siteContent";
 import TripCard from "@/components/trip/TripCard";
 import RecentlyViewedStrip from "@/components/trip/RecentlyViewedStrip";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
@@ -267,14 +274,21 @@ function DepartingSoon({ trips, base }: { trips: Trip[]; base: string }) {
  * published departure at all — so the homepage needs a route for the person
  * whose schedule fits nothing on offer.
  */
-function CustomTripCta({ base }: { base: string }) {
+function CustomTripCta({
+  base,
+  title,
+  body,
+}: {
+  base: string;
+  title: string;
+  body: string;
+}) {
   return (
     <section className="uudam-container py-14">
       <div className="rounded-3xl border border-border bg-secondary/40 p-8 text-center sm:p-12">
-        <h2 className="text-2xl font-bold md:text-3xl">Огноо тохирохгүй байна уу?</h2>
+        <h2 className="text-2xl font-bold md:text-3xl">{title}</h2>
         <p className="mx-auto mt-3 max-w-xl text-[15px] leading-relaxed text-muted-foreground">
-          Гэр бүл, найз нөхөд, хамт олондоо зориулж өөрийн огноогоор аялал зохион байгуулж
-          өгнө. Хүссэн чиглэлээ хэлэхэд ажилтан хөтөлбөр, үнийн санал бэлдэнэ.
+          {body}
         </p>
         <Button asChild size="lg" className="mt-6">
           <Link href={`${base}/custom-trip`}>Захиалгат аялал хүсэх</Link>
@@ -289,6 +303,11 @@ export default function HomeClient({
   initialCategories,
   trustBar,
   reviewsSection,
+  heroTitle,
+  heroTitleAccent,
+  heroSubtitle,
+  customCtaTitle,
+  customCtaBody,
 }: {
   initialTrips?: Trip[];
   initialCategories?: CategoryNode[];
@@ -300,6 +319,13 @@ export default function HomeClient({
   trustBar?: ReactNode;
   /** Same reasoning as trustBar — reads Testimonial rows server-side. */
   reviewsSection?: ReactNode;
+  /** Admin-editable copy from SiteSettings — null/undefined falls back to
+      the original hardcoded strings, same pattern as the about page. */
+  heroTitle?: string | null;
+  heroTitleAccent?: string | null;
+  heroSubtitle?: string | null;
+  customCtaTitle?: string | null;
+  customCtaBody?: string | null;
 }) {
   const { locale } = useI18n();
   const base = `/${locale}`;
@@ -316,12 +342,11 @@ export default function HomeClient({
           <div className="max-w-3xl">
             <span className="uudam-eyebrow">Uudam Travel Agency</span>
             <h1 className="mt-3 max-w-2xl text-5xl font-bold leading-[0.98] tracking-tight text-white sm:text-6xl lg:text-7xl">
-              Дараагийн аялалаа
-              <span className="block text-gold">эндээс эхлүүл</span>
+              {heroTitle || DEFAULT_HOME_HERO_TITLE}
+              <span className="block text-gold">{heroTitleAccent || DEFAULT_HOME_HERO_TITLE_ACCENT}</span>
             </h1>
             <p className="mt-6 max-w-xl text-base leading-relaxed text-white/85 md:text-lg">
-              Хөтөлбөр, үнэ, хөдлөх огноо, үлдсэн суудал — бүгд ил тод. Хүссэн аялалаа
-              сонгоод шууд захиал.
+              {heroSubtitle || DEFAULT_HOME_HERO_SUBTITLE}
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
@@ -420,7 +445,11 @@ export default function HomeClient({
 
       {reviewsSection}
 
-      <CustomTripCta base={base} />
+      <CustomTripCta
+        base={base}
+        title={customCtaTitle || DEFAULT_HOME_CUSTOM_CTA_TITLE}
+        body={customCtaBody || DEFAULT_HOME_CUSTOM_CTA_BODY}
+      />
     </div>
   );
 }
