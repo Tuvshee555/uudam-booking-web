@@ -477,6 +477,19 @@ model SiteSettings {
   /// and account names without a developer.
   bankDetails String?
 
+  /// The "Бидний тухай" (about) page's own hero copy — was hardcoded in
+  /// src/app/[locale]/about/page.tsx until the client asked to edit it
+  /// herself. Null falls back to the original copy so the page never goes
+  /// blank before she's touched this.
+  aboutHeroTitle    String?
+  aboutHeroSubtitle String?
+
+  /// The 4 value cards under the about-page hero — {icon, title, text}[],
+  /// icon a key into the fixed lucide-react set the admin form offers (not
+  /// a free string, so a typo can't silently drop a card's icon). Null
+  /// falls back to the original hardcoded 4 cards, same reason as above.
+  aboutValues Json?
+
   updatedAt DateTime @updatedAt
 }
 
