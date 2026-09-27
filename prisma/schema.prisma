@@ -492,9 +492,13 @@ model SiteSettings {
 
   /// Homepage hero — the single most visible copy on the site. `TitleAccent`
   /// is the second line, rendered in gold (see HomeClient.tsx's hero).
+  homeHeroEyebrow     String?
   homeHeroTitle       String?
   homeHeroTitleAccent String?
   homeHeroSubtitle    String?
+  homeHeroPrimaryCta   String?
+  homeHeroSecondaryCta String?
+  homeHeroBadge        String?
 
   /// The rotating hero photos on the homepage — string[], each a
   /// res.cloudinary.com or images.unsplash.com URL (the only two hosts
@@ -504,6 +508,13 @@ model SiteSettings {
   /// photo is a small or compressed upload — the fallback keeps that
   /// guarantee for a client who hasn't set her own photos yet.
   homeHeroImages Json?
+
+  /// TrustBar's first 2 facts — {icon, title, text}[]. The 3rd fact (phone)
+  /// keeps its dynamic CONTACT.phone interpolation via trustPhoneText's
+  /// {{phone}} placeholder; the 4th (live trip count) is never exposed here
+  /// — see src/lib/siteContent.ts's TrustFact comment for why.
+  trustFacts     Json?
+  trustPhoneText String?
 
   /// The "dates don't work" escape hatch — appears twice: a short teaser CTA
   /// on the homepage (homeCustomCta*) and the full header on its own page

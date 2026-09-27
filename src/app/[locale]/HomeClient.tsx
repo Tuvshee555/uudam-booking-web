@@ -18,7 +18,11 @@ import { formatTripTitle } from "@/lib/tripDisplay";
 import {
   DEFAULT_HOME_CUSTOM_CTA_BODY,
   DEFAULT_HOME_CUSTOM_CTA_TITLE,
+  DEFAULT_HOME_HERO_BADGE,
+  DEFAULT_HOME_HERO_EYEBROW,
   DEFAULT_HOME_HERO_IMAGES,
+  DEFAULT_HOME_HERO_PRIMARY_CTA,
+  DEFAULT_HOME_HERO_SECONDARY_CTA,
   DEFAULT_HOME_HERO_SUBTITLE,
   DEFAULT_HOME_HERO_TITLE,
   DEFAULT_HOME_HERO_TITLE_ACCENT,
@@ -54,7 +58,7 @@ function CategoryThumb({ src, alt }: { src: string | null | undefined; alt: stri
   );
 }
 
-function HeroSlideshow({ images }: { images: string[] }) {
+function HeroSlideshow({ images, badge }: { images: string[]; badge: string }) {
   const [active, setActive] = useState(0);
 
   useEffect(() => {
@@ -116,7 +120,7 @@ function HeroSlideshow({ images }: { images: string[] }) {
 
       <div className="absolute bottom-5 right-4 z-20 hidden items-center gap-2 rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-navy-deep shadow-sm backdrop-blur sm:flex">
         <span className="h-1.5 w-1.5 rounded-full bg-gold" />
-        Шинэ аялалууд долоо бүр нэмэгдэнэ
+        {badge}
       </div>
 
       <div className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 gap-2">
@@ -292,10 +296,14 @@ export default function HomeClient({
   initialCategories,
   trustBar,
   reviewsSection,
+  heroEyebrow,
   heroTitle,
   heroTitleAccent,
   heroSubtitle,
   heroImages,
+  heroPrimaryCta,
+  heroSecondaryCta,
+  heroBadge,
   customCtaTitle,
   customCtaBody,
 }: {
@@ -311,10 +319,14 @@ export default function HomeClient({
   reviewsSection?: ReactNode;
   /** Admin-editable copy from SiteSettings — null/undefined falls back to
       the original hardcoded strings, same pattern as the about page. */
+  heroEyebrow?: string | null;
   heroTitle?: string | null;
   heroTitleAccent?: string | null;
   heroSubtitle?: string | null;
   heroImages?: string[] | null;
+  heroPrimaryCta?: string | null;
+  heroSecondaryCta?: string | null;
+  heroBadge?: string | null;
   customCtaTitle?: string | null;
   customCtaBody?: string | null;
 }) {
@@ -328,11 +340,11 @@ export default function HomeClient({
   return (
     <div>
       <section className="relative isolate flex min-h-[430px] overflow-hidden bg-navy-deep text-white md:min-h-[500px] lg:min-h-[540px]">
-        <HeroSlideshow images={slides} />
+        <HeroSlideshow images={slides} badge={heroBadge || DEFAULT_HOME_HERO_BADGE} />
 
         <div className="uudam-container relative z-10 flex min-h-[430px] items-center py-14 md:min-h-[500px] lg:min-h-[540px]">
           <div className="max-w-3xl">
-            <span className="uudam-eyebrow">Uudam Travel Agency</span>
+            <span className="uudam-eyebrow">{heroEyebrow || DEFAULT_HOME_HERO_EYEBROW}</span>
             <h1 className="mt-3 max-w-2xl text-5xl font-bold leading-[0.98] tracking-tight text-white sm:text-6xl lg:text-7xl">
               {heroTitle || DEFAULT_HOME_HERO_TITLE}
               <span className="block text-gold">{heroTitleAccent || DEFAULT_HOME_HERO_TITLE_ACCENT}</span>
@@ -344,7 +356,7 @@ export default function HomeClient({
             <div className="mt-8 flex flex-wrap gap-3">
               <Button asChild size="lg" className="bg-white text-navy-deep hover:bg-white/90">
                 <Link href={`${base}/trips`}>
-                  Аялал үзэх
+                  {heroPrimaryCta || DEFAULT_HOME_HERO_PRIMARY_CTA}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
@@ -354,7 +366,7 @@ export default function HomeClient({
                 variant="outline"
                 className="border-white/45 bg-white/10 text-white backdrop-blur hover:bg-white hover:text-navy-deep"
               >
-                <Link href={`${base}/contact`}>Зөвлөгөө авах</Link>
+                <Link href={`${base}/contact`}>{heroSecondaryCta || DEFAULT_HOME_HERO_SECONDARY_CTA}</Link>
               </Button>
             </div>
           </div>

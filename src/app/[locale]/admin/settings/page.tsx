@@ -22,13 +22,20 @@ import {
   DEFAULT_GIFT_TITLE,
   DEFAULT_HOME_CUSTOM_CTA_BODY,
   DEFAULT_HOME_CUSTOM_CTA_TITLE,
+  DEFAULT_HOME_HERO_BADGE,
+  DEFAULT_HOME_HERO_EYEBROW,
   DEFAULT_HOME_HERO_IMAGES,
+  DEFAULT_HOME_HERO_PRIMARY_CTA,
+  DEFAULT_HOME_HERO_SECONDARY_CTA,
   DEFAULT_HOME_HERO_SUBTITLE,
   DEFAULT_HOME_HERO_TITLE,
   DEFAULT_HOME_HERO_TITLE_ACCENT,
   DEFAULT_TERMS_SECTIONS,
+  DEFAULT_TRUST_FACTS,
+  DEFAULT_TRUST_PHONE_TEXT,
   type FaqItem,
   type TermsSection,
+  type TrustFact,
 } from "@/lib/siteContent";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,10 +49,14 @@ type SettingsResponse = {
   aboutHeroTitle: string | null;
   aboutHeroSubtitle: string | null;
   aboutValues: AboutValue[] | null;
+  homeHeroEyebrow: string | null;
   homeHeroTitle: string | null;
   homeHeroTitleAccent: string | null;
   homeHeroSubtitle: string | null;
   homeHeroImages: string[] | null;
+  homeHeroPrimaryCta: string | null;
+  homeHeroSecondaryCta: string | null;
+  homeHeroBadge: string | null;
   homeCustomCtaTitle: string | null;
   homeCustomCtaBody: string | null;
   customTripTitle: string | null;
@@ -54,6 +65,8 @@ type SettingsResponse = {
   giftBody: string | null;
   faqs: FaqItem[] | null;
   termsSections: TermsSection[] | null;
+  trustFacts: TrustFact[] | null;
+  trustPhoneText: string | null;
 };
 
 function Card({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
@@ -114,10 +127,17 @@ export default function AdminSettingsPage() {
   const [aboutSubtitleDraft, setAboutSubtitleDraft] = useState<string | undefined>(undefined);
   const [aboutValuesDraft, setAboutValuesDraft] = useState<AboutValue[] | undefined>(undefined);
 
+  const [homeEyebrowDraft, setHomeEyebrowDraft] = useState<string | undefined>(undefined);
   const [homeTitleDraft, setHomeTitleDraft] = useState<string | undefined>(undefined);
   const [homeAccentDraft, setHomeAccentDraft] = useState<string | undefined>(undefined);
   const [homeSubtitleDraft, setHomeSubtitleDraft] = useState<string | undefined>(undefined);
   const [homeImagesDraft, setHomeImagesDraft] = useState<string[] | undefined>(undefined);
+  const [homePrimaryCtaDraft, setHomePrimaryCtaDraft] = useState<string | undefined>(undefined);
+  const [homeSecondaryCtaDraft, setHomeSecondaryCtaDraft] = useState<string | undefined>(undefined);
+  const [homeBadgeDraft, setHomeBadgeDraft] = useState<string | undefined>(undefined);
+
+  const [trustFactsDraft, setTrustFactsDraft] = useState<TrustFact[] | undefined>(undefined);
+  const [trustPhoneTextDraft, setTrustPhoneTextDraft] = useState<string | undefined>(undefined);
 
   const [homeCtaTitleDraft, setHomeCtaTitleDraft] = useState<string | undefined>(undefined);
   const [homeCtaBodyDraft, setHomeCtaBodyDraft] = useState<string | undefined>(undefined);
@@ -137,11 +157,19 @@ export default function AdminSettingsPage() {
     aboutValuesDraft ??
     (data?.aboutValues && data.aboutValues.length > 0 ? data.aboutValues : DEFAULT_ABOUT_VALUES);
 
+  const homeEyebrow = homeEyebrowDraft ?? data?.homeHeroEyebrow ?? DEFAULT_HOME_HERO_EYEBROW;
   const homeTitle = homeTitleDraft ?? data?.homeHeroTitle ?? DEFAULT_HOME_HERO_TITLE;
   const homeAccent = homeAccentDraft ?? data?.homeHeroTitleAccent ?? DEFAULT_HOME_HERO_TITLE_ACCENT;
   const homeSubtitle = homeSubtitleDraft ?? data?.homeHeroSubtitle ?? DEFAULT_HOME_HERO_SUBTITLE;
   const homeImages =
     homeImagesDraft ?? (data?.homeHeroImages && data.homeHeroImages.length > 0 ? data.homeHeroImages : DEFAULT_HOME_HERO_IMAGES);
+  const homePrimaryCta = homePrimaryCtaDraft ?? data?.homeHeroPrimaryCta ?? DEFAULT_HOME_HERO_PRIMARY_CTA;
+  const homeSecondaryCta = homeSecondaryCtaDraft ?? data?.homeHeroSecondaryCta ?? DEFAULT_HOME_HERO_SECONDARY_CTA;
+  const homeBadge = homeBadgeDraft ?? data?.homeHeroBadge ?? DEFAULT_HOME_HERO_BADGE;
+
+  const trustFacts =
+    trustFactsDraft ?? (data?.trustFacts && data.trustFacts.length > 0 ? data.trustFacts : DEFAULT_TRUST_FACTS);
+  const trustPhoneText = trustPhoneTextDraft ?? data?.trustPhoneText ?? DEFAULT_TRUST_PHONE_TEXT;
 
   const homeCtaTitle = homeCtaTitleDraft ?? data?.homeCustomCtaTitle ?? DEFAULT_HOME_CUSTOM_CTA_TITLE;
   const homeCtaBody = homeCtaBodyDraft ?? data?.homeCustomCtaBody ?? DEFAULT_HOME_CUSTOM_CTA_BODY;
@@ -161,6 +189,16 @@ export default function AdminSettingsPage() {
   }
   function addHomeImage() {
     setHomeImagesDraft([...homeImages, ""]);
+  }
+
+  function updateTrustFact(index: number, patch: Partial<TrustFact>) {
+    setTrustFactsDraft(trustFacts.map((f, i) => (i === index ? { ...f, ...patch } : f)));
+  }
+  function removeTrustFact(index: number) {
+    setTrustFactsDraft(trustFacts.filter((_, i) => i !== index));
+  }
+  function addTrustFact() {
+    setTrustFactsDraft([...trustFacts, { icon: "sparkles", title: "", text: "" }]);
   }
 
   function updateAboutValue(index: number, patch: Partial<AboutValue>) {
@@ -200,10 +238,16 @@ export default function AdminSettingsPage() {
         aboutHeroTitle: aboutTitle.trim() || null,
         aboutHeroSubtitle: aboutSubtitle.trim() || null,
         aboutValues,
+        homeHeroEyebrow: homeEyebrow.trim() || null,
         homeHeroTitle: homeTitle.trim() || null,
         homeHeroTitleAccent: homeAccent.trim() || null,
         homeHeroSubtitle: homeSubtitle.trim() || null,
         homeHeroImages: homeImages.filter((url) => url.trim().length > 0),
+        homeHeroPrimaryCta: homePrimaryCta.trim() || null,
+        homeHeroSecondaryCta: homeSecondaryCta.trim() || null,
+        homeHeroBadge: homeBadge.trim() || null,
+        trustFacts,
+        trustPhoneText: trustPhoneText.trim() || null,
         homeCustomCtaTitle: homeCtaTitle.trim() || null,
         homeCustomCtaBody: homeCtaBody.trim() || null,
         customTripTitle: customTripTitle.trim() || null,
@@ -255,6 +299,10 @@ export default function AdminSettingsPage() {
       <Card title="Нүүр хуудасны толгой хэсэг" hint="Сайтад орсон даруйдаа хамгийн түрүүнд харагдах бичвэр.">
         <div className="space-y-4">
           <div>
+            <Label>Жижиг бичвэр (гарчгийн дээр)</Label>
+            <Input value={homeEyebrow} onChange={(e) => setHomeEyebrowDraft(e.target.value)} className="mt-1.5" />
+          </div>
+          <div>
             <Label>Гарчиг (1-р мөр)</Label>
             <Input value={homeTitle} onChange={(e) => setHomeTitleDraft(e.target.value)} className="mt-1.5" />
           </div>
@@ -265,6 +313,20 @@ export default function AdminSettingsPage() {
           <div>
             <Label>Дэд гарчиг</Label>
             <Textarea value={homeSubtitle} onChange={(e) => setHomeSubtitleDraft(e.target.value)} rows={2} className="mt-1.5" />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label>Товч 1 (цагаан)</Label>
+              <Input value={homePrimaryCta} onChange={(e) => setHomePrimaryCtaDraft(e.target.value)} className="mt-1.5" />
+            </div>
+            <div>
+              <Label>Товч 2 (хүрээтэй)</Label>
+              <Input value={homeSecondaryCta} onChange={(e) => setHomeSecondaryCtaDraft(e.target.value)} className="mt-1.5" />
+            </div>
+          </div>
+          <div>
+            <Label>Баруун доод булангийн бичвэр</Label>
+            <Input value={homeBadge} onChange={(e) => setHomeBadgeDraft(e.target.value)} className="mt-1.5" />
           </div>
 
           <div className="border-t border-border pt-4">
@@ -302,6 +364,75 @@ export default function AdminSettingsPage() {
               <Plus className="h-4 w-4" />
               Зураг нэмэх
             </button>
+          </div>
+        </div>
+      </Card>
+
+      <Card
+        title="Итгэлийн зурвас (нүүр хуудас, гарчгийн доор)"
+        hint='Эхний 2 хайрцаг чөлөөтэй засварлана. 3-р хайрцгийн бичвэрт "{{phone}}" гэж бичвэл таны утасны дугаараар автоматаар солигдоно. 4-р хайрцаг (аяллын тоо) бодит тоо тул засварлагдахгүй.'
+      >
+        <div className="space-y-3">
+          {trustFacts.map((fact, index) => {
+            const Icon = aboutIcon(fact.icon);
+            return (
+              <div key={index} className="rounded-xl border border-border bg-secondary/30 p-3">
+                <div className="flex items-start gap-2">
+                  <select
+                    value={fact.icon}
+                    onChange={(e) => updateTrustFact(index, { icon: e.target.value })}
+                    className="flex h-9 shrink-0 items-center rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    aria-label="Icon"
+                  >
+                    {ABOUT_ICON_OPTIONS.map((key) => (
+                      <option key={key} value={key}>
+                        {key}
+                      </option>
+                    ))}
+                  </select>
+                  <Icon className="mt-2 h-4 w-4 shrink-0 text-primary" />
+                  <Input
+                    value={fact.title}
+                    onChange={(e) => updateTrustFact(index, { title: e.target.value })}
+                    placeholder="Гарчиг"
+                    className="flex-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeTrustFact(index)}
+                    className="mt-1.5 shrink-0 rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    aria-label="Устгах"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+                <Textarea
+                  value={fact.text}
+                  onChange={(e) => updateTrustFact(index, { text: e.target.value })}
+                  placeholder="Тайлбар"
+                  rows={2}
+                  className="mt-2"
+                />
+              </div>
+            );
+          })}
+          <button
+            type="button"
+            onClick={addTrustFact}
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border py-2.5 text-sm font-medium text-muted-foreground hover:border-primary/40 hover:text-primary"
+          >
+            <Plus className="h-4 w-4" />
+            Хайрцаг нэмэх
+          </button>
+
+          <div className="border-t border-border pt-3">
+            <Label>3-р хайрцгийн бичвэр (утас)</Label>
+            <Textarea
+              value={trustPhoneText}
+              onChange={(e) => setTrustPhoneTextDraft(e.target.value)}
+              rows={2}
+              className="mt-1.5"
+            />
           </div>
         </div>
       </Card>

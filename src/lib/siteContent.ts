@@ -14,10 +14,14 @@
 export type FaqItem = { q: string; a: string };
 export type TermsSection = { title: string; body: string };
 
+export const DEFAULT_HOME_HERO_EYEBROW = "Uudam Travel Agency";
 export const DEFAULT_HOME_HERO_TITLE = "Дараагийн аялалаа";
 export const DEFAULT_HOME_HERO_TITLE_ACCENT = "эндээс эхлүүл";
 export const DEFAULT_HOME_HERO_SUBTITLE =
   "Хөтөлбөр, үнэ, хөдлөх огноо, үлдсэн суудал — бүгд ил тод. Хүссэн аялалаа сонгоод шууд захиал.";
+export const DEFAULT_HOME_HERO_PRIMARY_CTA = "Аялал үзэх";
+export const DEFAULT_HOME_HERO_SECONDARY_CTA = "Зөвлөгөө авах";
+export const DEFAULT_HOME_HERO_BADGE = "Шинэ аялалууд долоо бүр нэмэгдэнэ";
 
 /** Curated so the hero stays visually consistent even when a real trip photo
     is a small or compressed upload — see homeHeroImages in schema.prisma. */
@@ -37,6 +41,43 @@ export function parseHeroImages(value: unknown): string[] | undefined {
     .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
     .map((item) => item.trim().slice(0, 1000))
     .slice(0, 10);
+}
+
+/**
+ * TrustBar's first 2 facts (icon, title, text) — free text, same {icon,
+ * title, text} shape as the About page's value cards. The 3rd fact (phone)
+ * keeps its dynamic CONTACT.phone interpolation and only exposes its text
+ * as a template with a {{phone}} placeholder; the 4th (live trip count)
+ * isn't exposed at all — faking that number would contradict the file's
+ * own "real, verifiable facts only" design.
+ */
+export type TrustFact = { icon: string; title: string; text: string };
+
+export const DEFAULT_TRUST_FACTS: TrustFact[] = [
+  { icon: "compass", title: "Мэргэжлийн хөтөч", text: "Туршлагатай хөтөч дагалдана." },
+  {
+    icon: "shield",
+    title: "Ил тод үнэ",
+    text: "Багцад юу багтсан, юу ороогүйг урьдчилан бүрэн харуулна.",
+  },
+];
+
+export const DEFAULT_TRUST_PHONE_TEXT = "{{phone}} дугаараар эсвэл Messenger-ээр ажилтантай шууд ярина.";
+export const DEFAULT_TRUST_PHONE_TEXT_NO_PHONE = "Ажилтантай Messenger-ээр шууд холбогдоно.";
+
+/** Validates and clamps admin-submitted trust facts — never trust JSON off the wire. */
+export function parseTrustFacts(value: unknown): TrustFact[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+
+  return value
+    .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+    .map((item) => ({
+      icon: typeof item.icon === "string" ? item.icon : "sparkles",
+      title: typeof item.title === "string" ? item.title.trim().slice(0, 120) : "",
+      text: typeof item.text === "string" ? item.text.trim().slice(0, 300) : "",
+    }))
+    .filter((item) => item.title || item.text)
+    .slice(0, 6);
 }
 
 export const DEFAULT_CUSTOM_TRIP_TITLE = "Огноо тохирохгүй байна уу?";

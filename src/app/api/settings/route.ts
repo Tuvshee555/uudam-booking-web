@@ -5,7 +5,7 @@ import { requireAdmin } from "@/server/auth";
 import { handler, json, publicCache, readJson, safeText } from "@/server/http";
 import { cached, invalidate } from "@/server/cache";
 import { parseAboutValues } from "@/lib/aboutContent";
-import { parseFaqs, parseHeroImages, parseTermsSections } from "@/lib/siteContent";
+import { parseFaqs, parseHeroImages, parseTermsSections, parseTrustFacts } from "@/lib/siteContent";
 
 /**
  * GET /api/settings — public. Just the fields the storefront needs to render.
@@ -19,9 +19,14 @@ export const GET = handler(async () => {
       aboutHeroTitle: row?.aboutHeroTitle ?? null,
       aboutHeroSubtitle: row?.aboutHeroSubtitle ?? null,
       aboutValues: row?.aboutValues ?? null,
+      homeHeroEyebrow: row?.homeHeroEyebrow ?? null,
       homeHeroTitle: row?.homeHeroTitle ?? null,
       homeHeroTitleAccent: row?.homeHeroTitleAccent ?? null,
       homeHeroSubtitle: row?.homeHeroSubtitle ?? null,
+      homeHeroPrimaryCta: row?.homeHeroPrimaryCta ?? null,
+      homeHeroSecondaryCta: row?.homeHeroSecondaryCta ?? null,
+      homeHeroBadge: row?.homeHeroBadge ?? null,
+      homeHeroImages: row?.homeHeroImages ?? null,
       homeCustomCtaTitle: row?.homeCustomCtaTitle ?? null,
       homeCustomCtaBody: row?.homeCustomCtaBody ?? null,
       customTripTitle: row?.customTripTitle ?? null,
@@ -30,7 +35,8 @@ export const GET = handler(async () => {
       giftBody: row?.giftBody ?? null,
       faqs: row?.faqs ?? null,
       termsSections: row?.termsSections ?? null,
-      homeHeroImages: row?.homeHeroImages ?? null,
+      trustFacts: row?.trustFacts ?? null,
+      trustPhoneText: row?.trustPhoneText ?? null,
     };
   });
 
@@ -51,9 +57,15 @@ export const PUT = handler(async (req: Request) => {
   const aboutValues =
     body.aboutValues === undefined ? undefined : (parseAboutValues(body.aboutValues) ?? Prisma.JsonNull);
 
+  const homeHeroEyebrow = safeText(body.homeHeroEyebrow, 100);
   const homeHeroTitle = safeText(body.homeHeroTitle, 200);
   const homeHeroTitleAccent = safeText(body.homeHeroTitleAccent, 200);
   const homeHeroSubtitle = safeText(body.homeHeroSubtitle, 400);
+  const homeHeroPrimaryCta = safeText(body.homeHeroPrimaryCta, 60);
+  const homeHeroSecondaryCta = safeText(body.homeHeroSecondaryCta, 60);
+  const homeHeroBadge = safeText(body.homeHeroBadge, 100);
+  const homeHeroImages =
+    body.homeHeroImages === undefined ? undefined : (parseHeroImages(body.homeHeroImages) ?? Prisma.JsonNull);
 
   const homeCustomCtaTitle = safeText(body.homeCustomCtaTitle, 200);
   const homeCustomCtaBody = safeText(body.homeCustomCtaBody, 600);
@@ -66,8 +78,10 @@ export const PUT = handler(async (req: Request) => {
   const faqs = body.faqs === undefined ? undefined : (parseFaqs(body.faqs) ?? Prisma.JsonNull);
   const termsSections =
     body.termsSections === undefined ? undefined : (parseTermsSections(body.termsSections) ?? Prisma.JsonNull);
-  const homeHeroImages =
-    body.homeHeroImages === undefined ? undefined : (parseHeroImages(body.homeHeroImages) ?? Prisma.JsonNull);
+
+  const trustFacts =
+    body.trustFacts === undefined ? undefined : (parseTrustFacts(body.trustFacts) ?? Prisma.JsonNull);
+  const trustPhoneText = safeText(body.trustPhoneText, 300);
 
   const data = {
     tripNotice,
@@ -75,9 +89,14 @@ export const PUT = handler(async (req: Request) => {
     aboutHeroTitle,
     aboutHeroSubtitle,
     aboutValues,
+    homeHeroEyebrow,
     homeHeroTitle,
     homeHeroTitleAccent,
     homeHeroSubtitle,
+    homeHeroPrimaryCta,
+    homeHeroSecondaryCta,
+    homeHeroBadge,
+    homeHeroImages,
     homeCustomCtaTitle,
     homeCustomCtaBody,
     customTripTitle,
@@ -86,7 +105,8 @@ export const PUT = handler(async (req: Request) => {
     giftBody,
     faqs,
     termsSections,
-    homeHeroImages,
+    trustFacts,
+    trustPhoneText,
   };
 
   const row = await prisma.siteSettings.upsert({
@@ -103,9 +123,14 @@ export const PUT = handler(async (req: Request) => {
     aboutHeroTitle: row.aboutHeroTitle,
     aboutHeroSubtitle: row.aboutHeroSubtitle,
     aboutValues: row.aboutValues,
+    homeHeroEyebrow: row.homeHeroEyebrow,
     homeHeroTitle: row.homeHeroTitle,
     homeHeroTitleAccent: row.homeHeroTitleAccent,
     homeHeroSubtitle: row.homeHeroSubtitle,
+    homeHeroPrimaryCta: row.homeHeroPrimaryCta,
+    homeHeroSecondaryCta: row.homeHeroSecondaryCta,
+    homeHeroBadge: row.homeHeroBadge,
+    homeHeroImages: row.homeHeroImages,
     homeCustomCtaTitle: row.homeCustomCtaTitle,
     homeCustomCtaBody: row.homeCustomCtaBody,
     customTripTitle: row.customTripTitle,
@@ -114,6 +139,7 @@ export const PUT = handler(async (req: Request) => {
     giftBody: row.giftBody,
     faqs: row.faqs,
     termsSections: row.termsSections,
-    homeHeroImages: row.homeHeroImages,
+    trustFacts: row.trustFacts,
+    trustPhoneText: row.trustPhoneText,
   });
 });

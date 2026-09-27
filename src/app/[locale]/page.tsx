@@ -32,12 +32,16 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     <HomeClient
       initialTrips={trips}
       initialCategories={categories}
-      trustBar={<TrustBar />}
+      trustBar={<TrustBar settings={settings} />}
       reviewsSection={<ReviewsSection locale={locale} />}
+      heroEyebrow={settings?.homeHeroEyebrow}
       heroTitle={settings?.homeHeroTitle}
       heroTitleAccent={settings?.homeHeroTitleAccent}
       heroSubtitle={settings?.homeHeroSubtitle}
       heroImages={parseHeroImages(settings?.homeHeroImages) ?? null}
+      heroPrimaryCta={settings?.homeHeroPrimaryCta}
+      heroSecondaryCta={settings?.homeHeroSecondaryCta}
+      heroBadge={settings?.homeHeroBadge}
       customCtaTitle={settings?.homeCustomCtaTitle}
       customCtaBody={settings?.homeCustomCtaBody}
     />
