@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { prisma } from "@/server/prisma";
+import { getSiteSettings } from "@/server/siteSettings";
 import { DEFAULT_GIFT_BODY, DEFAULT_GIFT_TITLE } from "@/lib/siteContent";
 import LeadForm from "@/components/lead/LeadForm";
 
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
  * the same way they close every other sale.
  */
 export default async function GiftPage() {
-  const settings = await prisma.siteSettings.findUnique({ where: { id: "default" } });
+  const settings = await getSiteSettings();
   const title = settings?.giftTitle || DEFAULT_GIFT_TITLE;
   const body = settings?.giftBody || DEFAULT_GIFT_BODY;
 

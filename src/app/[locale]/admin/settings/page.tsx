@@ -22,6 +22,7 @@ import {
   DEFAULT_GIFT_TITLE,
   DEFAULT_HOME_CUSTOM_CTA_BODY,
   DEFAULT_HOME_CUSTOM_CTA_TITLE,
+  DEFAULT_HOME_HERO_IMAGES,
   DEFAULT_HOME_HERO_SUBTITLE,
   DEFAULT_HOME_HERO_TITLE,
   DEFAULT_HOME_HERO_TITLE_ACCENT,
@@ -33,6 +34,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import ImageUploadField from "@/components/admin/trip-form/ImageUploadField";
 
 type SettingsResponse = {
   tripNotice: string | null;
@@ -43,6 +45,7 @@ type SettingsResponse = {
   homeHeroTitle: string | null;
   homeHeroTitleAccent: string | null;
   homeHeroSubtitle: string | null;
+  homeHeroImages: string[] | null;
   homeCustomCtaTitle: string | null;
   homeCustomCtaBody: string | null;
   customTripTitle: string | null;
@@ -114,6 +117,7 @@ export default function AdminSettingsPage() {
   const [homeTitleDraft, setHomeTitleDraft] = useState<string | undefined>(undefined);
   const [homeAccentDraft, setHomeAccentDraft] = useState<string | undefined>(undefined);
   const [homeSubtitleDraft, setHomeSubtitleDraft] = useState<string | undefined>(undefined);
+  const [homeImagesDraft, setHomeImagesDraft] = useState<string[] | undefined>(undefined);
 
   const [homeCtaTitleDraft, setHomeCtaTitleDraft] = useState<string | undefined>(undefined);
   const [homeCtaBodyDraft, setHomeCtaBodyDraft] = useState<string | undefined>(undefined);
@@ -136,6 +140,8 @@ export default function AdminSettingsPage() {
   const homeTitle = homeTitleDraft ?? data?.homeHeroTitle ?? DEFAULT_HOME_HERO_TITLE;
   const homeAccent = homeAccentDraft ?? data?.homeHeroTitleAccent ?? DEFAULT_HOME_HERO_TITLE_ACCENT;
   const homeSubtitle = homeSubtitleDraft ?? data?.homeHeroSubtitle ?? DEFAULT_HOME_HERO_SUBTITLE;
+  const homeImages =
+    homeImagesDraft ?? (data?.homeHeroImages && data.homeHeroImages.length > 0 ? data.homeHeroImages : DEFAULT_HOME_HERO_IMAGES);
 
   const homeCtaTitle = homeCtaTitleDraft ?? data?.homeCustomCtaTitle ?? DEFAULT_HOME_CUSTOM_CTA_TITLE;
   const homeCtaBody = homeCtaBodyDraft ?? data?.homeCustomCtaBody ?? DEFAULT_HOME_CUSTOM_CTA_BODY;
@@ -146,6 +152,16 @@ export default function AdminSettingsPage() {
 
   const faqs = faqsDraft ?? (data?.faqs && data.faqs.length > 0 ? data.faqs : DEFAULT_FAQS);
   const terms = termsDraft ?? (data?.termsSections && data.termsSections.length > 0 ? data.termsSections : DEFAULT_TERMS_SECTIONS);
+
+  function updateHomeImage(index: number, url: string) {
+    setHomeImagesDraft(homeImages.map((v, i) => (i === index ? url : v)));
+  }
+  function removeHomeImage(index: number) {
+    setHomeImagesDraft(homeImages.filter((_, i) => i !== index));
+  }
+  function addHomeImage() {
+    setHomeImagesDraft([...homeImages, ""]);
+  }
 
   function updateAboutValue(index: number, patch: Partial<AboutValue>) {
     setAboutValuesDraft(aboutValues.map((v, i) => (i === index ? { ...v, ...patch } : v)));
@@ -187,6 +203,7 @@ export default function AdminSettingsPage() {
         homeHeroTitle: homeTitle.trim() || null,
         homeHeroTitleAccent: homeAccent.trim() || null,
         homeHeroSubtitle: homeSubtitle.trim() || null,
+        homeHeroImages: homeImages.filter((url) => url.trim().length > 0),
         homeCustomCtaTitle: homeCtaTitle.trim() || null,
         homeCustomCtaBody: homeCtaBody.trim() || null,
         customTripTitle: customTripTitle.trim() || null,
@@ -248,6 +265,43 @@ export default function AdminSettingsPage() {
           <div>
             <Label>Дэд гарчиг</Label>
             <Textarea value={homeSubtitle} onChange={(e) => setHomeSubtitleDraft(e.target.value)} rows={2} className="mt-1.5" />
+          </div>
+
+          <div className="border-t border-border pt-4">
+            <Label>Эргэлддэг зурагнууд</Label>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Хэдэн ч зураг байж болно, зэрэгцэн эргэлдэнэ. Нэг ч зураг
+              нэмээгүй бол одоогийн стандарт зургууд харагдана.
+            </p>
+            <div className="mt-2 space-y-3">
+              {homeImages.map((url, index) => (
+                <div key={index} className="flex items-start gap-2 rounded-xl border border-border bg-secondary/30 p-3">
+                  <div className="flex-1">
+                    <ImageUploadField
+                      label={`Зураг ${index + 1}`}
+                      value={url}
+                      onChange={(next) => updateHomeImage(index, next)}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeHomeImage(index)}
+                    className="mt-7 shrink-0 rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    aria-label="Устгах"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={addHomeImage}
+              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border py-2.5 text-sm font-medium text-muted-foreground hover:border-primary/40 hover:text-primary"
+            >
+              <Plus className="h-4 w-4" />
+              Зураг нэмэх
+            </button>
           </div>
         </div>
       </Card>

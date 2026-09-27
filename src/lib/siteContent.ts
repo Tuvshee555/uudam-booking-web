@@ -4,6 +4,11 @@
  * validates/clamps whatever comes back off the wire, and each page reads
  * from SiteSettings with these as the fallback so nothing goes blank
  * before the client has edited anything.
+ *
+ * getSiteSettings() (below) is the one place every page should read this
+ * row from — six pages independently calling prisma.siteSettings.findUnique
+ * during `next build`'s parallel static generation was enough extra
+ * connection pressure on Neon's pooler to intermittently fail the build.
  */
 
 export type FaqItem = { q: string; a: string };
@@ -13,6 +18,26 @@ export const DEFAULT_HOME_HERO_TITLE = "Дараагийн аялалаа";
 export const DEFAULT_HOME_HERO_TITLE_ACCENT = "эндээс эхлүүл";
 export const DEFAULT_HOME_HERO_SUBTITLE =
   "Хөтөлбөр, үнэ, хөдлөх огноо, үлдсэн суудал — бүгд ил тод. Хүссэн аялалаа сонгоод шууд захиал.";
+
+/** Curated so the hero stays visually consistent even when a real trip photo
+    is a small or compressed upload — see homeHeroImages in schema.prisma. */
+export const DEFAULT_HOME_HERO_IMAGES = [
+  "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=2400&q=90",
+  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=2400&q=90",
+  "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=2400&q=90",
+  "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=2400&q=90",
+  "https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=2400&q=90",
+];
+
+/** Validates and clamps admin-submitted hero photo URLs — never trust JSON off the wire. */
+export function parseHeroImages(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+
+  return value
+    .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    .map((item) => item.trim().slice(0, 1000))
+    .slice(0, 10);
+}
 
 export const DEFAULT_CUSTOM_TRIP_TITLE = "Огноо тохирохгүй байна уу?";
 export const DEFAULT_CUSTOM_TRIP_BODY =

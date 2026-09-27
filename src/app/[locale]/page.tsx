@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 
 import { getCategoryTree, getPublishedTrips } from "@/server/catalog";
 import { localeAlternates } from "@/lib/hreflang";
-import { prisma } from "@/server/prisma";
+import { parseHeroImages } from "@/lib/siteContent";
+import { getSiteSettings } from "@/server/siteSettings";
 import TrustBar from "@/components/trust/TrustBar";
 import ReviewsSection from "@/components/trust/ReviewsSection";
 import HomeClient from "./HomeClient";
@@ -24,7 +25,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const [trips, categories, settings] = await Promise.all([
     getPublishedTrips(),
     getCategoryTree(),
-    prisma.siteSettings.findUnique({ where: { id: "default" } }),
+    getSiteSettings(),
   ]);
 
   return (
@@ -36,6 +37,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       heroTitle={settings?.homeHeroTitle}
       heroTitleAccent={settings?.homeHeroTitleAccent}
       heroSubtitle={settings?.homeHeroSubtitle}
+      heroImages={parseHeroImages(settings?.homeHeroImages) ?? null}
       customCtaTitle={settings?.homeCustomCtaTitle}
       customCtaBody={settings?.homeCustomCtaBody}
     />

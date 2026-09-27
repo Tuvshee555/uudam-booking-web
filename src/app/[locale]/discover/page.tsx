@@ -3,7 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Sparkles } from "lucide-react";
 
-import { prisma } from "@/server/prisma";
+import { prisma, withPrismaRetry } from "@/server/prisma";
 import { formatFullDate } from "@/lib/departures";
 
 export const metadata: Metadata = {
@@ -30,19 +30,21 @@ export default async function DiscoverIndexPage({
 }) {
   const { locale } = await params;
 
-  const articles = await prisma.knowledgeArticle.findMany({
-    where: { isPublished: true },
-    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-    select: {
-      id: true,
-      slug: true,
-      title: true,
-      excerpt: true,
-      coverImage: true,
-      publishedAt: true,
-      createdAt: true,
-    },
-  });
+  const articles = await withPrismaRetry(() =>
+    prisma.knowledgeArticle.findMany({
+      where: { isPublished: true },
+      orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        excerpt: true,
+        coverImage: true,
+        publishedAt: true,
+        createdAt: true,
+      },
+    }),
+  );
 
   return (
     <div className="uudam-container py-10">

@@ -18,6 +18,7 @@ import { formatTripTitle } from "@/lib/tripDisplay";
 import {
   DEFAULT_HOME_CUSTOM_CTA_BODY,
   DEFAULT_HOME_CUSTOM_CTA_TITLE,
+  DEFAULT_HOME_HERO_IMAGES,
   DEFAULT_HOME_HERO_SUBTITLE,
   DEFAULT_HOME_HERO_TITLE,
   DEFAULT_HOME_HERO_TITLE_ACCENT,
@@ -53,19 +54,7 @@ function CategoryThumb({ src, alt }: { src: string | null | undefined; alt: stri
   );
 }
 
-const CURATED_HERO_IMAGES = [
-  "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=2400&q=90",
-  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=2400&q=90",
-  "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=2400&q=90",
-  "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=2400&q=90",
-  "https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=2400&q=90",
-];
-
-function HeroSlideshow() {
-  // Keep the homepage hero visually consistent even when a trip has a small
-  // or compressed upload. Trip photos still appear on the catalogue cards.
-  const images = CURATED_HERO_IMAGES;
-
+function HeroSlideshow({ images }: { images: string[] }) {
   const [active, setActive] = useState(0);
 
   useEffect(() => {
@@ -306,6 +295,7 @@ export default function HomeClient({
   heroTitle,
   heroTitleAccent,
   heroSubtitle,
+  heroImages,
   customCtaTitle,
   customCtaBody,
 }: {
@@ -324,6 +314,7 @@ export default function HomeClient({
   heroTitle?: string | null;
   heroTitleAccent?: string | null;
   heroSubtitle?: string | null;
+  heroImages?: string[] | null;
   customCtaTitle?: string | null;
   customCtaBody?: string | null;
 }) {
@@ -332,11 +323,12 @@ export default function HomeClient({
   const { data: categories } = useCategoryTree(initialCategories);
   const visibleCategories = categories?.filter((category) => category.tripCount > 0) ?? [];
   const featuredTrips = initialTrips?.filter((trip) => trip.isFeatured) ?? [];
+  const slides = heroImages && heroImages.length > 0 ? heroImages : DEFAULT_HOME_HERO_IMAGES;
 
   return (
     <div>
       <section className="relative isolate flex min-h-[430px] overflow-hidden bg-navy-deep text-white md:min-h-[500px] lg:min-h-[540px]">
-        <HeroSlideshow />
+        <HeroSlideshow images={slides} />
 
         <div className="uudam-container relative z-10 flex min-h-[430px] items-center py-14 md:min-h-[500px] lg:min-h-[540px]">
           <div className="max-w-3xl">

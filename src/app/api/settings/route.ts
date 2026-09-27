@@ -5,7 +5,7 @@ import { requireAdmin } from "@/server/auth";
 import { handler, json, publicCache, readJson, safeText } from "@/server/http";
 import { cached, invalidate } from "@/server/cache";
 import { parseAboutValues } from "@/lib/aboutContent";
-import { parseFaqs, parseTermsSections } from "@/lib/siteContent";
+import { parseFaqs, parseHeroImages, parseTermsSections } from "@/lib/siteContent";
 
 /**
  * GET /api/settings — public. Just the fields the storefront needs to render.
@@ -30,6 +30,7 @@ export const GET = handler(async () => {
       giftBody: row?.giftBody ?? null,
       faqs: row?.faqs ?? null,
       termsSections: row?.termsSections ?? null,
+      homeHeroImages: row?.homeHeroImages ?? null,
     };
   });
 
@@ -65,6 +66,8 @@ export const PUT = handler(async (req: Request) => {
   const faqs = body.faqs === undefined ? undefined : (parseFaqs(body.faqs) ?? Prisma.JsonNull);
   const termsSections =
     body.termsSections === undefined ? undefined : (parseTermsSections(body.termsSections) ?? Prisma.JsonNull);
+  const homeHeroImages =
+    body.homeHeroImages === undefined ? undefined : (parseHeroImages(body.homeHeroImages) ?? Prisma.JsonNull);
 
   const data = {
     tripNotice,
@@ -83,6 +86,7 @@ export const PUT = handler(async (req: Request) => {
     giftBody,
     faqs,
     termsSections,
+    homeHeroImages,
   };
 
   const row = await prisma.siteSettings.upsert({
@@ -110,5 +114,6 @@ export const PUT = handler(async (req: Request) => {
     giftBody: row.giftBody,
     faqs: row.faqs,
     termsSections: row.termsSections,
+    homeHeroImages: row.homeHeroImages,
   });
 });

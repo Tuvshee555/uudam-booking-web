@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { prisma } from "@/server/prisma";
+import { getSiteSettings } from "@/server/siteSettings";
 import {
   aboutIcon,
   DEFAULT_ABOUT_HERO_SUBTITLE,
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AboutPage() {
-  const settings = await prisma.siteSettings.findUnique({ where: { id: "default" } });
+  const settings = await getSiteSettings();
 
   const heroTitle = settings?.aboutHeroTitle || DEFAULT_ABOUT_HERO_TITLE;
   const heroSubtitle = settings?.aboutHeroSubtitle || DEFAULT_ABOUT_HERO_SUBTITLE;

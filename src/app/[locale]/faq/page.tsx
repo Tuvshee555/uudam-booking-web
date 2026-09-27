@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { prisma } from "@/server/prisma";
+import { getSiteSettings } from "@/server/siteSettings";
 import { CONTACT, hasLink } from "@/lib/contact";
 import { DEFAULT_FAQS, parseFaqs } from "@/lib/siteContent";
 
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function FaqPage() {
-  const settings = await prisma.siteSettings.findUnique({ where: { id: "default" } });
+  const settings = await getSiteSettings();
   const parsed = parseFaqs(settings?.faqs);
   const faqs = parsed && parsed.length > 0 ? parsed : DEFAULT_FAQS;
 

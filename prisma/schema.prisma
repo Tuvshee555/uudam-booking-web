@@ -496,6 +496,15 @@ model SiteSettings {
   homeHeroTitleAccent String?
   homeHeroSubtitle    String?
 
+  /// The rotating hero photos on the homepage — string[], each a
+  /// res.cloudinary.com or images.unsplash.com URL (the only two hosts
+  /// next/image is configured to optimize; see src/lib/imageHosts.ts).
+  /// Null/empty falls back to the original 5 curated stock photos, chosen
+  /// originally so the hero stays visually consistent even when a real trip
+  /// photo is a small or compressed upload — the fallback keeps that
+  /// guarantee for a client who hasn't set her own photos yet.
+  homeHeroImages Json?
+
   /// The "dates don't work" escape hatch — appears twice: a short teaser CTA
   /// on the homepage (homeCustomCta*) and the full header on its own page
   /// (customTrip*). Two fields because the two spots wanted different

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 
-import { prisma } from "@/server/prisma";
+import { prisma, withPrismaRetry } from "@/server/prisma";
 
 export const metadata: Metadata = {
   title: "Аяллын зөвлөгөө",
@@ -33,19 +33,21 @@ export default async function GuideIndexPage({
 }) {
   const { locale } = await params;
 
-  const posts = await prisma.post.findMany({
-    where: { isPublished: true },
-    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-    select: {
-      id: true,
-      slug: true,
-      title: true,
-      excerpt: true,
-      coverImage: true,
-      publishedAt: true,
-      createdAt: true,
-    },
-  });
+  const posts = await withPrismaRetry(() =>
+    prisma.post.findMany({
+      where: { isPublished: true },
+      orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        excerpt: true,
+        coverImage: true,
+        publishedAt: true,
+        createdAt: true,
+      },
+    }),
+  );
 
   return (
     <div className="uudam-container py-10">

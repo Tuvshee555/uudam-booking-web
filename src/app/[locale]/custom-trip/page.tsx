@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { prisma } from "@/server/prisma";
+import { getSiteSettings } from "@/server/siteSettings";
 import { DEFAULT_CUSTOM_TRIP_BODY, DEFAULT_CUSTOM_TRIP_TITLE } from "@/lib/siteContent";
 import LeadForm from "@/components/lead/LeadForm";
 
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
  * no published departure at all, so that visitor is not rare.
  */
 export default async function CustomTripPage() {
-  const settings = await prisma.siteSettings.findUnique({ where: { id: "default" } });
+  const settings = await getSiteSettings();
   const title = settings?.customTripTitle || DEFAULT_CUSTOM_TRIP_TITLE;
   const body = settings?.customTripBody || DEFAULT_CUSTOM_TRIP_BODY;
 

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { prisma } from "@/server/prisma";
+import { getSiteSettings } from "@/server/siteSettings";
 import { DEFAULT_TERMS_SECTIONS, parseTermsSections } from "@/lib/siteContent";
 
 export const metadata: Metadata = {
@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 };
 
 export default async function TermsPage() {
-  const settings = await prisma.siteSettings.findUnique({ where: { id: "default" } });
+  const settings = await getSiteSettings();
   const parsed = parseTermsSections(settings?.termsSections);
   const sections = parsed && parsed.length > 0 ? parsed : DEFAULT_TERMS_SECTIONS;
 
