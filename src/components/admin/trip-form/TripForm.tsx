@@ -22,6 +22,8 @@ import type { CategoryNode, Trip } from "@/types/trip";
 import StringListField from "./StringListField";
 import ImageUploadField from "./ImageUploadField";
 import MultiImageField from "./MultiImageField";
+import MediaListEditor from "./MediaListEditor";
+import { parseMediaItems, type MediaItem } from "@/lib/media";
 import ItineraryEditor, { type ItineraryDraft } from "./ItineraryEditor";
 import DepartureEditor, { type DepartureDraft } from "./DepartureEditor";
 
@@ -88,6 +90,8 @@ type FormState = {
   roomPrices: string[];
   childPriceNotes: string[];
   brochurePdfUrl: string;
+  hotelMedia: MediaItem[];
+  travelerMedia: MediaItem[];
 
   isFeatured: boolean;
   isPublished: boolean;
@@ -141,6 +145,8 @@ const EMPTY_FORM: FormState = {
   roomPrices: [],
   childPriceNotes: [],
   brochurePdfUrl: "",
+  hotelMedia: [],
+  travelerMedia: [],
   isFeatured: false,
   isPublished: true,
   itinerary: [],
@@ -194,6 +200,8 @@ function tripToForm(trip: Trip): FormState {
     roomPrices: trip.roomPrices,
     childPriceNotes: trip.childPriceNotes,
     brochurePdfUrl: trip.brochurePdfUrl ?? "",
+    hotelMedia: parseMediaItems(trip.hotelMedia) ?? [],
+    travelerMedia: parseMediaItems(trip.travelerMedia) ?? [],
     isFeatured: trip.isFeatured,
     isPublished: trip.isPublished,
     itinerary: trip.itinerary.map((day) => ({
@@ -259,7 +267,8 @@ function buildPayload(form: FormState) {
 
     image: form.image.trim(),
     extraImages: form.extraImages,
-    video: form.video.trim() || undefined,
+    // null, not undefined — JSON drops undefined, so clearing the video never saved.
+    video: form.video.trim() || null,
     videos: form.videos,
 
     price: numOrUndefined(form.price),
@@ -277,6 +286,8 @@ function buildPayload(form: FormState) {
     roomPrices: form.roomPrices,
     childPriceNotes: form.childPriceNotes,
     brochurePdfUrl: form.brochurePdfUrl.trim() || undefined,
+    hotelMedia: form.hotelMedia.filter((item) => item.url.trim()),
+    travelerMedia: form.travelerMedia.filter((item) => item.url.trim()),
 
     isFeatured: form.isFeatured,
     isPublished: form.isPublished,
@@ -605,6 +616,12 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
               </select>
             </div>
           </div>
+          <MediaListEditor
+            label="Зочид буудлын зураг, бичлэг, холбоос"
+            hint="Аяллын хуудасны “Бэлтгэл мэдээлэл” хэсэгт зочид буудлын нэрийн доор харагдана."
+            items={form.hotelMedia}
+            onChange={(v) => set("hotelMedia", v)}
+          />
           <div>
             <Label>Гарах өдрийн дүрэм</Label>
             <Textarea rows={2} value={form.departureRule} onChange={(e) => set("departureRule", e.target.value)} />
@@ -626,6 +643,15 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
             <Input value={form.sourceTripId} onChange={(e) => set("sourceTripId", e.target.value)} />
           </div>
         </div>
+      </Section>
+
+      <Section title="Аялагчдын зураг, бичлэг">
+        <MediaListEditor
+          label="Аялагчдын зураг, бичлэг, холбоос"
+          hint="Энэ аялалд явсан хүмүүсийн дурсамж — аяллын хуудсанд зочид буудлын хэсгийн доор тусдаа хайрцагт харагдана."
+          items={form.travelerMedia}
+          onChange={(v) => set("travelerMedia", v)}
+        />
       </Section>
 
       <Section title="Өдөр тутмын хөтөлбөр">

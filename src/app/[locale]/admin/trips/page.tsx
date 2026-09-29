@@ -1,11 +1,13 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CalendarDays, Eye, EyeOff, ExternalLink, Pencil, Plus, Star } from "lucide-react";
+import { CalendarDays, Eye, EyeOff, ExternalLink, Pencil, Plus, Search, Star, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 import { api, apiErrorMessage } from "@/lib/api";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
@@ -24,6 +26,19 @@ export default function AdminTripsPage() {
       return data;
     },
   });
+
+  const [search, setSearch] = useState("");
+  const visibleTrips = useMemo(() => {
+    const terms = search.toLocaleLowerCase().split(/\s+/).filter(Boolean);
+    if (!terms.length) return trips;
+    return trips?.filter((trip) => {
+      const haystack = [trip.title, trip.slug, trip.category?.categoryName, trip.hotel]
+        .filter(Boolean)
+        .join(" ")
+        .toLocaleLowerCase();
+      return terms.every((term) => haystack.includes(term));
+    });
+  }, [trips, search]);
 
   const toggle = useMutation({
     mutationFn: async ({ id, ...body }: { id: string; isPublished?: boolean; isFeatured?: boolean }) => {
@@ -52,7 +67,34 @@ export default function AdminTripsPage() {
         </Button>
       </div>
 
-      <div className="mt-5 space-y-3">
+      <div className="relative mt-5">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Аялал хайх — нэр, ангилал, зочид буудал…"
+          className="h-10 pl-9 pr-9"
+          aria-label="Аялал хайх"
+        />
+        {search && (
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
+            aria-label="Цэвэрлэх"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+      {search.trim() && trips && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          {visibleTrips?.length ?? 0} / {trips.length} аялал олдлоо
+        </p>
+      )}
+
+      <div className="mt-4 space-y-3">
       {isPending ? (
         Array.from({ length: 4 }).map((_, index) => (
           <div key={index} className="h-24 animate-pulse rounded-2xl bg-card" />
@@ -61,8 +103,12 @@ export default function AdminTripsPage() {
         <div className="rounded-2xl border border-dashed border-border py-16 text-center text-sm text-muted-foreground">
           Аялал алга байна.
         </div>
+      ) : !visibleTrips?.length ? (
+        <div className="rounded-2xl border border-dashed border-border py-16 text-center text-sm text-muted-foreground">
+          “{search.trim()}” гэсэн аялал олдсонгүй.
+        </div>
       ) : (
-        trips.map((trip) => (
+        visibleTrips.map((trip) => (
           <div
             key={trip.id}
             className="flex flex-wrap items-center gap-4 rounded-2xl border border-border bg-card p-4"

@@ -30,7 +30,9 @@ import {
   marketingSeatFacts,
   saleBadgeLabel,
 } from "@/lib/tripMarketing";
+import { parseMediaItems } from "@/lib/media";
 import TripMedia from "@/components/trip/TripMedia";
+import MediaGallery from "@/components/trip/MediaGallery";
 import TripCard from "@/components/trip/TripCard";
 import TripSidebar from "@/components/trip/TripSidebar";
 import EnquiryTrustNote from "@/components/trust/EnquiryTrustNote";
@@ -92,6 +94,9 @@ export default function TripDetailClient({
       .slice(0, 4);
   }, [trip, allTrips]);
 
+  const hotelMedia = useMemo(() => parseMediaItems(trip?.hotelMedia) ?? [], [trip]);
+  const travelerMedia = useMemo(() => parseMediaItems(trip?.travelerMedia) ?? [], [trip]);
+
   /**
    * Anchors for the sticky section nav. Built from the same conditions the
    * sections themselves render under, so the nav can never link to a heading
@@ -118,11 +123,13 @@ export default function TripDetailClient({
         trip.languages.length > 0 ||
         trip.meetingPoint ||
         trip.hotel ||
+        hotelMedia.length > 0 ||
         trip.foodIncluded !== null ||
         trip.departureRule) && { id: "notes", label: "Бэлтгэл" },
+      travelerMedia.length > 0 && { id: "traveler-media", label: "Аялагчид" },
       trip.testimonials && trip.testimonials.length > 0 && { id: "reviews", label: "Сэтгэгдэл" },
     ].filter((entry): entry is { id: string; label: string } => Boolean(entry));
-  }, [trip, siteSettings]);
+  }, [trip, siteSettings, hotelMedia, travelerMedia]);
 
   useEffect(() => {
     if (trip) recordRecentlyViewed(trip.slug);
@@ -454,6 +461,7 @@ export default function TripDetailClient({
             trip.languages.length > 0 ||
             trip.meetingPoint ||
             trip.hotel ||
+            hotelMedia.length > 0 ||
             trip.foodIncluded !== null ||
             trip.departureRule) && (
             <section id="notes" className="mt-8 scroll-mt-28 rounded-2xl border border-border p-5">
@@ -529,6 +537,28 @@ export default function TripDetailClient({
                   </div>
                 )}
               </dl>
+
+              {hotelMedia.length > 0 && (
+                <div className="mt-5 border-t border-border pt-4">
+                  <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <BedDouble className="h-3 w-3" />
+                    Зочид буудлын зураг, бичлэг
+                  </h3>
+                  <div className="mt-3">
+                    <MediaGallery items={hotelMedia} title={trip.hotel || "Зочид буудал"} />
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          {travelerMedia.length > 0 && (
+            <section id="traveler-media" className="mt-8 scroll-mt-28 rounded-2xl border border-border p-5">
+              <h2 className="text-lg font-bold">Аялагчдын зураг, бичлэг</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Энэ аялалд явсан аялагчдын дурсамж.</p>
+              <div className="mt-4">
+                <MediaGallery items={travelerMedia} title="Аялагчдын дурсамж" />
+              </div>
             </section>
           )}
 

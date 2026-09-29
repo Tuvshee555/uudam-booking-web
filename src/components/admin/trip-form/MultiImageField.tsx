@@ -8,7 +8,8 @@ import { Loader2, Upload, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { isAllowedImageHost } from "@/lib/imageHosts";
-import { useCloudinaryUpload } from "./useCloudinaryUpload";
+import { extractUrl } from "@/lib/media";
+import { uploadErrorMessage, useCloudinaryUpload } from "./useCloudinaryUpload";
 
 /** A list of image or video URLs — extra trip photos, or extra clips. */
 export default function MultiImageField({
@@ -27,13 +28,18 @@ export default function MultiImageField({
   const { upload, uploading } = useCloudinaryUpload();
 
   function addUrl() {
-    const trimmed = draft.trim();
-    if (!trimmed) return;
-    if (resourceType === "image" && !isAllowedImageHost(trimmed)) {
+    if (!draft.trim()) return;
+    // Only the link itself — a label typed around it plays as nothing.
+    const url = extractUrl(draft);
+    if (!url) {
+      toast.error("Холбоос олдсонгүй. https://-ээр эхэлсэн холбоос оруулна уу.");
+      return;
+    }
+    if (resourceType === "image" && !isAllowedImageHost(url)) {
       toast.error('Энэ домэйноос зураг харагдахгүй. "Байршуулах" товчоор оруулна уу.');
       return;
     }
-    onChange([...values, trimmed]);
+    onChange([...values, url]);
     setDraft("");
   }
 
@@ -44,8 +50,8 @@ export default function MultiImageField({
         Array.from(files).map((file) => upload(file, resourceType)),
       );
       onChange([...values, ...uploaded]);
-    } catch {
-      toast.error("Байршуулахад алдаа гарлаа");
+    } catch (err) {
+      toast.error(uploadErrorMessage(err));
     } finally {
       if (fileRef.current) fileRef.current.value = "";
     }

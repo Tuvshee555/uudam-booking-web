@@ -1,5 +1,7 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
 import { httpError } from "./http";
+import { extractUrl, parseMediaItems } from "@/lib/media";
 
 /**
  * Parsing + validation for the trip payloads the admin panel sends.
@@ -299,6 +301,27 @@ export function toTagConnect(value: unknown) {
 export function toTagSet(value: unknown) {
   if (!Array.isArray(value)) return undefined;
   return { set: tagIds(value).map((id) => ({ id })) };
+}
+
+/**
+ * A video URL box, reduced to the bare link. undefined = field not sent
+ * (leave as is); null/"" = cleared. See extractUrl for why a label typed in
+ * front of the link has to be stripped rather than stored.
+ */
+export function toVideoUrl(value: unknown): string | null | undefined {
+  if (value === undefined) return undefined;
+  return extractUrl(value);
+}
+
+export function toVideoUrls(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value.map(extractUrl).filter((url): url is string => Boolean(url));
+}
+
+/** hotelMedia / travelerMedia — undefined leaves the column alone, [] clears it. */
+export function toMediaJson(value: unknown): Prisma.InputJsonValue | typeof Prisma.JsonNull | undefined {
+  if (value === undefined) return undefined;
+  return parseMediaItems(value) ?? Prisma.JsonNull;
 }
 
 export function toOptionalJsonObject(value: unknown): Record<string, unknown> | undefined {

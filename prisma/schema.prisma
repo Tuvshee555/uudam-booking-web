@@ -112,6 +112,16 @@ model Trip {
   childPriceNotes String[] @default([])
   brochurePdfUrl  String?
 
+  /// Photos, videos and links for the trip's hotel, shown inside the
+  /// "Бэлтгэл мэдээлэл" box — {url, caption}[], kind read off the URL (see
+  /// src/lib/media.ts). Website-only: the chatbot sync (websiteTripSync.ts)
+  /// UPDATEs only the columns it names and never these two, so staff edits
+  /// here survive every resync.
+  hotelMedia    Json?
+  /// Travelers' own photos, videos and links, shown as their own box under
+  /// the hotel info. Same shape and same sync guarantee as hotelMedia.
+  travelerMedia Json?
+
   categoryId String?
   category   Category? @relation(fields: [categoryId], references: [id])
 

@@ -117,6 +117,9 @@ export type Trip = {
   roomPrices: string[];
   childPriceNotes: string[];
   brochurePdfUrl: string | null;
+  /** Raw JSON off the wire — always read through parseMediaItems (src/lib/media.ts). */
+  hotelMedia?: unknown;
+  travelerMedia?: unknown;
 
   categoryId: string | null;
   category: TripCategory | null;

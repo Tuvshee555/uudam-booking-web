@@ -13,10 +13,13 @@ import {
   toDifficulty,
   toOptionalBoolean,
   toOptionalInt,
+  toMediaJson,
   toOptionalJsonObject,
   toOptionalNumber,
   toStringArray,
   toTagSet,
+  toVideoUrl,
+  toVideoUrls,
   uniqueSlug,
 } from "@/server/tripInput";
 
@@ -156,8 +159,10 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
 
         image: body.image === undefined ? undefined : (safeText(body.image, 800) ?? undefined),
         extraImages: optionalArray(body.extraImages),
-        video: optionalText(body.video, 800),
-        videos: optionalArray(body.videos),
+        video: toVideoUrl(body.video),
+        videos: toVideoUrls(body.videos),
+        hotelMedia: toMediaJson(body.hotelMedia),
+        travelerMedia: toMediaJson(body.travelerMedia),
 
         price,
         oldPrice: body.oldPrice === undefined ? undefined : (oldPrice ?? null),

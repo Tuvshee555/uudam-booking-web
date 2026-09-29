@@ -8,7 +8,8 @@ import { Loader2, Upload, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { isAllowedImageHost } from "@/lib/imageHosts";
-import { useCloudinaryUpload } from "./useCloudinaryUpload";
+import { hasTextAroundUrl } from "@/lib/media";
+import { uploadErrorMessage, useCloudinaryUpload } from "./useCloudinaryUpload";
 
 /** One image or video URL — paste a link, or upload a file straight to Cloudinary. */
 export default function ImageUploadField({
@@ -27,14 +28,17 @@ export default function ImageUploadField({
   const fileRef = useRef<HTMLInputElement>(null);
   const { upload, uploading } = useCloudinaryUpload();
   const badHost = resourceType === "image" && value.trim() && !isAllowedImageHost(value);
+  // A label typed in front of the link is exactly what broke a live trip's
+  // video — the server now strips it on save, but say so while she types.
+  const notJustLink = !badHost && hasTextAroundUrl(value);
 
   async function handleFile(file: File | undefined) {
     if (!file) return;
     try {
       const url = await upload(file, resourceType);
       onChange(url);
-    } catch {
-      toast.error("Байршуулахад алдаа гарлаа");
+    } catch (err) {
+      toast.error(uploadErrorMessage(err));
     } finally {
       if (fileRef.current) fileRef.current.value = "";
     }
@@ -75,6 +79,12 @@ export default function ImageUploadField({
       {badHost && (
         <p className="mt-1.5 text-xs text-destructive">
           Энэ домэйноос зураг харагдахгүй. &quot;Байршуулах&quot; товчоор оруулна уу.
+        </p>
+      )}
+
+      {notJustLink && (
+        <p className="mt-1.5 text-xs text-destructive">
+          Энд зөвхөн холбоос (https://…) бичнэ. Бусад бичвэрийг хадгалахад автоматаар хасна.
         </p>
       )}
 

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Play } from "lucide-react";
 
 import { recordVideoPlay } from "@/lib/analytics";
+import { extractUrl, youtubeEmbed } from "@/lib/media";
 import type { Trip } from "@/types/trip";
 import { cn } from "@/lib/utils";
 
@@ -12,23 +13,14 @@ type Slide =
   | { kind: "image"; src: string }
   | { kind: "video"; src: string };
 
-/**
- * Turn a video URL into something embeddable. Agencies paste YouTube links as
- * often as they upload files, and a raw YouTube watch URL in a <video> tag
- * renders nothing at all.
- */
-function youtubeEmbed(url: string): string | null {
-  const match = url.match(
-    /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/,
-  );
-  return match ? `https://www.youtube.com/embed/${match[1]}` : null;
-}
-
 export default function TripMedia({ trip }: { trip: Trip }) {
   const slides = useMemo<Slide[]>(() => {
-    const videos = [trip.video, ...trip.videos].filter(
-      (src): src is string => typeof src === "string" && src.trim().length > 0,
-    );
+    // extractUrl, not the raw value: a stored video can carry a label typed
+    // in front of the link ("зочид буудал - https://…"), which <video src>
+    // plays as nothing.
+    const videos = [trip.video, ...trip.videos]
+      .map(extractUrl)
+      .filter((src): src is string => Boolean(src));
     const images = [trip.image, ...trip.extraImages].filter(
       (src): src is string => typeof src === "string" && src.trim().length > 0,
     );
