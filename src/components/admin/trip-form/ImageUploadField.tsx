@@ -111,7 +111,9 @@ export default function ImageUploadField({
 
       {value && resourceType === "video" && (
         <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-          <video src={value} className="h-16 w-28 rounded-lg border border-border object-cover" muted />
+          {/* #t=0.1 forces a frame to paint as a poster — otherwise this is
+              a black box that reads as "no preview", not a video. */}
+          <video src={`${value}#t=0.1`} preload="metadata" className="h-16 w-28 rounded-lg border border-border object-cover" muted />
           <button type="button" onClick={() => onChange("")} className="hover:text-destructive">
             Устгах
           </button>

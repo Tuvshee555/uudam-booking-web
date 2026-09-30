@@ -110,7 +110,9 @@ export default function MultiImageField({
                   <img src={value} alt="" className="h-full w-full object-cover" />
                 )
               ) : (
-                <video src={value} className="h-full w-full object-cover" muted />
+                // #t=0.1 forces a frame to paint as a poster — otherwise this
+                // is a black box that reads as "no preview", not a video.
+                <video src={`${value}#t=0.1`} preload="metadata" className="h-full w-full object-cover" muted />
               )}
               <button
                 type="button"

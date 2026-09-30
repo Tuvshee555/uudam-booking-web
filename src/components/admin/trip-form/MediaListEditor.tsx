@@ -2,11 +2,11 @@
 
 import { useRef } from "react";
 import { toast } from "sonner";
-import { Film, ImageIcon, Link2, Loader2, Plus, Trash2 } from "lucide-react";
+import { ImageIcon, Link2, Loader2, Play, Plus, Trash2, Upload } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { extractUrl, mediaKind, type MediaItem } from "@/lib/media";
+import { extractUrl, mediaKind, youtubeEmbed, type MediaItem, type MediaKind } from "@/lib/media";
 import { uploadErrorMessage, useCloudinaryUpload } from "./useCloudinaryUpload";
 
 const KIND_LABEL = {
@@ -15,6 +15,42 @@ const KIND_LABEL = {
   youtube: "YouTube бичлэг",
   link: "Холбоос",
 } as const;
+
+/** A large visual preview of whatever the row's URL currently resolves to — the
+ * point is that staff SEE the photo/video they attached, not a filename. */
+function Preview({ url, kind }: { url: string; kind: MediaKind | null }) {
+  if (kind === "image") {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={url} alt="" className="h-full w-full object-cover" />;
+  }
+  if (kind === "video") {
+    // #t=0.1 forces the browser to seek and paint that frame as a poster —
+    // without it a plain <video preload="metadata"> shows a black box until
+    // played, which is exactly the "just a filename, no preview" complaint.
+    return <video src={`${url}#t=0.1`} muted preload="metadata" className="h-full w-full object-cover" />;
+  }
+  const embed = kind === "youtube" ? youtubeEmbed(url) : null;
+  if (kind === "youtube" && embed) {
+    // A thumbnail is enough here — an embedded iframe per row is heavy and
+    // autoplays sound in some browsers on load.
+    const videoId = embed.split("/embed/")[1];
+    return (
+      <div className="relative h-full w-full bg-black">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`} alt="" className="h-full w-full object-cover opacity-80" />
+        <span className="absolute inset-0 flex items-center justify-center">
+          <Play className="h-8 w-8 fill-white text-white drop-shadow" />
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-secondary text-muted-foreground">
+      <Link2 className="h-6 w-6" />
+      <span className="max-w-[90%] truncate text-[11px]">{url.replace(/^https?:\/\//, "")}</span>
+    </div>
+  );
+}
 
 function MediaRow({
   item,
@@ -32,6 +68,7 @@ function MediaRow({
   const url = extractUrl(item.url);
   const kind = url ? mediaKind(url) : null;
   const unreadable = item.url.trim().length > 0 && !url;
+  const empty = !item.url.trim();
 
   async function handleFile(file: File | undefined, resourceType: "image" | "video") {
     if (!file) return;
@@ -46,72 +83,88 @@ function MediaRow({
   }
 
   return (
-    <div className="rounded-xl border border-border bg-secondary/30 p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <Input
-          value={item.url}
-          onChange={(e) => onChange({ ...item, url: e.target.value })}
-          placeholder="Холбоос буулгах (YouTube, сайт, зураг) — эсвэл баруун талаас байршуулна"
-          className="min-w-[14rem] flex-1"
-        />
-        <button
-          type="button"
-          onClick={() => imageInput.current?.click()}
-          disabled={uploading}
-          className="flex h-9 items-center gap-1.5 rounded-md border border-input px-3 text-sm font-medium hover:bg-secondary disabled:opacity-50"
-        >
-          <ImageIcon className="h-3.5 w-3.5" />
-          Зураг
-        </button>
-        <button
-          type="button"
-          onClick={() => videoInput.current?.click()}
-          disabled={uploading}
-          className="flex h-9 items-center gap-1.5 rounded-md border border-input px-3 text-sm font-medium hover:bg-secondary disabled:opacity-50"
-        >
-          <Film className="h-3.5 w-3.5" />
-          Бичлэг
-        </button>
+    <div className="flex gap-3 rounded-xl border border-border bg-secondary/30 p-3">
+      {/* Preview tile — this is the whole point: SEE what's attached. */}
+      <div className="relative h-24 w-32 shrink-0 overflow-hidden rounded-lg border border-border bg-secondary">
+        {uploading ? (
+          <div className="flex h-full w-full items-center justify-center">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : unreadable ? (
+          <div className="flex h-full w-full items-center justify-center p-1 text-center text-[11px] text-destructive">
+            Холбоос олдсонгүй
+          </div>
+        ) : empty ? (
+          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+            <ImageIcon className="h-6 w-6" />
+          </div>
+        ) : (
+          <Preview url={url!} kind={kind} />
+        )}
+        {kind && url && !uploading && (
+          <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+            {KIND_LABEL[kind]}
+          </span>
+        )}
         <button
           type="button"
           onClick={onRemove}
-          className="rounded p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
           aria-label="Устгах"
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-3.5 w-3.5" />
         </button>
-        <input ref={imageInput} type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files?.[0], "image")} />
-        <input ref={videoInput} type="file" accept="video/*" className="hidden" onChange={(e) => handleFile(e.target.files?.[0], "video")} />
       </div>
 
-      <Input
-        value={item.caption}
-        onChange={(e) => onChange({ ...item, caption: e.target.value })}
-        placeholder="Тайлбар (заавал биш) — ж.нь: Буудлын усан бассейн"
-        className="mt-2"
-      />
+      <div className="min-w-0 flex-1 space-y-2">
+        <div className="flex gap-2">
+          <Input
+            value={item.url}
+            onChange={(e) => onChange({ ...item, url: e.target.value })}
+            placeholder="Холбоос буулгах (YouTube, сайт, зураг)"
+            className={unreadable ? "border-destructive" : undefined}
+          />
+          <button
+            type="button"
+            onClick={() => imageInput.current?.click()}
+            disabled={uploading}
+            title="Зураг байршуулах"
+            aria-label="Зураг байршуулах"
+            className="flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-input px-3 text-sm font-medium hover:bg-secondary disabled:opacity-50"
+          >
+            <Upload className="h-3.5 w-3.5" />
+            Зураг
+          </button>
+          <button
+            type="button"
+            onClick={() => videoInput.current?.click()}
+            disabled={uploading}
+            title="Бичлэг байршуулах"
+            aria-label="Бичлэг байршуулах"
+            className="flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-input px-3 text-sm font-medium hover:bg-secondary disabled:opacity-50"
+          >
+            <Upload className="h-3.5 w-3.5" />
+            Бичлэг
+          </button>
+          <input ref={imageInput} type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files?.[0], "image")} />
+          <input ref={videoInput} type="file" accept="video/*" className="hidden" onChange={(e) => handleFile(e.target.files?.[0], "video")} />
+        </div>
 
-      <div className="mt-2 flex items-center gap-2 text-xs">
-        {uploading ? (
-          <span className="flex items-center gap-1.5 text-muted-foreground">
+        <Input
+          value={item.caption}
+          onChange={(e) => onChange({ ...item, caption: e.target.value })}
+          placeholder="Тайлбар (заавал биш) — ж.нь: Буудлын усан бассейн"
+        />
+
+        {uploading && (
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Loader2 className="h-3 w-3 animate-spin" />
             Байршуулж байна… (том бичлэг хэдэн минут болж магадгүй)
-          </span>
-        ) : unreadable ? (
-          <span className="text-destructive">Холбоос олдсонгүй — https://-ээр эхэлсэн холбоос оруулна уу.</span>
-        ) : kind && url ? (
-          <>
-            {kind === "image" && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={url} alt="" className="h-12 w-16 rounded border border-border object-cover" />
-            )}
-            {kind === "video" && (
-              <video src={url} muted preload="metadata" className="h-12 w-20 rounded border border-border bg-black object-cover" />
-            )}
-            {kind === "link" && <Link2 className="h-4 w-4 text-muted-foreground" />}
-            <span className="font-medium text-muted-foreground">{KIND_LABEL[kind]}</span>
-          </>
-        ) : null}
+          </p>
+        )}
+        {unreadable && (
+          <p className="text-xs text-destructive">Холбоос олдсонгүй — https://-ээр эхэлсэн холбоос оруулна уу.</p>
+        )}
       </div>
     </div>
   );
