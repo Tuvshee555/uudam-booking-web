@@ -66,8 +66,10 @@ export default function TripDetailClient({
   slug,
   initialTrip,
   initialSiteSettings,
+  selectedDate,
 }: {
   slug: string;
+  selectedDate?: string;
   /**
    * The trip the server page already fetched. Seeding the query with it is what
    * puts the itinerary, price and departures into the initial HTML instead of
@@ -225,9 +227,9 @@ export default function TripDetailClient({
               )}
             </div>
 
-            <div className="mt-3 flex items-start justify-between gap-4">
+            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <h1 className="text-2xl font-bold leading-tight md:text-3xl">{formatTripTitle(trip.title)}</h1>
-              <div className="mt-1 flex shrink-0 items-center gap-2" data-print="hide">
+              <div className="flex flex-wrap items-center gap-2 sm:mt-1 sm:shrink-0" data-print="hide">
                 <SaveButton slug={trip.slug} variant="button" />
                 <ShareButton title={formatTripTitle(trip.title)} tripId={trip.id} />
                 <DownloadTripButton />
@@ -441,7 +443,7 @@ export default function TripDetailClient({
                     <InfoList icon={<BedDouble className="h-4 w-4" />} title="Өрөөний үнэ" items={trip.roomPrices} />
                   )}
                   {trip.childPriceNotes.length > 0 && (
-                    <InfoList icon={<ReceiptText className="h-4 w-4" />} title="Хүүхдийн үнэ" items={trip.childPriceNotes} />
+                    <InfoList icon={<ReceiptText className="h-4 w-4" />} title="Үнэ, насны ангилал" items={trip.childPriceNotes} />
                   )}
                 </div>
               )}
@@ -598,7 +600,7 @@ export default function TripDetailClient({
         </div>
 
         <aside id="booking-panel" className="scroll-mt-28 lg:sticky lg:top-[124px] lg:h-fit">
-          <TripSidebar trip={trip} bankDetails={siteSettings?.bankDetails} />
+          <TripSidebar trip={trip} bankDetails={siteSettings?.bankDetails} selectedDate={selectedDate} />
           <MessengerButton tripSlug={trip.slug} tripId={trip.id} className="mt-3 w-full" />
           <EnquiryTrustNote />
         </aside>

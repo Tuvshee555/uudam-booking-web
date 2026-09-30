@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import type { Trip } from "@/types/trip";
 import { hasKnownTripPrice } from "@/lib/pricing";
+import { hasVariablePricing } from "@/lib/tripPriceOptions";
 import { cn } from "@/lib/utils";
 
 import BookingPanel from "./BookingPanel";
@@ -20,12 +21,16 @@ type Mode = "book" | "ask";
 export default function TripSidebar({
   trip,
   bankDetails,
+  selectedDate,
 }: {
   trip: Trip;
   bankDetails?: string | null;
+  selectedDate?: string;
 }) {
   const hasPrice = hasKnownTripPrice(trip.price);
+  const variablePricing = hasVariablePricing(trip);
   const [selectedMode, setSelectedMode] = useState<Mode>("book");
+  const [selection, setSelection] = useState<{ departureId: string; message: string; adults: number; children: number; infants: number } | null>(null);
   const mode = hasPrice ? selectedMode : "ask";
 
   return (
@@ -40,7 +45,7 @@ export default function TripSidebar({
               mode === "book" ? "bg-card text-primary shadow-sm" : "text-muted-foreground",
             )}
           >
-            Онлайн захиалах
+            {variablePricing ? "Үнэ сонгох" : "Онлайн захиалах"}
           </button>
           <button
             type="button"
@@ -56,9 +61,9 @@ export default function TripSidebar({
       )}
 
       {hasPrice && mode === "book" ? (
-        <BookingPanel trip={trip} bankDetails={bankDetails} />
+        <BookingPanel trip={trip} bankDetails={bankDetails} selectedDate={selectedDate} onAsk={(next) => { setSelection(next); setSelectedMode("ask"); }} />
       ) : (
-        <EnquiryPanel trip={trip} />
+        <EnquiryPanel trip={trip} initialSelection={selection} variablePricing={variablePricing} selectedDate={selectedDate} />
       )}
     </div>
   );

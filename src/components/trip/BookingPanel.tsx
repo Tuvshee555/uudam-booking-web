@@ -2,21 +2,22 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, Check, Copy, Loader2, Minus, Plus, Users } from "lucide-react";
+import { Check, Copy, Loader2, Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { api, apiErrorMessage } from "@/lib/api";
 import { getVisitorId, track } from "@/lib/analytics";
 import { ageBandsFor, formatFare, formatMnt, lineTotal, resolvePrices } from "@/lib/pricing";
-import { availability, formatFullDate, formatDepartureDate, upcomingDepartures } from "@/lib/departures";
-import { departureSeatFact, saleBadgeLabel } from "@/lib/tripMarketing";
+import { formatFullDate, formatDepartureDate, upcomingDepartures } from "@/lib/departures";
+import { saleBadgeLabel } from "@/lib/tripMarketing";
+import { datePriceOptions, formatAdultOption, hasVariablePricing } from "@/lib/tripPriceOptions";
+import DepartureDatePicker from "./DepartureDatePicker";
 import QpayPayButton, { QpayPaidBadge } from "./QpayPayButton";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Departure, Trip } from "@/types/trip";
-import { cn } from "@/lib/utils";
 
 type Step = "select" | "details" | "done";
 
@@ -80,17 +81,24 @@ function Counter({
 export default function BookingPanel({
   trip,
   bankDetails,
+  onAsk,
+  selectedDate,
 }: {
   trip: Trip;
   bankDetails?: string | null;
+  selectedDate?: string;
+  onAsk: (selection: { departureId: string; message: string; adults: number; children: number; infants: number }) => void;
 }) {
   const { locale } = useI18n();
 
   const [step, setStep] = useState<Step>("select");
-  const [departureId, setDepartureId] = useState<string | null>(null);
+  const [departureId, setDepartureId] = useState<string | null>(() =>
+    trip.departures.find((departure) => departure.startDate.slice(0, 10) === selectedDate)?.id ?? null);
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
   const [infants, setInfants] = useState(0);
+  const [hotel, setHotel] = useState("");
+  const [tierCounts, setTierCounts] = useState<Record<string, number>>({});
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -109,9 +117,19 @@ export default function BookingPanel({
   const openDepartures = useMemo(() => upcomingDepartures(trip, now), [trip, now]);
 
   const selected = openDepartures.find((d) => d.id === departureId) ?? null;
+  const options = selected ? datePriceOptions(trip, selected) : [];
+  const hotelOptions = options.filter((option) => option.hotel)
+    .sort((a, b) => (a.adult ?? Number.POSITIVE_INFINITY) - (b.adult ?? Number.POSITIVE_INFINITY));
+  const option = hotelOptions.find((item) => item.hotel === hotel) ?? hotelOptions[0] ?? options[0] ?? null;
+  const quoteOnly = hasVariablePricing(trip);
   const prices = resolvePrices(trip, selected);
   const ageBands = ageBandsFor(trip.sourceMetadata);
   const total = lineTotal({ adults, children, infants }, prices);
+  const specialTiers = option?.passengers ?? [];
+  const tierTotal = specialTiers.reduce((sum, item) => sum + (tierCounts[item.label] || 0) * (item.price || 0), 0);
+  const missingTierPrice = specialTiers.some((item) => (tierCounts[item.label] || 0) > 0 && item.price == null);
+  const quoteMin = missingTierPrice ? null : adults * (option?.adult ?? prices.adult) + tierTotal;
+  const quoteMax = option?.adultMax != null ? adults * option.adultMax + tierTotal : quoteMin;
   const saleLabel = saleBadgeLabel(trip);
 
   async function submit(event: React.FormEvent) {
@@ -223,11 +241,11 @@ export default function BookingPanel({
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+    <div className="rounded-md border border-border bg-card p-4">
       <div className="flex items-end justify-between">
         <div>
-          <div className="text-2xl font-bold text-primary">{formatMnt(prices.adult)}</div>
-          <div className="text-xs text-muted-foreground">нэг том хүн</div>
+          <div className="text-xl font-bold text-primary">{quoteOnly && option ? formatAdultOption(option) : formatMnt(prices.adult)}</div>
+          <div className="text-xs text-muted-foreground">{quoteOnly ? "нэг том хүний үнэ" : "нэг том хүн"}</div>
         </div>
         <div className="flex flex-col items-end gap-1.5">
           {saleLabel && (
@@ -241,7 +259,7 @@ export default function BookingPanel({
         </div>
       </div>
 
-      <div className="mt-4 space-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
+      {!quoteOnly && <div className="mt-4 space-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
         <div className="flex justify-between">
           <span>Хүүхэд</span>
           <span className="font-medium text-foreground">{formatFare(prices.child)}</span>
@@ -250,93 +268,70 @@ export default function BookingPanel({
           <span>Нярай</span>
           <span className="font-medium text-foreground">{formatFare(prices.infant)}</span>
         </div>
-      </div>
+      </div>}
 
       {step === "select" && (
         <div className="mt-5">
-          <div className="flex items-center gap-1.5 text-sm font-semibold">
-            <CalendarDays className="h-4 w-4 text-primary" />
-            Хөдлөх огноо
-          </div>
+          <DepartureDatePicker departures={openDepartures} selectedId={departureId} basePrice={trip.price}
+            onSelect={(departure) => {
+              setDepartureId(departure.id);
+              setHotel("");
+              setTierCounts({});
+              track("departure_select", { tripId: trip.id, properties: { departureId: departure.id } });
+            }} />
 
-          {openDepartures.length === 0 ? (
-            <p className="mt-2 rounded-lg bg-secondary p-3 text-xs text-muted-foreground">
-              Тогтсон огноо алга. Доорх &ldquo;Захиалгат аялал&rdquo;-аар хүсэлт илгээнэ үү.
-            </p>
-          ) : (
-            <div className="mt-2 space-y-2">
-              {openDepartures.map((departure) => {
-                const seats = availability(departure);
-                const exactSeats = departureSeatFact(departure);
-                const active = departure.id === departureId;
-
-                return (
-                  <button
-                    key={departure.id}
-                    type="button"
-                    disabled={!seats.selectable}
-                    onClick={() => {
-                      setDepartureId(active ? null : departure.id);
-                      if (!active) {
-                        track("departure_select", {
-                          tripId: trip.id,
-                          properties: { departureId: departure.id },
-                        });
-                      }
-                    }}
-                    className={cn(
-                      "flex w-full items-center justify-between rounded-xl border p-3 text-left transition-colors",
-                      active ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",
-                      !seats.selectable && "cursor-not-allowed border-destructive/25 bg-destructive/5",
-                    )}
-                  >
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-medium">{formatRange(departure)}</div>
-                      <div
-                        className={cn(
-                          "mt-0.5 flex items-center gap-1 text-xs text-muted-foreground",
-                          seats.tone === "tight" && "font-semibold text-destructive",
-                          seats.tone === "closed" && "font-semibold text-destructive",
-                        )}
-                      >
-                        <Users className="h-3 w-3" />
-                        {seats.label}
-                        {exactSeats && exactSeats !== seats.label && (
-                          <span className="text-muted-foreground">· {exactSeats}</span>
-                        )}
-                      </div>
-                    </div>
-                    {departure.price != null && departure.price !== trip.price && (
-                      <span className="shrink-0 text-sm font-semibold text-primary">
-                        {formatMnt(departure.price)}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+          {hotelOptions.length > 0 && <div className="mt-4 border-t border-border pt-4">
+            <h3 className="text-sm font-semibold">Буудал</h3>
+            <div className="mt-2 space-y-1.5">
+              {hotelOptions.map((item) => <button key={item.hotel} type="button" aria-pressed={option?.hotel === item.hotel}
+                onClick={() => { setHotel(item.hotel); setTierCounts({}); }}
+                className={`flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-left text-sm ${option?.hotel === item.hotel ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}>
+                <span className="min-w-0 truncate font-medium">{item.hotel}</span>
+                <span className="shrink-0 text-xs tabular-nums">{item === hotelOptions[0] ? "Хамгийн хямд"
+                  : item.adult != null && hotelOptions[0].adult != null
+                    ? `+${formatMnt(item.adult - hotelOptions[0].adult)}` : formatAdultOption(item)}</span>
+              </button>)}
             </div>
-          )}
+          </div>}
 
           <div className="mt-4 divide-y divide-border border-t border-border">
             <Counter label="Том хүн" hint={ageBands.adult} value={adults} onChange={setAdults} min={1} />
-            <Counter label="Хүүхэд" hint={ageBands.child} value={children} onChange={setChildren} />
-            <Counter label="Нярай" hint={ageBands.infant} value={infants} onChange={setInfants} />
+            {quoteOnly && specialTiers.length > 0 ? specialTiers.map((item) =>
+              <Counter key={item.label} label={item.label} hint={`${item.ageRange} · ${item.price == null ? "Үнэ лавлах" : formatMnt(item.price)}`}
+                value={tierCounts[item.label] || 0} onChange={(value) => setTierCounts((current) => ({ ...current, [item.label]: value }))} />
+            ) : <>
+              <Counter label="Хүүхэд" hint={ageBands.child} value={children} onChange={setChildren} />
+              <Counter label="Нярай" hint={ageBands.infant} value={infants} onChange={setInfants} />
+            </>}
           </div>
 
           <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
-            <span className="text-sm text-muted-foreground">Нийт дүн</span>
-            <span className="text-xl font-bold text-primary">{formatMnt(total)}</span>
+            <span className="text-sm text-muted-foreground">{quoteOnly ? "Тооцоолсон үнэ" : "Нийт дүн"}</span>
+            <span className="text-lg font-bold text-primary">{quoteOnly
+              ? quoteMin == null ? "Үнэ лавлах" : quoteMax != null && quoteMax > quoteMin
+                ? `${formatMnt(quoteMin)}–${formatMnt(quoteMax)}` : formatMnt(quoteMin)
+              : formatMnt(total)}</span>
           </div>
+
+          {quoteOnly && <p className="mt-1 text-xs text-muted-foreground">Эцсийн үнэ, өрөөний сонголтыг ажилтан баталгаажуулна.</p>}
 
           <Button
             className="mt-4 w-full"
             disabled={!selected}
             onClick={() => {
-              setStep("details");
-              track("booking_start", { tripId: trip.id });
+              if (quoteOnly && selected) {
+                const counts = specialTiers.map((item) => `${item.label}: ${tierCounts[item.label] || 0}`).join(", ");
+                onAsk({ departureId: selected.id, adults,
+                  children: specialTiers.filter((item) => !/нярай|infant/i.test(item.label)).reduce((sum, item) => sum + (tierCounts[item.label] || 0), 0),
+                  infants: specialTiers.filter((item) => /нярай|infant/i.test(item.label)).reduce((sum, item) => sum + (tierCounts[item.label] || 0), 0),
+                  message: [option?.hotel ? `Буудал: ${option.hotel}` : "", counts].filter(Boolean).join("; ") });
+              } else {
+                setStep("details");
+                track("booking_start", { tripId: trip.id });
+              }
             }}
           >
-            {selected ? "Захиалах" : "Огноогоо сонгоно уу"}
+            {selected ? quoteOnly ? "Үнийн санал авах" : "Захиалах" : "Огноогоо сонгоно уу"}
           </Button>
         </div>
       )}

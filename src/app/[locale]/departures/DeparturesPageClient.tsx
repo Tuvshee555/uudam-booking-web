@@ -1,171 +1,127 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { CalendarDays, Clock, ImageOff, MapPin } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 
-import type { Trip } from "@/types/trip";
-import { availability, formatMonthShort, formatYearMonthLong, upcomingDepartures } from "@/lib/departures";
-import { departureSeatFact } from "@/lib/tripMarketing";
-import { formatMnt } from "@/lib/pricing";
+import type { Departure, Trip } from "@/types/trip";
+import { availability, formatYearMonthLong, upcomingDepartures } from "@/lib/departures";
+import { formatTripStartingPrice } from "@/lib/pricing";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { cn } from "@/lib/utils";
 
-type Row = {
-  key: string;
-  trip: Trip;
-  departure: ReturnType<typeof upcomingDepartures>[number];
-};
+type Row = { trip: Trip; departure: Departure };
+const weekdays = ["Да", "Мя", "Лх", "Пү", "Ба", "Бя", "Ня"];
 
-/**
- * Departures grouped by month.
- *
- * A month list rather than a calendar grid: the catalogue carries on the order
- * of a dozen upcoming dates, and a 30-cell grid with three filled squares
- * communicates emptiness rather than availability.
- */
 export default function DeparturesPageClient({ trips }: { trips: Trip[] }) {
   const { locale } = useI18n();
   const [now] = useState(() => Date.now());
-
   const months = useMemo(() => {
-    const rows: Row[] = [];
-
+    const grouped = new Map<string, Row[]>();
     for (const trip of trips) {
       for (const departure of upcomingDepartures(trip, now)) {
-        rows.push({ key: `${trip.id}:${departure.id}`, trip, departure });
+        const key = departure.startDate.slice(0, 7);
+        grouped.set(key, [...(grouped.get(key) || []), { trip, departure }]);
       }
     }
-
-    rows.sort(
-      (a, b) =>
-        new Date(a.departure.startDate).getTime() - new Date(b.departure.startDate).getTime(),
-    );
-
-    const grouped = new Map<string, { label: string; rows: Row[] }>();
-
-    for (const row of rows) {
-      const date = new Date(row.departure.startDate);
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-
-      if (!grouped.has(key)) {
-        grouped.set(key, {
-          label: formatYearMonthLong(date),
-          rows: [],
-        });
-      }
-      grouped.get(key)!.rows.push(row);
-    }
-
-    return Array.from(grouped.entries()).map(([key, value]) => ({ key, ...value }));
+    return [...grouped].sort(([a], [b]) => a.localeCompare(b));
   }, [trips, now]);
-
-  const total = months.reduce((sum, month) => sum + month.rows.length, 0);
+  const [monthKey, setMonthKey] = useState(() => months[0]?.[0] || "");
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const resultsRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (selectedDay) resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [selectedDay]);
+  const index = Math.max(0, months.findIndex(([key]) => key === monthKey));
+  const month = months[index];
 
   return (
-    <div className="uudam-container py-8">
+    <div className="uudam-container max-w-6xl py-8">
       <header>
         <h1 className="text-2xl font-bold md:text-3xl">Аяллын хуваарь</h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          Ойрын хугацаанд хөдлөх аяллуудыг огноогоор нь харна уу.
-        </p>
+        <p className="mt-1.5 text-sm text-muted-foreground">Явах өдрөө сонгоод тухайн өдрийн аяллуудыг харна уу.</p>
       </header>
 
-      {total === 0 ? (
-        <div className="mt-10 rounded-2xl border border-dashed border-border py-16 text-center">
+      {!month ? (
+        <div className="mt-10 border-y border-border py-16 text-center">
           <CalendarDays className="mx-auto h-8 w-8 text-muted-foreground" />
           <p className="mt-3 text-sm font-medium">Одоогоор товлосон огноо алга</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Хүссэн огноогоо хэлбэл бид тохируулж өгнө.
-          </p>
-          <Link
-            href={`/${locale}/custom-trip`}
-            className="mt-5 inline-block rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-          >
-            Захиалгат аялал хүсэх
-          </Link>
+          <Link href={`/${locale}/custom-trip`} className="mt-5 inline-block text-sm font-semibold text-primary underline">Захиалгат аялал хүсэх</Link>
         </div>
-      ) : (
-        <div className="mt-8 space-y-10">
-          {months.map((month) => (
-            <section key={month.key}>
-              <h2 className="text-lg font-bold capitalize">{month.label}</h2>
-              <ul className="mt-3 divide-y divide-border rounded-2xl border border-border">
-                {month.rows.map(({ key, trip, departure }) => {
-                  const seats = availability(departure);
-                  const exactSeats = departureSeatFact(departure);
-                  const date = new Date(departure.startDate);
+      ) : (() => {
+        const [key, rows] = month;
+        const [year, monthNumber] = key.split("-").map(Number);
+        const days = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+        const leading = (new Date(Date.UTC(year, monthNumber - 1, 1)).getUTCDay() + 6) % 7;
+        const byDay = new Map<number, Row[]>();
+        for (const row of rows) {
+          const day = Number(row.departure.startDate.slice(8, 10));
+          byDay.set(day, [...(byDay.get(day) || []), row]);
+        }
+        const activeDay = selectedDay && byDay.has(selectedDay) ? selectedDay : null;
+        const activeRows = activeDay ? byDay.get(activeDay) || [] : [];
+        return <>
+          <div className="mt-7 flex items-center justify-between border-b border-border pb-3">
+            <h2 className="text-lg font-bold">{formatYearMonthLong(new Date(`${key}-01T00:00:00Z`))}</h2>
+            <div className="flex items-center gap-1">
+              <button type="button" title="Өмнөх сар" aria-label="Өмнөх сар" disabled={index === 0}
+                onClick={() => { setMonthKey(months[index - 1][0]); setSelectedDay(null); }}
+                className="flex h-9 w-9 items-center justify-center disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button>
+              <button type="button" title="Дараагийн сар" aria-label="Дараагийн сар" disabled={index === months.length - 1}
+                onClick={() => { setMonthKey(months[index + 1][0]); setSelectedDay(null); }}
+                className="flex h-9 w-9 items-center justify-center disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button>
+            </div>
+          </div>
+          <div className="mt-3 grid grid-cols-7 gap-px border border-border bg-border text-center text-xs text-muted-foreground">
+            {weekdays.map((day) => <div key={day} className="bg-background py-2 font-medium">{day}</div>)}
+          </div>
+          <div className="grid grid-cols-7 gap-px border-x border-b border-border bg-border">
+            {Array.from({ length: leading }, (_, i) => <div key={`blank-${i}`} className="min-h-20 bg-background" />)}
+            {Array.from({ length: days }, (_, i) => {
+              const day = i + 1;
+              const dayRows = byDay.get(day) || [];
+              return <button key={day} type="button" disabled={dayRows.length === 0} onClick={() => setSelectedDay(day)}
+                aria-label={`${key}-${String(day).padStart(2, "0")}: ${dayRows.length} аялал`}
+                aria-pressed={activeDay === day}
+                className={cn("min-w-0 min-h-20 bg-background p-1.5 text-left align-top transition-colors sm:p-2",
+                  dayRows.length ? "hover:bg-secondary/60" : "text-muted-foreground/50",
+                  activeDay === day && "bg-primary/10 ring-1 ring-inset ring-primary")}
+              >
+                <span className={cn("inline-flex h-6 min-w-6 items-center justify-center rounded text-xs font-semibold tabular-nums", activeDay === day && "bg-primary text-primary-foreground")}>{day}</span>
+                {dayRows.length > 0 && <>
+                  <span className="mt-1 block text-[10px] font-medium leading-tight text-primary sm:hidden">{dayRows.length} аялал</span>
+                  <span className="mt-1 hidden truncate text-xs font-medium leading-tight text-foreground sm:block">{dayRows[0].trip.title}</span>
+                  {dayRows.length > 1 && <span className="mt-1 hidden text-[10px] text-muted-foreground sm:block">+{dayRows.length - 1} аялал</span>}
+                </>}
+              </button>;
+            })}
+            {Array.from({ length: (7 - ((leading + days) % 7)) % 7 }, (_, i) =>
+              <div key={`tail-${i}`} className="min-h-20 bg-background" />)}
+          </div>
 
-                  return (
-                    <li key={key}>
-                      <Link
-                        href={`/${locale}/trips/${trip.slug}`}
-                        className="flex items-center gap-4 p-3.5 transition-colors hover:bg-secondary/50"
-                      >
-                        <div className="flex w-14 shrink-0 flex-col items-center rounded-xl bg-secondary py-2">
-                          <span className="text-lg font-bold leading-none">{date.getDate()}</span>
-                          <span className="mt-0.5 text-[11px] text-muted-foreground">
-                            {formatMonthShort(date)}
-                          </span>
-                        </div>
-
-                        <div className="relative hidden h-14 w-20 shrink-0 overflow-hidden rounded-lg bg-secondary sm:block">
-                          {trip.image ? (
-                            <Image
-                              src={trip.image}
-                              alt={trip.title}
-                              fill
-                              sizes="80px"
-                              className="object-cover"
-                            />
-                          ) : (
-                            <ImageOff className="absolute inset-0 m-auto h-4 w-4 text-muted-foreground" />
-                          )}
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-semibold">{trip.title}</div>
-                          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                            {trip.country && (
-                              <span className="flex items-center gap-1">
-                                <MapPin className="h-3 w-3" />
-                                {trip.country}
-                              </span>
-                            )}
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {trip.durationDays} хоног
-                            </span>
-                            <span
-                              className={cn(
-                                seats.tone === "tight" && "font-semibold text-destructive",
-                                seats.tone === "closed" && "font-semibold text-destructive",
-                              )}
-                            >
-                              {seats.label}
-                              {exactSeats && exactSeats !== seats.label && (
-                                <span className="text-muted-foreground"> · {exactSeats}</span>
-                              )}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="shrink-0 text-right">
-                          <div className="text-sm font-bold text-primary">
-                            {formatMnt(departure.price ?? trip.price)}
-                          </div>
-                          <div className="text-[11px] text-muted-foreground">хүн/-с эхлэн</div>
-                        </div>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ))}
-        </div>
-      )}
+          {activeDay && <section ref={resultsRef} className="mt-5 scroll-mt-20" aria-live="polite">
+            <h3 className="mb-2 text-base font-semibold">{monthNumber}-р сарын {activeDay} · {activeRows.length} аялал</h3>
+            <ul className="divide-y divide-border border-y border-border">
+              {activeRows.map(({ trip, departure }) => {
+                const seats = availability(departure);
+                return <li key={`${trip.id}:${departure.id}`}>
+                  <Link href={`/${locale}/trips/${trip.slug}?departure=${departure.startDate.slice(0, 10)}`}
+                    className="flex items-center justify-between gap-3 py-3 transition-colors hover:text-primary">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold">{trip.title}</div>
+                      <div className="mt-0.5 text-xs text-muted-foreground">{trip.durationDays} хоног · {seats.label}</div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <div className="text-sm font-semibold tabular-nums text-primary">{formatTripStartingPrice(departure.price ?? trip.price)}</div>
+                      <div className="text-[10px] text-muted-foreground">хүнээс эхлэх</div>
+                    </div>
+                  </Link>
+                </li>;
+              })}
+            </ul>
+          </section>}
+        </>;
+      })()}
     </div>
   );
 }

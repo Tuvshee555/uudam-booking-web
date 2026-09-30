@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
-  CalendarDays,
   Check,
   Facebook,
   Loader2,
@@ -11,26 +10,20 @@ import {
   Minus,
   Phone,
   Plus,
-  Users,
 } from "lucide-react";
 
 import { api, apiErrorMessage } from "@/lib/api";
 import { CONTACT, hasLink } from "@/lib/contact";
 import { getVisitorId, track } from "@/lib/analytics";
 import { ageBandsFor, formatFare, formatMnt, formatTripStartingPrice, hasKnownTripPrice, lineTotal, resolvePrices } from "@/lib/pricing";
-import { availability, formatFullDate, formatDepartureDate, upcomingDepartures } from "@/lib/departures";
-import { departureSeatFact, saleBadgeLabel } from "@/lib/tripMarketing";
+import { upcomingDepartures } from "@/lib/departures";
+import { saleBadgeLabel } from "@/lib/tripMarketing";
+import { datePriceOptions, formatAdultOption } from "@/lib/tripPriceOptions";
+import DepartureDatePicker from "./DepartureDatePicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { Departure, Trip } from "@/types/trip";
-import { cn } from "@/lib/utils";
-
-function formatRange(departure: Departure) {
-  const startText = formatFullDate(departure.startDate);
-  if (!departure.endDate) return startText;
-  return `${startText} — ${formatDepartureDate(departure.endDate)}`;
-}
+import type { Trip } from "@/types/trip";
 
 function Counter({
   label,
@@ -82,15 +75,21 @@ function Counter({
  * call-back — who, what trip, when, how many — and never pretends to be a
  * checkout. The price shown is explicitly an estimate.
  */
-export default function EnquiryPanel({ trip }: { trip: Trip }) {
-  const [departureId, setDepartureId] = useState<string | null>(null);
-  const [adults, setAdults] = useState(2);
-  const [children, setChildren] = useState(0);
-  const [infants, setInfants] = useState(0);
+export default function EnquiryPanel({ trip, initialSelection, variablePricing = false, selectedDate }: {
+  trip: Trip;
+  selectedDate?: string;
+  initialSelection?: { departureId: string; message: string; adults: number; children: number; infants: number } | null;
+  variablePricing?: boolean;
+}) {
+  const [departureId, setDepartureId] = useState<string | null>(initialSelection?.departureId ??
+    trip.departures.find((departure) => departure.startDate.slice(0, 10) === selectedDate)?.id ?? null);
+  const [adults, setAdults] = useState(initialSelection?.adults ?? 2);
+  const [children, setChildren] = useState(initialSelection?.children ?? 0);
+  const [infants, setInfants] = useState(initialSelection?.infants ?? 0);
 
   const [firstName, setFirstName] = useState("");
   const [phone, setPhone] = useState("");
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(initialSelection?.message ?? "");
 
   const [busy, setBusy] = useState(false);
   const [sentReference, setSentReference] = useState<string | null>(null);
@@ -103,6 +102,13 @@ export default function EnquiryPanel({ trip }: { trip: Trip }) {
 
   const selected = openDepartures.find((departure) => departure.id === departureId) ?? null;
   const prices = resolvePrices(trip, selected);
+  const options = selected ? datePriceOptions(trip, selected) : [];
+  const selectedHotel = initialSelection?.message.match(/Буудал: ([^;]+)/)?.[1];
+  const option = options.find((item) => item.hotel === selectedHotel) ?? options[0];
+  const optionPrices = options.flatMap((item) => [item.adult, item.adultMax].filter((value): value is number => value != null));
+  const optionLabel = selectedHotel && option ? formatAdultOption(option)
+    : optionPrices.length > 1 ? `${formatMnt(Math.min(...optionPrices))}–${formatMnt(Math.max(...optionPrices))}`
+    : option ? formatAdultOption(option) : "Үнэ огноо, буудлаас хамаарна";
   const ageBands = ageBandsFor(trip.sourceMetadata);
   const estimate = lineTotal({ adults, children, infants }, prices);
   const hasPrice = hasKnownTripPrice(prices.adult);
@@ -186,7 +192,7 @@ export default function EnquiryPanel({ trip }: { trip: Trip }) {
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+    <div className="rounded-md border border-border bg-card p-4">
       <div className="flex items-end justify-between">
         <div>
           {hasKnownTripPrice(trip.price) && trip.oldPrice && trip.oldPrice > trip.price && (
@@ -194,9 +200,11 @@ export default function EnquiryPanel({ trip }: { trip: Trip }) {
               {formatMnt(trip.oldPrice)}
             </div>
           )}
-          <div className="text-2xl font-bold text-primary">{formatTripStartingPrice(prices.adult)}</div>
+          <div className="text-xl font-bold text-primary">{variablePricing
+            ? optionLabel
+            : formatTripStartingPrice(prices.adult)}</div>
           <div className="text-xs text-muted-foreground">
-            {hasPrice ? "нэг том хүн" : "ажилтнаас тодруулна"}
+            {variablePricing ? "нэг том хүний үнэ" : hasPrice ? "нэг том хүн" : "ажилтнаас тодруулна"}
           </div>
         </div>
         {saleLabel && (
@@ -206,7 +214,7 @@ export default function EnquiryPanel({ trip }: { trip: Trip }) {
         )}
       </div>
 
-      <div className="mt-4 space-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
+      {!variablePricing && <div className="mt-4 space-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
         <div className="flex justify-between">
           <span>Хүүхэд</span>
           <span className="font-medium text-foreground">{formatFare(prices.child)}</span>
@@ -221,7 +229,7 @@ export default function EnquiryPanel({ trip }: { trip: Trip }) {
             <span className="font-medium text-foreground">{formatMnt(trip.singleSupplement)}</span>
           </div>
         )}
-      </div>
+      </div>}
       {trip.excluded.length > 0 && (
         <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
           Дээрх үнэнд юу ороогүйг доорх &ldquo;Багцад ороогүй&rdquo; жагсаалтаас нягтална уу — виз, хувийн зардал зэрэг зарим зүйл ихэвчлэн үнэд ороогүй байдаг.
@@ -229,65 +237,12 @@ export default function EnquiryPanel({ trip }: { trip: Trip }) {
       )}
 
       <form onSubmit={submit} className="mt-5">
-        <div className="flex items-center gap-1.5 text-sm font-semibold">
-          <CalendarDays className="h-4 w-4 text-primary" />
-          Хөдлөх огноо
-        </div>
-
-        {openDepartures.length === 0 ? (
-          <p className="mt-2 rounded-lg bg-secondary p-3 text-xs text-muted-foreground">
-            Тогтсон огноо байхгүй. Хүссэн өдрөө доор бичвэл бид тохируулж өгнө.
-          </p>
-        ) : (
-          <div className="mt-2 space-y-2">
-            {openDepartures.map((departure) => {
-              const seats = availability(departure);
-              const exactSeats = departureSeatFact(departure);
-              const soldOut = !seats.selectable;
-              const active = departure.id === departureId;
-
-              return (
-                <button
-                  key={departure.id}
-                  type="button"
-                  disabled={soldOut}
-                  onClick={() => {
-                    const next = active ? null : departure.id;
-                    setDepartureId(next);
-                    if (next) track("departure_select", { tripId: trip.id, properties: { departureId: next } });
-                  }}
-                  className={cn(
-                    "flex w-full items-center justify-between rounded-xl border p-3 text-left transition-colors",
-                    active ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",
-                    soldOut && "cursor-not-allowed border-destructive/25 bg-destructive/5",
-                  )}
-                >
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">{formatRange(departure)}</div>
-                    <div
-                      className={cn(
-                        "mt-0.5 flex items-center gap-1 text-xs text-muted-foreground",
-                        seats.tone === "tight" && "font-semibold text-destructive",
-                        seats.tone === "closed" && "font-semibold text-destructive",
-                      )}
-                    >
-                      <Users className="h-3 w-3" />
-                      {seats.label}
-                      {exactSeats && exactSeats !== seats.label && (
-                        <span className="text-muted-foreground">· {exactSeats}</span>
-                      )}
-                    </div>
-                  </div>
-                  {departure.price != null && departure.price !== trip.price && (
-                    <span className="shrink-0 text-sm font-semibold text-primary">
-                      {formatMnt(departure.price)}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )}
+        <DepartureDatePicker departures={openDepartures} selectedId={departureId} basePrice={trip.price}
+          onSelect={(departure) => {
+            setDepartureId(departure.id);
+            if (message === initialSelection?.message) setMessage("");
+            track("departure_select", { tripId: trip.id, properties: { departureId: departure.id } });
+          }} />
 
         <div className="mt-4 divide-y divide-border border-t border-border">
           <Counter label="Том хүн" hint={ageBands.adult} value={adults} onChange={setAdults} min={1} />
@@ -295,10 +250,10 @@ export default function EnquiryPanel({ trip }: { trip: Trip }) {
           <Counter label="Нярай" hint={ageBands.infant} value={infants} onChange={setInfants} />
         </div>
 
-        <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
+        {!variablePricing && <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
           <span className="text-sm text-muted-foreground">Ойролцоо дүн</span>
           <span className="text-xl font-bold text-primary">{hasPrice ? formatMnt(estimate) : "Үнэ лавлах"}</span>
-        </div>
+        </div>}
         <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
           Урьдчилсан тооцоо. Эцсийн үнийг ажилтан тодруулж хэлнэ.
         </p>

@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/server/prisma";
 import { checkInvoice } from "@/server/qpay";
 import { lineTotal, resolvePrices, totalHeadcount } from "@/lib/pricing";
+import { hasVariablePricing } from "@/lib/tripPriceOptions";
 
 /**
  * Statuses that are actively holding a seat out of sale.
@@ -138,12 +139,16 @@ export async function createBooking(input: CreateBookingInput) {
         price: true,
         childPrice: true,
         infantPrice: true,
+        sourceMetadata: true,
       },
     });
 
     // An unpublished trip is a 404 here too, matching the storefront: a taken
     // down trip must not still be sellable to anyone holding its link.
     if (!trip || !trip.isPublished) throw new BookingError("Аялал олдсонгүй", 404);
+    if (hasVariablePricing({ sourceMetadata: trip.sourceMetadata as Record<string, unknown> | null })) {
+      throw new BookingError("Энэ аяллын үнэ буудал, огнооноос хамаарна. Үнийн санал авах хүсэлт илгээнэ үү", 409);
+    }
 
     const sellableStatus =
       departure.status !== "CANCELLED" &&

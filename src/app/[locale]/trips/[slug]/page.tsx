@@ -12,7 +12,7 @@ import { formatTripTitle } from "@/lib/tripDisplay";
 import type { Trip } from "@/types/trip";
 import TripDetailClient from "./TripDetailClient";
 
-type Props = { params: Promise<{ slug: string }> };
+type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ departure?: string }> };
 
 /**
  * Server-only lookup. Two jobs, which is why it fetches the whole trip rather
@@ -88,8 +88,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function TripDetailPage({ params }: Props) {
+export default async function TripDetailPage({ params, searchParams }: Props) {
   const { slug } = await params;
+  const { departure } = await searchParams;
   const [trip, siteSettings] = await Promise.all([findPublishedTrip(slug), getSiteSettings()]);
 
   // A shared link to a trip that's since been unpublished or deleted should
@@ -151,6 +152,7 @@ export default async function TripDetailPage({ params }: Props) {
       )}
       <TripDetailClient
         slug={slug}
+        selectedDate={typeof departure === "string" && /^\d{4}-\d{2}-\d{2}$/.test(departure) ? departure : undefined}
         initialTrip={serializeTrip(trip)}
         initialSiteSettings={siteSettings}
       />
