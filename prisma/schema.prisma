@@ -122,6 +122,13 @@ model Trip {
   /// the hotel info. Same shape and same sync guarantee as hotelMedia.
   travelerMedia Json?
 
+  /// Where this trip's weather comes from: {places, source, updatedAt} — see
+  /// src/server/weather/places.ts. `places` is the ordered list of cities the
+  /// trip visits (name, lat/lon, timezone, cached monthly climate normals).
+  /// Auto-detected once from the trip's own title/hotels/program, then
+  /// editable in admin. Website-only, never written by the chatbot sync.
+  weather Json?
+
   categoryId String?
   category   Category? @relation(fields: [categoryId], references: [id])
 

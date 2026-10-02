@@ -33,6 +33,7 @@ import {
 import { parseMediaItems } from "@/lib/media";
 import TripMedia from "@/components/trip/TripMedia";
 import MediaGallery from "@/components/trip/MediaGallery";
+import TripWeather, { useTripWeather } from "@/components/trip/TripWeather";
 import TripCard from "@/components/trip/TripCard";
 import TripSidebar from "@/components/trip/TripSidebar";
 import EnquiryTrustNote from "@/components/trust/EnquiryTrustNote";
@@ -98,6 +99,8 @@ export default function TripDetailClient({
 
   const hotelMedia = useMemo(() => parseMediaItems(trip?.hotelMedia) ?? [], [trip]);
   const travelerMedia = useMemo(() => parseMediaItems(trip?.travelerMedia) ?? [], [trip]);
+  const { data: weather } = useTripWeather(trip?.slug);
+  const hasWeather = Boolean(weather?.places.some((p) => p.current || p.daily.length || p.climate));
 
   /**
    * Anchors for the sticky section nav. Built from the same conditions the
@@ -110,6 +113,7 @@ export default function TripDetailClient({
     return [
       trip.highlights.length > 0 && { id: "highlights", label: "Онцлох" },
       { id: "about", label: "Тухай" },
+      hasWeather && { id: "weather", label: "Цаг агаар" },
       trip.itinerary.length > 0 && { id: "itinerary", label: "Хөтөлбөр" },
       (trip.included.length > 0 || trip.excluded.length > 0) && {
         id: "included",
@@ -131,7 +135,7 @@ export default function TripDetailClient({
       travelerMedia.length > 0 && { id: "traveler-media", label: "Аялагчид" },
       trip.testimonials && trip.testimonials.length > 0 && { id: "reviews", label: "Сэтгэгдэл" },
     ].filter((entry): entry is { id: string; label: string } => Boolean(entry));
-  }, [trip, siteSettings, hotelMedia, travelerMedia]);
+  }, [trip, siteSettings, hotelMedia, travelerMedia, hasWeather]);
 
   useEffect(() => {
     if (trip) recordRecentlyViewed(trip.slug);
@@ -278,7 +282,7 @@ export default function TripDetailClient({
                   <li key={section.id}>
                     <a
                       href={`#${section.id}`}
-                      className="inline-block shrink-0 rounded-full px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                      className="inline-block shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                     >
                       {section.label}
                     </a>
@@ -308,6 +312,16 @@ export default function TripDetailClient({
               {trip.description}
             </p>
           </section>
+
+          {weather && hasWeather && (
+            <section id="weather" className="mt-8 scroll-mt-28" data-print="hide">
+              <h2 className="text-lg font-bold">Цаг агаар</h2>
+              <p className="mb-4 mt-1 text-sm text-muted-foreground">
+                Очих газрын одоогийн цаг агаар, ойрын хоногийн урьдчилсан мэдээ, аялах сарын дундаж.
+              </p>
+              <TripWeather report={weather} durationDays={trip.durationDays} />
+            </section>
+          )}
 
           {trip.itinerary.length > 0 && (
             <section id="itinerary" className="mt-8 scroll-mt-28">

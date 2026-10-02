@@ -24,6 +24,7 @@ import StringListField from "./StringListField";
 import ImageUploadField from "./ImageUploadField";
 import MultiImageField from "./MultiImageField";
 import MediaListEditor from "./MediaListEditor";
+import WeatherPlacesEditor from "./WeatherPlacesEditor";
 import { parseMediaItems, type MediaItem } from "@/lib/media";
 import ItineraryEditor, { type ItineraryDraft } from "./ItineraryEditor";
 import DepartureEditor, { type DepartureDraft } from "./DepartureEditor";
@@ -654,6 +655,12 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
           onChange={(v) => set("travelerMedia", v)}
         />
       </Section>
+
+      {mode === "edit" && tripId && (
+        <Section title="Цаг агаар">
+          <WeatherPlacesEditor tripId={tripId} />
+        </Section>
+      )}
 
       <Section title="Өдөр тутмын хөтөлбөр">
         <ItineraryEditor days={form.itinerary} onChange={(v) => set("itinerary", v)} />
