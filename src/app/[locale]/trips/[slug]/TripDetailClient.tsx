@@ -640,7 +640,19 @@ export default function TripDetailClient({
           )}
         </div>
 
-        <aside id="booking-panel" className="scroll-mt-28 lg:sticky lg:top-[124px] lg:h-fit">
+        {/*
+          The booking panel (calendar + passenger counts + price) can run
+          taller than the viewport on trips with many months of departures.
+          `lg:sticky` alone pins the TOP edge, but a panel taller than the
+          screen then has no way to reach its own bottom — the price/button
+          simply sit below the fold with nothing scrolling them into view.
+          `max-h-[calc(100vh-…)]` + `overflow-y-auto` gives the sidebar its
+          own scroll region, independent of the (much longer) left column.
+        */}
+        <aside
+          id="booking-panel"
+          className="scroll-mt-28 lg:sticky lg:top-[124px] lg:max-h-[calc(100vh-144px)] lg:overflow-y-auto lg:overscroll-contain lg:pb-1 lg:pr-1"
+        >
           <TripSidebar trip={trip} bankDetails={siteSettings?.bankDetails} selectedDate={selectedDate} />
           <MessengerButton tripSlug={trip.slug} tripId={trip.id} className="mt-3 w-full" />
           <EnquiryTrustNote />

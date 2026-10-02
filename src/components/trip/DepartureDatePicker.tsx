@@ -67,14 +67,14 @@ export default function DepartureDatePicker({
             <button key={day} type="button" disabled={!seats?.selectable} onClick={() => onSelect(departure)}
               aria-label={`${current}-${String(day).padStart(2, "0")}, ${seats?.label}, эхлэх үнэ ${price.toLocaleString("en-US")} төгрөг`}
               aria-pressed={active}
-              className={cn("flex h-12 flex-col items-center justify-center rounded-md border text-xs leading-tight transition-colors",
+              className={cn("flex h-9 flex-col items-center justify-center rounded-md border text-xs leading-tight transition-colors",
                 active ? "border-primary bg-primary font-semibold text-primary-foreground" : "border-border bg-secondary/45 hover:border-primary",
                 !seats?.selectable && "border-destructive/25 bg-destructive/5 text-destructive")}
             >
               <span className="font-semibold">{day}</span>
-              <span className="mt-0.5 text-[10px] tabular-nums opacity-80">{!seats?.selectable ? (departure.status === "SOLD_OUT" || departure.seatsLeft === 0 ? "Дүүрсэн" : seats?.label) : price > 0 ? shortPrice(price) : "—"}</span>
+              <span className="text-[9px] tabular-nums opacity-80">{!seats?.selectable ? (departure.status === "SOLD_OUT" || departure.seatsLeft === 0 ? "Дүүрсэн" : seats?.label) : price > 0 ? shortPrice(price) : "—"}</span>
             </button>
-          ) : <span key={day} className="flex h-12 items-center justify-center text-xs text-muted-foreground/50">{day}</span>;
+          ) : <span key={day} className="flex h-9 items-center justify-center text-xs text-muted-foreground/40">{day}</span>;
         })}
       </div>
       <p className="mt-2 text-[11px] text-muted-foreground">Үнэ: сая ₮, нэг том хүний эхлэх үнэ.</p>
