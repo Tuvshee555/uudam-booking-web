@@ -9,7 +9,34 @@ import { roundTemp, shortDate, weatherEmoji, weekdayShort, type TripWeatherRepor
 
 const deg = (value: number) => `${roundTemp(value)}°`;
 
+/** Trip out of forecast reach: what it is like in its cities right now. */
+function currentText(report: Omit<TripWeatherReport, "text">): string {
+  const first = report.days[0].date;
+  const last = report.days[report.days.length - 1].date;
+  const lines: string[] = [`🌍 «${report.tripTitle.trim()}»`, "", "🌤 Очих хотуудад одоогоор:"];
+  for (const entry of report.now) {
+    const place = report.places[entry.place];
+    const days = entry.days
+      .slice(0, 3)
+      .map((d) => `${weekdayShort(d.date)} ${weatherEmoji(d.symbol)} ${deg(d.hi)}/${deg(d.lo)}`)
+      .join(" · ");
+    lines.push(`📍 ${place.name}: ${days}`);
+  }
+  lines.push(
+    "",
+    `🗓 Таны аялал ${shortDate(first)}–${shortDate(last)}.` +
+      (report.forecastFrom ? ` Тэр өдрүүдийн урьдчилсан мэдээ ${shortDate(report.forecastFrom)}-наас гарна.` : ""),
+  );
+  if (report.packing && report.usual) {
+    lines.push(
+      `👕 Аялах үед ихэвчлэн өдөртөө ${deg(report.usual.hi)}, шөнөдөө ${deg(report.usual.lo)} байдаг — авч явах: ${report.packing}.`,
+    );
+  }
+  return lines.join("\n");
+}
+
 export function buildWeatherText(report: Omit<TripWeatherReport, "text">): string {
+  if (report.mode === "current") return currentText(report);
   const shown = report.days.filter((d) => d.place !== null && d.hi !== null && d.lo !== null && d.symbol);
   if (!shown.length) return "";
 

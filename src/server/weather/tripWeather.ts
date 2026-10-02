@@ -18,6 +18,8 @@ const HOME_TIMEZONE = "Asia/Ulaanbaatar";
 /** MET Norway's model runs ~9 days ahead; beyond that there is no forecast, only normals. */
 const FORECAST_DAYS = 9;
 const DAY_MS = 86_400_000;
+/** How many upcoming days to show per city when the trip itself is out of forecast reach. */
+const NOW_DAYS = 5;
 
 function todayAt(timeZone: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(
@@ -197,6 +199,27 @@ export async function buildTripWeatherReport(
       })
     : null;
 
+  // No trip day is within forecast reach yet: rather than an empty card,
+  // show what it is like in the trip's cities right now (labelled "now").
+  // The usual weather for the trip dates still drives the packing line.
+  let now: TripWeatherReport["now"] = [];
+  if (needForecast.size === 0) {
+    const order = [...new Set(placeOfDay.filter((p): p is number => p !== null))];
+    now = (
+      await Promise.all(
+        order.map(async (index) => {
+          const place = stored.places[index];
+          const forecast = await fetchForecast(place.lat, place.lon, place.timezone);
+          return { place: index, days: forecast?.daily.slice(0, NOW_DAYS) ?? [] };
+        }),
+      )
+    ).filter((entry) => entry.days.length > 0);
+  }
+  const mode: TripWeatherReport["mode"] = needForecast.size === 0 && now.length > 0 ? "current" : "trip";
+  const usual = known.length
+    ? { hi: Math.max(...known.map((d) => d.hi!)), lo: Math.min(...known.map((d) => d.lo!)) }
+    : null;
+
   const forecastFrom = departure && departure > lastForecastDate ? addDays(departure, -FORECAST_DAYS) : null;
   const places = stored.places.map((p) => ({ name: p.name, country: p.country, lat: p.lat, lon: p.lon, timezone: p.timezone }));
 
@@ -208,6 +231,9 @@ export async function buildTripWeatherReport(
     departure,
     departures,
     days,
+    mode,
+    now,
+    usual,
     forecastFrom,
     packing,
     attribution: WEATHER_ATTRIBUTION,

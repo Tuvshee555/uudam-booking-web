@@ -410,7 +410,9 @@ export default function TripDetailClient({
             <section id="weather" className="mt-8 scroll-mt-28" data-print="hide">
               <h2 className="text-lg font-bold">Аяллын үеийн цаг агаар</h2>
               <p className="mb-4 mt-1 text-sm text-muted-foreground">
-                Таны аялах өдрүүдэд, тухайн өдөр байх хотын цаг агаар.
+                {weather.mode === "current"
+                  ? "Очих хотуудын одоогийн цаг агаар — аялал ойртоход таны аяллын өдөр бүрийн мэдээ энд гарна."
+                  : "Таны аялах өдрүүдэд, тухайн өдөр байх хотын цаг агаар."}
               </p>
               <TripWeather report={weather} onSelectDeparture={setWeatherDate} />
             </section>

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Info, Plane, Shirt, Umbrella } from "lucide-react";
+import { CalendarClock, Info, Plane, Shirt, Umbrella } from "lucide-react";
 
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -123,6 +123,60 @@ function DayTile({ day, placeName, placeChanged }: { day: TripWeatherDay; placeN
 }
 
 /**
+ * The trip is further out than any forecast: show what it is like in its
+ * cities right now — labelled "now", never presented as the trip's weather.
+ */
+function NowRows({ report }: { report: TripWeatherReport }) {
+  return (
+    <div className="mt-3 space-y-3">
+      <p className="flex gap-2 rounded-xl border border-gold/50 bg-gold/10 px-3 py-2.5 text-sm">
+        <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-navy dark:text-gold" />
+        <span>
+          {report.forecastFrom ? (
+            <>
+              Таны аяллын өдрүүдийн урьдчилсан мэдээ{" "}
+              <span className="font-semibold">{shortDate(report.forecastFrom)}</span>-наас энд автоматаар гарна.{" "}
+            </>
+          ) : null}
+          Одоогоор очих хотуудын цаг агаарыг харуулав.
+        </span>
+      </p>
+
+      {report.now.map((entry) => {
+        const place = report.places[entry.place];
+        return (
+          <div key={entry.place} className="rounded-xl border border-border bg-card p-3 sm:flex sm:items-center sm:gap-4">
+            <div className="mb-2 shrink-0 sm:mb-0 sm:w-32">
+              <p className="truncate font-bold">{place?.name}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+                Одоо · {place?.country}
+              </p>
+            </div>
+            <ol className="no-scrollbar -mx-1 flex flex-1 gap-1.5 overflow-x-auto px-1 sm:grid sm:grid-cols-5 sm:overflow-visible">
+              {entry.days.map((day, index) => (
+                <li
+                  key={day.date}
+                  className="flex min-w-[64px] flex-col items-center rounded-lg bg-secondary/40 px-1 py-1.5 text-center"
+                  title={weatherLabel(day.symbol)}
+                >
+                  <span className="text-[11px] font-semibold">{index === 0 ? "Өнөөдөр" : weekdayShort(day.date)}</span>
+                  <span className="text-[10px] text-muted-foreground">{shortDate(day.date)}</span>
+                  <WeatherIcon code={day.symbol} className="my-0.5 h-10 w-10 sm:h-12 sm:w-12" />
+                  <span className="text-xs">
+                    <span className="font-bold tabular-nums">{roundTemp(day.hi)}°</span>
+                    <span className="text-muted-foreground"> / {roundTemp(day.lo)}°</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
  * Weather for the traveller's own trip days, in the city they are in each
  * day: the real forecast where one exists (≤ ~9 days ahead), otherwise that
  * date's long-term normal — always labelled, never passed off as a forecast.
@@ -182,6 +236,10 @@ export default function TripWeather({
         {route && <span className="text-muted-foreground"> · {route}</span>}
       </p>
 
+      {report.mode === "current" ? (
+        <NowRows report={report} />
+      ) : (
+      <>
       <ol
         ref={stripRef}
         className="no-scrollbar -mx-1 mt-3 flex snap-x gap-2 overflow-x-auto px-1 pb-1 sm:grid sm:grid-cols-[repeat(auto-fill,minmax(112px,1fr))] sm:overflow-visible"
@@ -213,11 +271,19 @@ export default function TripWeather({
           </span>
         </p>
       )}
+      </>
+      )}
 
       {report.packing && (
         <p className="mt-3 flex gap-2 rounded-xl bg-secondary/50 p-3 text-sm">
           <Shirt className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           <span>
+            {report.mode === "current" && report.usual && (
+              <>
+                Аялах үед ихэвчлэн өдөртөө <span className="font-semibold">{roundTemp(report.usual.hi)}°</span>, шөнөдөө{" "}
+                <span className="font-semibold">{roundTemp(report.usual.lo)}°</span> байдаг.{" "}
+              </>
+            )}
             <span className="font-semibold">Авч явах: </span>
             {report.packing}.
           </span>

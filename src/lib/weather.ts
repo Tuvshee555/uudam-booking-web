@@ -105,6 +105,16 @@ export type TripWeatherReport = {
   /** Upcoming departure dates (YYYY-MM-DD), soonest first. */
   departures: string[];
   days: TripWeatherDay[];
+  /**
+   * "trip" = at least one trip day is within forecast reach: show the trip's days.
+   * "current" = the trip is further out than any forecast: show what it is like
+   *   in its cities right now (next few days), clearly labelled as "now".
+   */
+  mode: "trip" | "current";
+  /** mode "current": the next days' forecast per destination, in visiting order. */
+  now: { place: number; days: ForecastDay[] }[];
+  /** Usual day-high / night-low across the trip's own dates (for the packing line). */
+  usual: { hi: number; lo: number } | null;
   /** First date a real forecast will exist for this departure's first day. */
   forecastFrom: string | null;
   /** Packing advice for the whole trip period. */
