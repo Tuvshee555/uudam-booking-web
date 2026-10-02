@@ -21,6 +21,7 @@ import { saleBadgeLabel } from "@/lib/tripMarketing";
 import { datePriceOptions, formatAdultOption } from "@/lib/tripPriceOptions";
 import DepartureDatePicker from "./DepartureDatePicker";
 import { departureDateKey } from "@/lib/departureDate";
+import { announceDepartureSelect } from "./TripWeather";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -241,6 +242,7 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
         <DepartureDatePicker departures={openDepartures} selectedId={departureId} basePrice={trip.price}
           onSelect={(departure) => {
             setDepartureId(departure.id);
+            announceDepartureSelect(departureDateKey(departure.startDate));
             if (message === initialSelection?.message) setMessage("");
             track("departure_select", { tripId: trip.id, properties: { departureId: departure.id } });
           }} />

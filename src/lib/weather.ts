@@ -40,6 +40,12 @@ export type ClimateMonth = {
 
 export type StoredTripWeather = {
   places: WeatherPlace[];
+  /**
+   * Which place each program day is spent in: index into `places` per day
+   * (day 1 first), or null for a day in transit / back home. Missing → the
+   * days are split across the places in order.
+   */
+  dayPlaces?: (number | null)[];
   /** "auto" = detected from trip text; "manual" = staff picked the places. */
   source: "auto" | "manual";
   updatedAt: string;
@@ -65,20 +71,44 @@ export type CurrentWeather = {
   symbol: string;
 };
 
-export type PlaceWeatherReport = {
-  place: Omit<WeatherPlace, "climate">;
-  current: CurrentWeather | null;
-  daily: ForecastDay[];
-  climate: ClimateNormals | null;
+/** One calendar day of the trip, in the place the traveller is that day. */
+export type TripWeatherDay = {
+  /** 1-based program day. */
+  day: number;
+  /** YYYY-MM-DD. */
+  date: string;
+  /** Index into report.places, or null for a travel/home day. */
+  place: number | null;
+  /**
+   * "forecast" = a real forecast for that date (≤ ~9 days ahead);
+   * "typical" = that calendar date's long-term normal — never presented as a forecast.
+   */
+  source: "forecast" | "typical" | null;
+  hi: number | null;
+  lo: number | null;
+  symbol: string | null;
+  /** Forecast days: expected rain, mm. */
+  precipMm: number | null;
+  /** Typical days: chance of a rainy (≥2 mm) day, %. */
+  rainChance: number | null;
 };
+
+export type TripWeatherPlace = Omit<WeatherPlace, "climate">;
 
 export type TripWeatherReport = {
   tripId: string;
   tripSlug: string;
   tripTitle: string;
-  places: PlaceWeatherReport[];
+  places: TripWeatherPlace[];
+  /** The departure these days belong to (YYYY-MM-DD), or null if the trip has none. */
+  departure: string | null;
   /** Upcoming departure dates (YYYY-MM-DD), soonest first. */
   departures: string[];
+  days: TripWeatherDay[];
+  /** First date a real forecast will exist for this departure's first day. */
+  forecastFrom: string | null;
+  /** Packing advice for the whole trip period. */
+  packing: string | null;
   /** Plain-text Mongolian summary — exactly what the chatbot sends. */
   text: string;
   attribution: string;
@@ -211,6 +241,20 @@ export function climateSymbol(month: ClimateMonth): string {
   const cloud = month.cloud ?? 40;
   if (cloud < 35) return "clearsky_day";
   if (cloud < 60) return "fair_day";
+  return "partlycloudy_day";
+}
+
+/**
+ * Icon for ONE typical day: rain only when rain is actually likely that day
+ * (a 25% chance drawn as a rain cloud reads as "it will rain").
+ */
+export function typicalDaySymbol(hi: number, rainChance: number, cloud: number | null): string {
+  const cold = hi <= 2;
+  if (rainChance >= 55) return cold ? "snow" : "rain";
+  if (rainChance >= 35) return cold ? "snowshowers_day" : "rainshowers_day";
+  const c = cloud ?? 40;
+  if (c < 35) return "clearsky_day";
+  if (c < 60) return "fair_day";
   return "partlycloudy_day";
 }
 

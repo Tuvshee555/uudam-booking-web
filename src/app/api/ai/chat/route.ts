@@ -1,9 +1,7 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { clientIp, handler, httpError, json, rateLimit, readJson } from "@/server/http";
 import { loadSearchableTrips, searchTrips, type SearchableTrip } from "@/server/tripSearch";
 import { formatMnt } from "@/lib/pricing";
-
-const GEN_MODEL = process.env.GEN_MODEL || "gemini-2.5-flash";
+import { openaiJson } from "@/server/openai";
 
 type ChatItem = {
   id: string;
@@ -72,8 +70,7 @@ export const POST = handler(async (req: Request) => {
   const matches = searchTrips(message, trips);
   const items = matches.map((match) => toItem(match.trip));
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
+  if (!process.env.OPENAI_API_KEY) {
     return json({ reply: localReply(items, message), items, source: "catalog" });
   }
 
@@ -113,10 +110,7 @@ ${context || "(тохирох аялал олдсонгүй)"}
 {"reply":"хариу текст","ids":["tripId"]}`;
 
   try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: GEN_MODEL });
-    const result = await model.generateContent(prompt);
-    const text = result?.response?.text?.() ?? "";
+    const text = await openaiJson(prompt, { timeoutMs: 20000 });
 
     const parsed = extractFirstJson(text);
     if (!parsed?.reply) {

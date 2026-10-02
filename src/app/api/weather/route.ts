@@ -7,6 +7,7 @@ import { loadTripForWeather, ensureTripPlaces, buildTripWeatherReport } from "@/
 /**
  * GET /api/weather?trip=<id|slug>   — the trip page's weather card
  * GET /api/weather?source=<id>      — the Messenger bot, by its own trip id
+ *   &date=YYYY-MM-DD                 — which departure (default: the next one)
  *
  * One endpoint, one computation: the card and the chatbot read the same
  * report (the bot sends `text` verbatim), so they can never disagree.
@@ -17,6 +18,7 @@ export const GET = handler(async (req: Request) => {
   const params = new URL(req.url).searchParams;
   const tripKey = params.get("trip")?.trim().slice(0, 200);
   const source = params.get("source")?.trim().slice(0, 200);
+  const date = params.get("date")?.trim();
   if (!tripKey && !source) throw httpError(400, "trip or source is required");
 
   const trip = await loadTripForWeather(
@@ -28,8 +30,8 @@ export const GET = handler(async (req: Request) => {
     throw httpError(404, "Trip not found");
   }
 
-  const places = await ensureTripPlaces(trip);
-  const report = await buildTripWeatherReport(trip, places);
+  const stored = await ensureTripPlaces(trip);
+  const report = await buildTripWeatherReport(trip, stored, date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : undefined);
   // Forecasts refresh every ~30 min upstream; let the CDN absorb repeat views.
   return publicCache(NextResponse.json(report), 600, 1800);
 });

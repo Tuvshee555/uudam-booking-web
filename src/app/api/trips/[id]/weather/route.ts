@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/server/auth";
 import { handler, httpError, readJson } from "@/server/http";
 import { prisma, withPrismaRetry } from "@/server/prisma";
-import { parsePlacesInput, parseStoredWeather, withClimate } from "@/server/weather/places";
+import { parsePlacesInput, parseStoredWeather, remapDayPlaces, withClimate } from "@/server/weather/places";
 import { ensureTripPlaces, loadTripForWeather } from "@/server/weather/tripWeather";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -45,14 +45,21 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
   if (!input) throw httpError(400, "places must be a list");
 
   // Keep climate already computed for an unchanged place; compute the rest.
-  const previous = parseStoredWeather(trip.weather)?.places ?? [];
+  const previousWeather = parseStoredWeather(trip.weather);
+  const previous = previousWeather?.places ?? [];
   const reused = input.map((place) => {
     const same = previous.find((p) => p.lat === place.lat && p.lon === place.lon);
     return same?.climate ? { ...place, climate: same.climate } : place;
   });
   const places = await withClimate(reused);
 
-  const weather = { places, source: "manual" as const, updatedAt: new Date().toISOString() };
+  const dayPlaces = remapDayPlaces(previous, previousWeather?.dayPlaces, places);
+  const weather = {
+    places,
+    ...(dayPlaces ? { dayPlaces } : {}),
+    source: "manual" as const,
+    updatedAt: new Date().toISOString(),
+  };
   await withPrismaRetry(() => prisma.trip.update({ where: { id: trip.id }, data: { weather } }));
   return NextResponse.json(weather);
 });

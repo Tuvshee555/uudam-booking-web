@@ -55,6 +55,38 @@ export function summarizeClimate(params: {
   });
 }
 
+/**
+ * The long-term normal for one calendar date — what that day is usually
+ * like. Monthly normals are treated as mid-month values and interpolated,
+ * so the 30th of a month doesn't jump to the next month's figures on the 1st.
+ */
+export function typicalForDate(
+  months: ClimateMonth[],
+  ymd: string,
+): { hi: number; lo: number; rainChance: number; month: ClimateMonth } {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const daysIn = (year: number, month0: number) => new Date(Date.UTC(year, month0 + 1, 0)).getUTCDate();
+  const month0 = m - 1;
+  const len = daysIn(y, month0);
+  // Position in "months", 0 = middle of January.
+  const t = month0 + (d - (len + 1) / 2) / len;
+  const lower = Math.floor(t);
+  const frac = t - lower;
+  const a = months[((lower % 12) + 12) % 12];
+  const b = months[(((lower + 1) % 12) + 12) % 12];
+  const mix = (x: number, z: number) => x * (1 - frac) + z * frac;
+  const hi = mix(a.hi, b.hi);
+  const lo = mix(a.lo, b.lo);
+  const rainDays = mix(a.rainDays, b.rainDays);
+  const cloud = a.cloud !== null && b.cloud !== null ? mix(a.cloud, b.cloud) : (a.cloud ?? b.cloud);
+  return {
+    hi,
+    lo,
+    rainChance: Math.round(Math.min(100, (rainDays / 30.4) * 100)),
+    month: { hi, lo, rainDays, cloud },
+  };
+}
+
 export async function fetchClimate(lat: number, lon: number): Promise<ClimateNormals | null> {
   const lastYear = new Date().getUTCFullYear() - 1;
   const firstYear = lastYear - YEARS + 1;

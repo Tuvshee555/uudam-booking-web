@@ -13,6 +13,7 @@ import { saleBadgeLabel } from "@/lib/tripMarketing";
 import { datePriceOptions, formatAdultOption, hasVariablePricing } from "@/lib/tripPriceOptions";
 import DepartureDatePicker from "./DepartureDatePicker";
 import { departureDateKey } from "@/lib/departureDate";
+import { announceDepartureSelect } from "./TripWeather";
 import QpayPayButton, { QpayPaidBadge } from "./QpayPayButton";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { Button } from "@/components/ui/button";
@@ -276,6 +277,7 @@ export default function BookingPanel({
           <DepartureDatePicker departures={openDepartures} selectedId={departureId} basePrice={trip.price}
             onSelect={(departure) => {
               setDepartureId(departure.id);
+              announceDepartureSelect(departureDateKey(departure.startDate));
               setHotel("");
               setTierCounts({});
               track("departure_select", { tripId: trip.id, properties: { departureId: departure.id } });

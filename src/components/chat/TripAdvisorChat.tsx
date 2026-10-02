@@ -38,7 +38,7 @@ const GREETING: ChatMessage = {
 
 /**
  * Floating widget for the trip-advisor backend (/api/ai/chat). The API was
- * fully built — catalog search plus an optional Gemini rephrase — but had no
+ * fully built — catalog search plus an optional AI rephrase — but had no
  * customer-facing surface at all before this.
  */
 export default function TripAdvisorChat() {

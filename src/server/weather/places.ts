@@ -1,7 +1,7 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import tzLookup from "@photostructure/tz-lookup";
 
 import type { StoredTripWeather, WeatherPlace } from "@/lib/weather";
+import { openaiJson } from "@/server/openai";
 import { fetchClimate } from "./climate";
 
 /**
@@ -13,11 +13,11 @@ import { fetchClimate } from "./climate";
  * day-by-day program) — never from a list in code — once, then stored on
  * the trip where staff can correct it in admin:
  *
- *   trip text ──Gemini──► [{city, country, ISO code}] ──OpenStreetMap──► lat/lon
+ *   trip text ──OpenAI──► [{city, country, ISO code}] ──OpenStreetMap──► lat/lon
  *                                                     ──tz-lookup──► timezone
  */
 
-const MAX_PLACES = 4;
+const MAX_PLACES = 5;
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
 const USER_AGENT = "uudam-booking-web/1.0 (+https://uudam-booking-web.vercel.app)";
 
@@ -69,8 +69,16 @@ export function parseStoredWeather(value: unknown): StoredTripWeather | null {
   if (typeof value !== "object" || value === null) return null;
   const r = value as Record<string, unknown>;
   if (!Array.isArray(r.places)) return null;
+  const places = r.places.map(parsePlace).filter((p): p is WeatherPlace => p !== null).slice(0, MAX_PLACES);
   return {
-    places: r.places.map(parsePlace).filter((p): p is WeatherPlace => p !== null).slice(0, MAX_PLACES),
+    places,
+    ...(Array.isArray(r.dayPlaces)
+      ? {
+          dayPlaces: r.dayPlaces
+            .slice(0, 60)
+            .map((v) => (typeof v === "number" && Number.isInteger(v) && v >= 0 && v < places.length ? v : null)),
+        }
+      : {}),
     source: r.source === "manual" ? "manual" : "auto",
     updatedAt: typeof r.updatedAt === "string" ? r.updatedAt : new Date(0).toISOString(),
     ...(typeof r.error === "string" && r.error ? { error: r.error.slice(0, 300) } : {}),
@@ -141,6 +149,7 @@ type TripText = {
   hotel?: string | null;
   description?: string | null;
   itinerary?: { title?: string | null; accommodation?: string | null; location?: string | null }[];
+  durationDays?: number;
 };
 
 type DetectedCity = {
@@ -193,50 +202,15 @@ export function cleanPlaceName(raw: string): string {
   return name;
 }
 
-/** OpenAI first (the chatbot's working provider), Gemini as the fallback. */
-async function askModelForJson(prompt: string): Promise<string> {
-  const errors: string[] = [];
-  const openaiKey = process.env.OPENAI_API_KEY;
-  if (openaiKey) {
-    try {
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${openaiKey}` },
-        body: JSON.stringify({
-          // Runs once per trip, so pay for geography that is actually right:
-          // the mini model put same-named cities 900 km off.
-          model: process.env.WEATHER_AI_MODEL || "gpt-4.1",
-          temperature: 0,
-          response_format: { type: "json_object" },
-          messages: [{ role: "user", content: prompt }],
-        }),
-        signal: AbortSignal.timeout(30000),
-      });
-      if (!res.ok) throw new Error(`OpenAI ${res.status}`);
-      const body = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-      const content = body.choices?.[0]?.message?.content;
-      if (content) return content;
-      throw new Error("OpenAI returned no content");
-    } catch (err) {
-      errors.push(err instanceof Error ? err.message : String(err));
-    }
-  }
-  const geminiKey = process.env.GEMINI_API_KEY;
-  if (geminiKey) {
-    try {
-      const model = new GoogleGenerativeAI(geminiKey).getGenerativeModel({
-        model: process.env.GEN_MODEL || "gemini-2.5-flash",
-        generationConfig: { responseMimeType: "application/json", temperature: 0 },
-      });
-      return (await model.generateContent(prompt)).response.text();
-    } catch (err) {
-      errors.push(err instanceof Error ? err.message.slice(0, 200) : String(err));
-    }
-  }
-  throw new Error(errors.length ? errors.join(" | ") : "No AI provider configured (OPENAI_API_KEY / GEMINI_API_KEY)");
-}
+/**
+ * Runs once per trip, so pay for geography that is actually right: the mini
+ * model put same-named cities 900 km off.
+ */
+const askModelForJson = (prompt: string) =>
+  openaiJson(prompt, { model: process.env.WEATHER_AI_MODEL || "gpt-4.1" });
 
-async function extractCities(trip: TripText): Promise<DetectedCity[]> {
+async function extractCities(trip: TripText): Promise<{ cities: DetectedCity[]; days: (number | null)[] }> {
+  const dayCount = Math.max(trip.itinerary?.length ?? 0, trip.durationDays ?? 0, 1);
   const program = (trip.itinerary ?? [])
     .map((day, i) => `${i + 1}. ${[day.title, day.location, day.accommodation].filter(Boolean).join(" | ")}`)
     .join("\n")
@@ -264,13 +238,18 @@ Rules:
 - country_code: ISO 3166-1 alpha-2 of the country the city is actually in.
 - lat/lon: the city centre's approximate coordinates (decimal degrees).
 - If the listing names no real destination, return an empty list.
+- days: one entry per program day, in order (${dayCount} days). Each is the 0-based index into
+  "places" of where travellers spend that day (where they sleep, or the main stop of a day trip),
+  or null for a day spent travelling from/to Mongolia or inside Mongolia.
 
-Return JSON only: {"places":[{"name_mn":"","country_mn":"","name_en":"","region_en":"","country_code":"","lat":0,"lon":0}]}`;
+Return JSON only: {"places":[{"name_mn":"","country_mn":"","name_en":"","region_en":"","country_code":"","lat":0,"lon":0}],"days":[0]}`;
 
-  const parsed = JSON.parse(await askModelForJson(prompt)) as { places?: DetectedCity[] };
-  return (parsed.places ?? [])
-    .filter((p) => p && typeof p.name_en === "string" && p.name_en.trim())
-    .slice(0, MAX_PLACES + 2);
+  const parsed = JSON.parse(await askModelForJson(prompt)) as { places?: DetectedCity[]; days?: unknown[] };
+  const cities = (parsed.places ?? []).filter((p) => p && typeof p.name_en === "string" && p.name_en.trim());
+  const days = (Array.isArray(parsed.days) ? parsed.days : [])
+    .slice(0, 60)
+    .map((v) => (typeof v === "number" && Number.isInteger(v) && v >= 0 && v < cities.length ? v : null));
+  return { cities, days };
 }
 
 function modelPoint(city: DetectedCity): { lat: number; lon: number } | null {
@@ -324,22 +303,78 @@ export async function withClimate(places: WeatherPlace[]): Promise<WeatherPlace[
   );
 }
 
-/** Detect a trip's weather places from its own text. Returns [] when nothing is found. */
-export async function detectPlaces(trip: TripText): Promise<WeatherPlace[]> {
-  const cities = await extractCities(trip);
+/**
+ * Detect a trip's weather places (and which place each program day is in)
+ * from its own text. Cities that fail to geocode are dropped and cities that
+ * merge into an earlier one (<35 km) hand their days to it, so the day map
+ * always points at a place that exists.
+ */
+export async function detectPlaces(trip: TripText): Promise<{ places: WeatherPlace[]; dayPlaces: (number | null)[] }> {
+  const { cities, days } = await extractCities(trip);
   const places: WeatherPlace[] = [];
+  const finalIndex: (number | null)[] = [];
   for (const city of cities) {
-    if (places.length >= MAX_PLACES) break;
     const point = await geocodeCity(city).catch(() => null);
-    if (!point || !isFiniteNumber(point.lat) || !isFiniteNumber(point.lon)) continue;
-    if (places.some((p) => distanceKm(p, point) < SAME_PLACE_KM)) continue;
+    if (!point || !isFiniteNumber(point.lat) || !isFiniteNumber(point.lon)) {
+      finalIndex.push(null);
+      continue;
+    }
+    const near = places.findIndex((p) => distanceKm(p, point) < SAME_PLACE_KM);
+    if (near >= 0) {
+      finalIndex.push(near);
+      continue;
+    }
+    if (places.length >= MAX_PLACES) {
+      finalIndex.push(null);
+      continue;
+    }
     const place = parsePlace({
       name: cleanPlaceName(city.name_mn || city.name_en),
       country: cleanPlaceName(city.country_mn || point.country),
       lat: point.lat,
       lon: point.lon,
     });
-    if (place) places.push(place);
+    if (!place) {
+      finalIndex.push(null);
+      continue;
+    }
+    places.push(place);
+    finalIndex.push(places.length - 1);
   }
-  return withClimate(places);
+  const dayPlaces = days.map((index) => (index === null ? null : (finalIndex[index] ?? null)));
+  return { places: await withClimate(places), dayPlaces };
+}
+
+/**
+ * Which place each of `dayCount` program days is in. Uses the detected day
+ * map; without one (or for days past its end) splits the days across the
+ * places in order — a 7-day, 2-city trip reads as 4 + 3.
+ */
+export function resolveDayPlaces(
+  places: WeatherPlace[],
+  dayPlaces: (number | null)[] | undefined,
+  dayCount: number,
+): (number | null)[] {
+  if (!places.length) return Array.from({ length: dayCount }, () => null);
+  const mapped = dayPlaces && dayPlaces.some((v) => v !== null);
+  return Array.from({ length: dayCount }, (_, i) => {
+    if (mapped && i < dayPlaces!.length) return dayPlaces![i];
+    return Math.min(places.length - 1, Math.floor((i * places.length) / dayCount));
+  });
+}
+
+/** After staff edit the place list, point each day at the same place (by coordinates) or drop it. */
+export function remapDayPlaces(
+  oldPlaces: WeatherPlace[],
+  dayPlaces: (number | null)[] | undefined,
+  newPlaces: WeatherPlace[],
+): (number | null)[] | undefined {
+  if (!dayPlaces) return undefined;
+  return dayPlaces.map((index) => {
+    if (index === null) return null;
+    const old = oldPlaces[index];
+    if (!old) return null;
+    const next = newPlaces.findIndex((p) => distanceKm(p, old) < 1);
+    return next >= 0 ? next : null;
+  });
 }
