@@ -16,10 +16,11 @@ import { api, apiErrorMessage } from "@/lib/api";
 import { CONTACT, hasLink } from "@/lib/contact";
 import { getVisitorId, track } from "@/lib/analytics";
 import { ageBandsFor, formatFare, formatMnt, formatTripStartingPrice, hasKnownTripPrice, lineTotal, resolvePrices } from "@/lib/pricing";
-import { upcomingDepartures } from "@/lib/departures";
+import { availability, upcomingDepartures } from "@/lib/departures";
 import { saleBadgeLabel } from "@/lib/tripMarketing";
 import { datePriceOptions, formatAdultOption } from "@/lib/tripPriceOptions";
 import DepartureDatePicker from "./DepartureDatePicker";
+import { departureDateKey } from "@/lib/departureDate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -82,7 +83,7 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
   variablePricing?: boolean;
 }) {
   const [departureId, setDepartureId] = useState<string | null>(initialSelection?.departureId ??
-    trip.departures.find((departure) => departure.startDate.slice(0, 10) === selectedDate)?.id ?? null);
+    trip.departures.find((departure) => departureDateKey(departure.startDate) === selectedDate)?.id ?? null);
   const [adults, setAdults] = useState(initialSelection?.adults ?? 2);
   const [children, setChildren] = useState(initialSelection?.children ?? 0);
   const [infants, setInfants] = useState(initialSelection?.infants ?? 0);
@@ -100,7 +101,7 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
 
   const openDepartures = useMemo(() => upcomingDepartures(trip, now), [trip, now]);
 
-  const selected = openDepartures.find((departure) => departure.id === departureId) ?? null;
+  const selected = openDepartures.find((departure) => departure.id === departureId && availability(departure).selectable) ?? null;
   const prices = resolvePrices(trip, selected);
   const options = selected ? datePriceOptions(trip, selected) : [];
   const selectedHotel = initialSelection?.message.match(/Буудал: ([^;]+)/)?.[1];

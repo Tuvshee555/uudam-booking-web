@@ -1,4 +1,5 @@
 import type { Departure, DepartureStatus, Trip } from "@/types/trip";
+import { departureDateKey } from "./departureDate.js";
 
 /**
  * Shared departure logic. Three files previously carried their own copy of
@@ -100,8 +101,7 @@ const MONTH_SHORT_MN = [
 const MONTH_GENITIVE_MN = MONTH_SHORT_MN.map((m) => `${m}ын`);
 
 export function formatMonthShort(value: string | Date): string {
-  const date = typeof value === "string" ? new Date(value) : value;
-  return MONTH_SHORT_MN[date.getMonth()];
+  return MONTH_SHORT_MN[Number(departureDateKey(value).slice(5, 7)) - 1];
 }
 
 /** Ordinal month names, for headings like "2026 оны есдүгээр сар". */
@@ -123,6 +123,6 @@ export function formatFullDate(value: string | Date): string {
 
 /** Short "9-р сарын 5" style label used on cards and departure rows. */
 export function formatDepartureDate(value: string): string {
-  const date = new Date(value);
-  return `${MONTH_GENITIVE_MN[date.getMonth()]} ${date.getDate()}`;
+  const day = departureDateKey(value);
+  return `${MONTH_GENITIVE_MN[Number(day.slice(5, 7)) - 1]} ${Number(day.slice(8, 10))}`;
 }

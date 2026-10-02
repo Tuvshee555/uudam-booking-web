@@ -16,6 +16,7 @@ test("hotel fares match only their departure and preserve age tiers", () => {
   assert.equal(options[1].passengers[0].price, 2390000);
   assert.deepEqual(datePriceOptions(trip, { startDate: "2026-10-08T00:00:00.000Z" }), []);
   assert.equal(hasVariablePricing(trip), true);
+  assert.equal(datePriceOptions(trip, { startDate: "2026-09-30T16:00:00.000Z" }).length, 2);
 });
 
 test("a single ordinary price group keeps the standard booking flow", () => {

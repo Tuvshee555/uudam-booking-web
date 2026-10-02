@@ -174,13 +174,14 @@ export type DepartureInput = {
   price: number | null;
   childPrice: number | null;
   infantPrice: number | null;
-  status: "OPEN" | "ALMOST_FULL" | "SOLD_OUT" | "CANCELLED" | "DEPARTED";
+  status: "OPEN" | "ALMOST_FULL" | "SOLD_OUT" | "PAUSED" | "CANCELLED" | "DEPARTED";
 };
 
 const DEPARTURE_STATUSES = new Set([
   "OPEN",
   "ALMOST_FULL",
   "SOLD_OUT",
+  "PAUSED",
   "CANCELLED",
   "DEPARTED",
 ]);

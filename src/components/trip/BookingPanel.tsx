@@ -8,10 +8,11 @@ import { toast } from "sonner";
 import { api, apiErrorMessage } from "@/lib/api";
 import { getVisitorId, track } from "@/lib/analytics";
 import { ageBandsFor, formatFare, formatMnt, lineTotal, resolvePrices } from "@/lib/pricing";
-import { formatFullDate, formatDepartureDate, upcomingDepartures } from "@/lib/departures";
+import { availability, formatFullDate, formatDepartureDate, upcomingDepartures } from "@/lib/departures";
 import { saleBadgeLabel } from "@/lib/tripMarketing";
 import { datePriceOptions, formatAdultOption, hasVariablePricing } from "@/lib/tripPriceOptions";
 import DepartureDatePicker from "./DepartureDatePicker";
+import { departureDateKey } from "@/lib/departureDate";
 import QpayPayButton, { QpayPaidBadge } from "./QpayPayButton";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { Button } from "@/components/ui/button";
@@ -93,7 +94,7 @@ export default function BookingPanel({
 
   const [step, setStep] = useState<Step>("select");
   const [departureId, setDepartureId] = useState<string | null>(() =>
-    trip.departures.find((departure) => departure.startDate.slice(0, 10) === selectedDate)?.id ?? null);
+    trip.departures.find((departure) => departureDateKey(departure.startDate) === selectedDate)?.id ?? null);
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
   const [infants, setInfants] = useState(0);
@@ -116,7 +117,7 @@ export default function BookingPanel({
   const [now] = useState(() => Date.now());
   const openDepartures = useMemo(() => upcomingDepartures(trip, now), [trip, now]);
 
-  const selected = openDepartures.find((d) => d.id === departureId) ?? null;
+  const selected = openDepartures.find((d) => d.id === departureId && availability(d).selectable) ?? null;
   const options = selected ? datePriceOptions(trip, selected) : [];
   const hotelOptions = options.filter((option) => option.hotel)
     .sort((a, b) => (a.adult ?? Number.POSITIVE_INFINITY) - (b.adult ?? Number.POSITIVE_INFINITY));

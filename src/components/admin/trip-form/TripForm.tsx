@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
 import { api, apiErrorMessage } from "@/lib/api";
+import { departureDateKey } from "@/lib/departureDate";
 import { ageBandsFor } from "@/lib/pricing";
 import { isAllowedImageHost } from "@/lib/imageHosts";
 import { useCategoryTree, useTags, useTrip } from "@/hooks/useTrips";
@@ -36,7 +37,7 @@ function flattenCategories(nodes: CategoryNode[], depth = 0): { id: string; labe
 
 function toDateInput(iso: string | null | undefined): string {
   if (!iso) return "";
-  return iso.slice(0, 10);
+  return departureDateKey(iso);
 }
 
 type FormState = {

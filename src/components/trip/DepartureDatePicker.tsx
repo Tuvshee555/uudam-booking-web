@@ -4,12 +4,13 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { availability } from "@/lib/departures";
+import { departureDateKey } from "@/lib/departureDate";
 import type { Departure } from "@/types/trip";
 import { cn } from "@/lib/utils";
 
 const weekdays = ["Да", "Мя", "Лх", "Пү", "Ба", "Бя", "Ня"];
 
-function monthKey(value: string) { return value.slice(0, 7); }
+function monthKey(value: string) { return departureDateKey(value).slice(0, 7); }
 function shortPrice(value: number) {
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value / 1_000_000);
 }
@@ -35,7 +36,7 @@ export default function DepartureDatePicker({
   const days = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const leading = (new Date(Date.UTC(year, month - 1, 1)).getUTCDay() + 6) % 7;
   const byDay = new Map(departures.filter((departure) => monthKey(departure.startDate) === current)
-    .map((departure) => [Number(departure.startDate.slice(8, 10)), departure]));
+    .map((departure) => [Number(departureDateKey(departure.startDate).slice(8, 10)), departure]));
 
   return (
     <div className="mt-3 border-t border-border pt-3">
@@ -68,10 +69,10 @@ export default function DepartureDatePicker({
               aria-pressed={active}
               className={cn("flex h-12 flex-col items-center justify-center rounded-md border text-xs leading-tight transition-colors",
                 active ? "border-primary bg-primary font-semibold text-primary-foreground" : "border-border bg-secondary/45 hover:border-primary",
-                !seats?.selectable && "opacity-45")}
+                !seats?.selectable && "border-destructive/25 bg-destructive/5 text-destructive")}
             >
               <span className="font-semibold">{day}</span>
-              <span className="mt-0.5 text-[10px] tabular-nums opacity-80">{price > 0 ? shortPrice(price) : "—"}</span>
+              <span className="mt-0.5 text-[10px] tabular-nums opacity-80">{!seats?.selectable ? (departure.status === "SOLD_OUT" || departure.seatsLeft === 0 ? "Дүүрсэн" : seats?.label) : price > 0 ? shortPrice(price) : "—"}</span>
             </button>
           ) : <span key={day} className="flex h-12 items-center justify-center text-xs text-muted-foreground/50">{day}</span>;
         })}

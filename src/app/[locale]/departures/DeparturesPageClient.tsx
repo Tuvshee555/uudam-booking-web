@@ -6,6 +6,7 @@ import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 
 import type { Departure, Trip } from "@/types/trip";
 import { availability, formatYearMonthLong, upcomingDepartures } from "@/lib/departures";
+import { departureDateKey } from "@/lib/departureDate";
 import { formatTripStartingPrice } from "@/lib/pricing";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { cn } from "@/lib/utils";
@@ -20,7 +21,7 @@ export default function DeparturesPageClient({ trips }: { trips: Trip[] }) {
     const grouped = new Map<string, Row[]>();
     for (const trip of trips) {
       for (const departure of upcomingDepartures(trip, now)) {
-        const key = departure.startDate.slice(0, 7);
+        const key = departureDateKey(departure.startDate).slice(0, 7);
         grouped.set(key, [...(grouped.get(key) || []), { trip, departure }]);
       }
     }
@@ -55,7 +56,7 @@ export default function DeparturesPageClient({ trips }: { trips: Trip[] }) {
         const leading = (new Date(Date.UTC(year, monthNumber - 1, 1)).getUTCDay() + 6) % 7;
         const byDay = new Map<number, Row[]>();
         for (const row of rows) {
-          const day = Number(row.departure.startDate.slice(8, 10));
+          const day = Number(departureDateKey(row.departure.startDate).slice(8, 10));
           byDay.set(day, [...(byDay.get(day) || []), row]);
         }
         const activeDay = selectedDay && byDay.has(selectedDay) ? selectedDay : null;
@@ -105,7 +106,7 @@ export default function DeparturesPageClient({ trips }: { trips: Trip[] }) {
               {activeRows.map(({ trip, departure }) => {
                 const seats = availability(departure);
                 return <li key={`${trip.id}:${departure.id}`}>
-                  <Link href={`/${locale}/trips/${trip.slug}?departure=${departure.startDate.slice(0, 10)}`}
+                  <Link href={`/${locale}/trips/${trip.slug}?departure=${departureDateKey(departure.startDate)}`}
                     className="flex items-center justify-between gap-3 py-3 transition-colors hover:text-primary">
                     <div className="min-w-0">
                       <div className="truncate text-sm font-semibold">{trip.title}</div>

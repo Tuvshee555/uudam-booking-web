@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/server/prisma";
 import { optionalAdmin, requireAdmin } from "@/server/auth";
 import { handler, httpError, json, publicCache, readJson, safeText } from "@/server/http";
 import { invalidateCatalog } from "@/server/cache";
+import { saveDepartures } from "@/server/saveDepartures";
 import {
   TRIP_INCLUDE,
   normalizeDepartures,
@@ -104,21 +106,7 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
     }
 
     if (Array.isArray(body.departures)) {
-      // Departures an enquiry already points at are kept: deleting one would
-      // blank the date on a request staff are still working.
-      const referenced = await tx.enquiry.findMany({
-        where: { tripId: id, departureId: { not: null } },
-        select: { departureId: true },
-        distinct: ["departureId"],
-      });
-
-      const keepIds = referenced
-        .map((row) => row.departureId)
-        .filter((depId): depId is string => Boolean(depId));
-
-      await tx.departure.deleteMany({
-        where: { tripId: id, id: { notIn: keepIds } },
-      });
+      await saveDepartures(tx, id, normalizeDepartures(body.departures));
     }
 
     return tx.trip.update({
@@ -195,15 +183,15 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
         ...(Array.isArray(body.itinerary)
           ? { itinerary: { create: normalizeItinerary(body.itinerary) } }
           : {}),
-        ...(Array.isArray(body.departures)
-          ? { departures: { create: normalizeDepartures(body.departures) } }
-          : {}),
       },
       include: TRIP_INCLUDE,
     });
   }, { timeout: 15_000 });
 
   invalidateCatalog();
+  revalidatePath("/[locale]/trips/[slug]", "page");
+  revalidatePath("/[locale]/departures", "page");
+  revalidatePath("/[locale]/trips", "page");
 
   return json(trip);
 });

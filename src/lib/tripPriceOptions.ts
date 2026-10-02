@@ -1,4 +1,5 @@
 import type { Departure, Trip } from "@/types/trip";
+import { departureDateKey } from "./departureDate.js";
 
 export type PassengerOption = { label: string; ageRange: string; price: number | null };
 export type DatePriceOption = {
@@ -21,7 +22,7 @@ function price(value: unknown): number | null {
 export function datePriceOptions(trip: Pick<Trip, "sourceMetadata">, departure: Pick<Departure, "startDate">): DatePriceOption[] {
   const groups = trip.sourceMetadata?.price_groups;
   if (!Array.isArray(groups)) return [];
-  const day = departure.startDate.slice(0, 10);
+  const day = departureDateKey(departure.startDate);
   return groups.flatMap((value) => {
     const group = object(value);
     const keys = Array.isArray(group.date_keys) ? group.date_keys : [];

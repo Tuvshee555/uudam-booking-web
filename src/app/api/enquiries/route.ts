@@ -88,6 +88,8 @@ export const POST = handler(async (req: Request) => {
               id: true,
               tripId: true,
               startDate: true,
+              status: true,
+              seatsLeft: true,
               price: true,
               childPrice: true,
               infantPrice: true,
@@ -105,6 +107,10 @@ export const POST = handler(async (req: Request) => {
   // trusted — it would put the wrong date in front of staff.
   const departure =
     trip && departureId ? (trip.departures.find((d) => d.id === departureId) ?? null) : null;
+
+  if (departure && (["SOLD_OUT", "PAUSED", "CANCELLED", "DEPARTED"].includes(departure.status) || departure.seatsLeft === 0)) {
+    throw httpError(409, "Энэ гаралтын захиалга хаагдсан байна. Өөр огноо сонгоно уу.");
+  }
 
   const departureDate = departure?.startDate ?? null;
 
