@@ -37,6 +37,7 @@ import TripWeather, { useAnnouncedDeparture, useTripWeather } from "@/components
 import RouteMap, { type RouteStop } from "@/components/trip/RouteMap";
 import TripCard from "@/components/trip/TripCard";
 import TripSidebar from "@/components/trip/TripSidebar";
+import StickyHandoffSidebar from "@/components/trip/StickyHandoffSidebar";
 import EnquiryTrustNote from "@/components/trust/EnquiryTrustNote";
 import ShareButton from "@/components/trip/ShareButton";
 import SaveButton from "@/components/trip/SaveButton";
@@ -201,8 +202,8 @@ export default function TripDetailClient({
         )}
       </nav>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="min-w-0">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]" data-trip-layout-grid>
+        <div className="min-w-0" data-trip-layout-main>
           <TripMedia trip={trip} />
 
           <header className="mt-6">
@@ -643,20 +644,22 @@ export default function TripDetailClient({
         {/*
           The booking panel (calendar + passenger counts + price) can run
           taller than the viewport on trips with many months of departures.
-          `lg:sticky` alone pins the TOP edge, but a panel taller than the
-          screen then has no way to reach its own bottom — the price/button
-          simply sit below the fold with nothing scrolling them into view.
-          `max-h-[calc(100vh-…)]` + `overflow-y-auto` gives the sidebar its
-          own scroll region, independent of the (much longer) left column.
+          Plain `sticky` pins the top edge but has no way to reach its own
+          bottom once it's taller than the screen; a naive permanent
+          scroll-box fights the page's own scroll the whole way down. This
+          follows the pattern booking sites use instead: the box scrolls
+          normally until it would run off-screen, LOCKS in place with its
+          own internal scrollbar for as long as it's taller than the room
+          available, then releases and scrolls away once the (much longer)
+          itinerary column to its left has nothing further below it.
         */}
-        <aside
-          id="booking-panel"
-          className="scroll-mt-28 lg:sticky lg:top-[124px] lg:max-h-[calc(100vh-144px)] lg:overflow-y-auto lg:overscroll-contain lg:pb-1 lg:pr-1"
-        >
-          <TripSidebar trip={trip} bankDetails={siteSettings?.bankDetails} selectedDate={selectedDate} />
-          <MessengerButton tripSlug={trip.slug} tripId={trip.id} className="mt-3 w-full" />
-          <EnquiryTrustNote />
-        </aside>
+        <div id="booking-panel" className="scroll-mt-28">
+          <StickyHandoffSidebar topOffset={124} bottomGap={20}>
+            <TripSidebar trip={trip} bankDetails={siteSettings?.bankDetails} selectedDate={selectedDate} />
+            <MessengerButton tripSlug={trip.slug} tripId={trip.id} className="mt-3 w-full" />
+            <EnquiryTrustNote />
+          </StickyHandoffSidebar>
+        </div>
       </div>
 
       {related.length > 0 && (
