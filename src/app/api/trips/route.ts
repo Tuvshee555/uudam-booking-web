@@ -4,6 +4,7 @@ import { prisma, withPrismaRetry } from "@/server/prisma";
 import { requireAdmin } from "@/server/auth";
 import { handler, json, publicCache, readJson, safeText } from "@/server/http";
 import { cached, invalidateCatalog } from "@/server/cache";
+import { assertChatbotTripSyncConfigured, syncTripToChatbot } from "@/server/chatbotTripSync";
 import {
   TRIP_INCLUDE,
   assertTitle,
@@ -77,6 +78,7 @@ export const GET = handler(async (req: Request) => {
 /** POST /api/trips — create a trip (admin). */
 export const POST = handler(async (req: Request) => {
   await requireAdmin(req);
+  assertChatbotTripSyncConfigured();
 
   const body = await readJson(req);
   const title = assertTitle(body.title);
@@ -98,6 +100,7 @@ export const POST = handler(async (req: Request) => {
       : slugify(title),
   );
 
+  const sourceTripId = safeText(body.sourceTripId, 120) || `trip-web-${crypto.randomUUID()}`;
   const trip = await prisma.trip.create({
     data: {
       title,
@@ -143,7 +146,7 @@ export const POST = handler(async (req: Request) => {
       childPrice: toOptionalNumber(body.childPrice) ?? null,
       infantPrice: toOptionalNumber(body.infantPrice) ?? null,
       singleSupplement: toOptionalNumber(body.singleSupplement) ?? null,
-      sourceTripId: safeText(body.sourceTripId, 120),
+      sourceTripId,
       sourceMetadata: toOptionalJsonObject(body.sourceMetadata) as Prisma.InputJsonValue | undefined,
       hotel: safeText(body.hotel, 400),
       foodIncluded: toOptionalBoolean(body.foodIncluded) ?? null,
@@ -163,6 +166,8 @@ export const POST = handler(async (req: Request) => {
     },
     include: TRIP_INCLUDE,
   });
+
+  await syncTripToChatbot(trip);
 
   invalidateCatalog();
 

@@ -236,20 +236,25 @@ function numOrUndefined(value: string): number | undefined {
 }
 
 function buildPayload(form: FormState) {
+  // JSON drops `undefined`.  Optional text must therefore use null when the
+  // editor clears it, otherwise an old database value silently survives.
+  const nullableText = (value: string) => value.trim() || null;
+  const nullableNumber = (value: string) => numOrUndefined(value) ?? null;
+
   return {
     title: form.title.trim(),
     slug: form.slug.trim() || undefined,
-    summary: form.summary.trim() || undefined,
+    summary: nullableText(form.summary),
     description: form.description.trim(),
     categoryId: form.categoryId || undefined,
     tagIds: form.tagIds,
 
-    country: form.country.trim() || undefined,
-    city: form.city.trim() || undefined,
-    region: form.region.trim() || undefined,
+    country: nullableText(form.country),
+    city: nullableText(form.city),
+    region: nullableText(form.region),
     destinations: form.destinations,
-    meetingPoint: form.meetingPoint.trim() || undefined,
-    mapUrl: form.mapUrl.trim() || undefined,
+    meetingPoint: nullableText(form.meetingPoint),
+    mapUrl: nullableText(form.mapUrl),
 
     durationDays: numOrUndefined(form.durationDays),
     durationNights: numOrUndefined(form.durationNights),
@@ -258,13 +263,13 @@ function buildPayload(form: FormState) {
     difficulty: form.difficulty,
     transport: form.transport,
     languages: form.languages,
-    season: form.season.trim() || undefined,
+    season: nullableText(form.season),
 
     highlights: form.highlights,
     included: form.included,
     excluded: form.excluded,
-    requirements: form.requirements.trim() || undefined,
-    cancellationPolicy: form.cancellationPolicy.trim() || undefined,
+    requirements: nullableText(form.requirements),
+    cancellationPolicy: nullableText(form.cancellationPolicy),
     importantNotes: form.importantNotes,
 
     image: form.image.trim(),
@@ -274,20 +279,20 @@ function buildPayload(form: FormState) {
     videos: form.videos,
 
     price: numOrUndefined(form.price),
-    oldPrice: numOrUndefined(form.oldPrice),
-    discount: numOrUndefined(form.discount),
-    childPrice: numOrUndefined(form.childPrice),
-    infantPrice: numOrUndefined(form.infantPrice),
-    singleSupplement: numOrUndefined(form.singleSupplement),
-    sourceTripId: form.sourceTripId.trim() || undefined,
-    hotel: form.hotel.trim() || undefined,
+    oldPrice: nullableNumber(form.oldPrice),
+    discount: nullableNumber(form.discount),
+    childPrice: nullableNumber(form.childPrice),
+    infantPrice: nullableNumber(form.infantPrice),
+    singleSupplement: nullableNumber(form.singleSupplement),
+    sourceTripId: nullableText(form.sourceTripId),
+    hotel: nullableText(form.hotel),
     foodIncluded:
-      form.foodIncluded === "true" ? true : form.foodIncluded === "false" ? false : undefined,
-    departureRule: form.departureRule.trim() || undefined,
+      form.foodIncluded === "true" ? true : form.foodIncluded === "false" ? false : null,
+    departureRule: nullableText(form.departureRule),
     extraFees: form.extraFees,
     roomPrices: form.roomPrices,
     childPriceNotes: form.childPriceNotes,
-    brochurePdfUrl: form.brochurePdfUrl.trim() || undefined,
+    brochurePdfUrl: nullableText(form.brochurePdfUrl),
     hotelMedia: form.hotelMedia.filter((item) => item.url.trim()),
     travelerMedia: form.travelerMedia.filter((item) => item.url.trim()),
 
@@ -313,11 +318,11 @@ function buildPayload(form: FormState) {
       .filter((dep) => dep.startDate)
       .map((dep) => ({
         startDate: dep.startDate,
-        endDate: dep.endDate || undefined,
-        seatsTotal: numOrUndefined(dep.seatsTotal),
-        seatsLeft: numOrUndefined(dep.seatsLeft),
-        price: numOrUndefined(dep.price),
-        childPrice: numOrUndefined(dep.childPrice),
+        endDate: dep.endDate || null,
+        seatsTotal: nullableNumber(dep.seatsTotal),
+        seatsLeft: nullableNumber(dep.seatsLeft),
+        price: nullableNumber(dep.price),
+        childPrice: nullableNumber(dep.childPrice),
         status: dep.status,
       })),
   };

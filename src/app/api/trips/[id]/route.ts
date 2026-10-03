@@ -5,6 +5,7 @@ import { prisma } from "@/server/prisma";
 import { optionalAdmin, requireAdmin } from "@/server/auth";
 import { handler, httpError, json, publicCache, readJson, safeText } from "@/server/http";
 import { invalidateCatalog } from "@/server/cache";
+import { assertChatbotTripSyncConfigured, deleteTripFromChatbot, syncTripToChatbot } from "@/server/chatbotTripSync";
 import { saveDepartures } from "@/server/saveDepartures";
 import {
   TRIP_INCLUDE,
@@ -64,13 +65,14 @@ export const GET = handler(async (req: Request, ctx: Ctx) => {
 
 export const PUT = handler(async (req: Request, ctx: Ctx) => {
   await requireAdmin(req);
+  assertChatbotTripSyncConfigured();
 
   const { id } = await ctx.params;
   const body = await readJson(req);
 
   const existing = await prisma.trip.findUnique({
     where: { id },
-    select: { id: true, slug: true, title: true },
+    select: { id: true, slug: true, title: true, sourceTripId: true },
   });
   if (!existing) throw httpError(404, "Аялал олдсонгүй");
 
@@ -87,6 +89,10 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
     typeof body.slug === "string" && body.slug.trim() && slugify(body.slug) !== existing.slug
       ? await uniqueSlug(slugify(body.slug), existing.id)
       : undefined;
+  // Every website trip receives a stable canonical id. Older website-only
+  // records acquire one on their next save instead of remaining invisible to
+  // the chatbot and poster forever.
+  const sourceTripId = existing.sourceTripId || `trip-web-${existing.id}`;
 
   // image is the one field that must never go blank: a photo-led catalog
   // shouldn't be able to publish (or be edited into) a trip with no cover.
@@ -163,8 +169,7 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
           body.singleSupplement === undefined
             ? undefined
             : (toOptionalNumber(body.singleSupplement) ?? null),
-        sourceTripId:
-          body.sourceTripId === undefined ? undefined : safeText(body.sourceTripId, 120),
+        sourceTripId,
         sourceMetadata: toOptionalJsonObject(body.sourceMetadata) as Prisma.InputJsonValue | undefined,
         hotel: optionalText(body.hotel, 400),
         foodIncluded: toOptionalBoolean(body.foodIncluded),
@@ -188,6 +193,7 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
     });
   }, { timeout: 15_000 });
 
+  await syncTripToChatbot(trip);
   invalidateCatalog();
   revalidatePath("/[locale]/trips/[slug]", "page");
   revalidatePath("/[locale]/departures", "page");
@@ -198,18 +204,24 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
 
 export const DELETE = handler(async (req: Request, ctx: Ctx) => {
   await requireAdmin(req);
+  assertChatbotTripSyncConfigured();
 
   const { id } = await ctx.params;
+  const source = await prisma.trip.findUnique({ where: { id }, select: { sourceTripId: true } });
+  if (!source) throw httpError(404, "Аялал олдсонгүй");
 
   const referenced = await prisma.enquiry.count({ where: { tripId: id } });
 
   if (referenced > 0) {
     // Hard-deleting would wipe the trip off enquiries staff still need to read,
     // so a trip with history is unpublished instead.
-    await prisma.trip.update({
+    const trip = await prisma.trip.update({
       where: { id },
       data: { isPublished: false, isFeatured: false },
+      include: TRIP_INCLUDE,
     });
+
+    await syncTripToChatbot(trip);
 
     invalidateCatalog();
 
@@ -220,7 +232,10 @@ export const DELETE = handler(async (req: Request, ctx: Ctx) => {
     });
   }
 
-  await prisma.trip.delete({ where: { id } });
+  await deleteTripFromChatbot(source.sourceTripId);
+  // The canonical delete may already have removed this unbooked website row
+  // during its return sync. deleteMany keeps this endpoint idempotent.
+  await prisma.trip.deleteMany({ where: { id } });
   invalidateCatalog();
 
   return json({ success: true, archived: false });
