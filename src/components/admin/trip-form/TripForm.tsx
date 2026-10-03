@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 
 import { api, apiErrorMessage } from "@/lib/api";
 import { departureDateKey } from "@/lib/departureDate";
@@ -374,6 +374,21 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
     onError: (err) => toast.error(apiErrorMessage(err, "Хадгалахад алдаа гарлаа")),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const { data } = await api.delete(`/trips/${tripId}`);
+      return data as { success: boolean; archived?: boolean; message?: string };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "trips"] });
+      queryClient.invalidateQueries({ queryKey: ["trips"] });
+      queryClient.invalidateQueries({ queryKey: ["trip", tripId] });
+      toast.success(data.message ?? (data.archived ? "Аяллыг нийтээс нуув" : "Аяллыг устгалаа"));
+      router.push(`/${locale}/admin/trips`);
+    },
+    onError: (err) => toast.error(apiErrorMessage(err, "Устгахад алдаа гарлаа")),
+  });
+
   function submit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -402,6 +417,18 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
     }
 
     saveMutation.mutate();
+  }
+
+  function deleteTrip() {
+    if (mode !== "edit" || !tripId || deleteMutation.isPending) return;
+
+    const name = existingTrip?.title ? `"${existingTrip.title}"` : "энэ аяллыг";
+    const confirmed = window.confirm(
+      `${name} устгах уу?\n\nЗахиалгын хүсэлттэй бол бүр устгахгүй, зөвхөн нийтээс нууж chatbot/poster sync хийнэ.`,
+    );
+
+    if (!confirmed) return;
+    deleteMutation.mutate();
   }
 
   if (mode === "edit" && loadingTrip) {
@@ -688,14 +715,39 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
         </div>
       </Section>
 
-      <div className="sticky bottom-4 flex justify-end gap-2 rounded-xl border border-border bg-card p-3 shadow-lg">
-        <Button type="button" variant="outline" onClick={() => router.push(`/${locale}/admin/trips`)}>
-          Цуцлах
-        </Button>
-        <Button type="submit" disabled={saveMutation.isPending} className="gap-1.5">
-          {saveMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-          {mode === "create" ? "Аялал үүсгэх" : "Хадгалах"}
-        </Button>
+      <div className="sticky bottom-4 flex flex-col gap-2 rounded-xl border border-border bg-card p-3 shadow-lg sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          {mode === "edit" && (
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={deleteTrip}
+              disabled={deleteMutation.isPending || saveMutation.isPending}
+              className="gap-1.5"
+            >
+              {deleteMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+              Устгах
+            </Button>
+          )}
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.push(`/${locale}/admin/trips`)}
+            disabled={deleteMutation.isPending}
+          >
+            Цуцлах
+          </Button>
+          <Button type="submit" disabled={saveMutation.isPending || deleteMutation.isPending} className="gap-1.5">
+            {saveMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            {mode === "create" ? "Аялал үүсгэх" : "Хадгалах"}
+          </Button>
+        </div>
       </div>
     </form>
   );
