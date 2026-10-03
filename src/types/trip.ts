@@ -123,6 +123,7 @@ export type Trip = {
 
   categoryId: string | null;
   category: TripCategory | null;
+  categories: TripCategory[];
   tags: TripTag[];
 
   isFeatured: boolean;

@@ -165,7 +165,7 @@ type FormState = {
   slug: string;
   summary: string;
   description: string;
-  categoryId: string;
+  categoryIds: string[];
   tagIds: string[];
 
   country: string;
@@ -236,7 +236,7 @@ const EMPTY_FORM: FormState = {
   slug: "",
   summary: "",
   description: "",
-  categoryId: "",
+  categoryIds: [],
   tagIds: [],
   country: "",
   city: "",
@@ -294,7 +294,9 @@ function tripToForm(trip: Trip): FormState {
     slug: trip.slug,
     summary: trip.summary ?? "",
     description: trip.description,
-    categoryId: trip.categoryId ?? "",
+    categoryIds: trip.categories.length > 0
+      ? trip.categories.map((category) => category.id)
+      : trip.categoryId ? [trip.categoryId] : [],
     tagIds: trip.tags.map((tag) => tag.id),
     country: trip.country ?? "",
     city: trip.city ?? "",
@@ -383,7 +385,8 @@ function buildPayload(form: FormState) {
     slug: form.slug.trim() || undefined,
     summary: nullableText(form.summary),
     description: form.description.trim(),
-    categoryId: form.categoryId || undefined,
+    categoryId: form.categoryIds[0] || undefined,
+    categoryIds: form.categoryIds,
     tagIds: form.tagIds,
 
     country: nullableText(form.country),
@@ -590,18 +593,39 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
             <Label>Slug (заавал биш)</Label>
             <Input value={form.slug} onChange={(e) => set("slug", e.target.value)} placeholder="нэрнээс автоматаар үүснэ" />
           </div>
-          <div>
+          <div className="sm:col-span-2">
             <Label>Ангилал</Label>
-            <select
-              value={form.categoryId}
-              onChange={(e) => set("categoryId", e.target.value)}
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-            >
-              <option value="">— Ангилалгүй —</option>
-              {categoryOptions.map((opt) => (
-                <option key={opt.id} value={opt.id}>{opt.label}</option>
-              ))}
-            </select>
+            {categoryOptions.length > 0 ? (
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {categoryOptions.map((opt) => {
+                  const active = form.categoryIds.includes(opt.id);
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() =>
+                        set(
+                          "categoryIds",
+                          active
+                            ? form.categoryIds.filter((id) => id !== opt.id)
+                            : [...form.categoryIds, opt.id],
+                        )
+                      }
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 text-sm transition-colors",
+                        active
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border hover:border-primary/40",
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="mt-1.5 text-sm text-muted-foreground">Ангилал алга байна.</p>
+            )}
           </div>
           <div className="sm:col-span-2">
             <Label>Шошго (үнэ, урамшуулал, тээврийн төрөл гэх мэт)</Label>

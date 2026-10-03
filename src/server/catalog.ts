@@ -1,5 +1,6 @@
 import { prisma } from "@/server/prisma";
 import { TRIP_INCLUDE } from "@/server/tripInput";
+import { tripCountsByCategory } from "@/server/categoryCounts";
 import type { CategoryNode, Trip } from "@/types/trip";
 
 /**
@@ -56,7 +57,10 @@ export async function getCategoryWithTrips(
 
   const trips = await prisma.trip.findMany({
     where: {
-      categoryId: { in: Array.from(ids) },
+      OR: [
+        { categoryId: { in: Array.from(ids) } },
+        { categories: { some: { id: { in: Array.from(ids) } } } },
+      ],
       ...(includeDrafts ? {} : { isPublished: true }),
     },
     include: TRIP_INCLUDE,
@@ -114,10 +118,10 @@ export async function getCategoryTree(): Promise<CategoryNode[]> {
       description: true,
       image: true,
       parentId: true,
-      _count: { select: { trips: true } },
     },
     orderBy: { categoryName: "asc" },
   });
+  const tripCounts = await tripCountsByCategory();
 
   const byId = new Map<string, CategoryNode>();
   const roots: CategoryNode[] = [];
@@ -130,7 +134,7 @@ export async function getCategoryTree(): Promise<CategoryNode[]> {
       description: category.description,
       image: category.image,
       parentId: category.parentId,
-      tripCount: category._count.trips,
+      tripCount: tripCounts.get(category.id) ?? 0,
       children: [],
     });
   }

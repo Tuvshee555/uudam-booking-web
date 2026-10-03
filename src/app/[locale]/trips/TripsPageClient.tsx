@@ -151,7 +151,7 @@ function TripsPageInner({ initialTrips }: { initialTrips?: Trip[] }) {
 
     const filtered = trips.filter((trip) => {
       if (featuredOnly && !trip.isFeatured) return false;
-      if (categoryId && trip.categoryId !== categoryId) return false;
+      if (categoryId && trip.categoryId !== categoryId && !trip.categories.some((category) => category.id === categoryId)) return false;
       if (country && trip.country !== country) return false;
       if (onSaleOnly && !isSaleTrip(trip)) return false;
       if (tagIds.length > 0 && !trip.tags.some((tag) => tagIds.includes(tag.id))) return false;

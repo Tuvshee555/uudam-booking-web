@@ -32,7 +32,10 @@ export default function AdminTripsPage() {
     const terms = search.toLocaleLowerCase().split(/\s+/).filter(Boolean);
     if (!terms.length) return trips;
     return trips?.filter((trip) => {
-      const haystack = [trip.title, trip.slug, trip.category?.categoryName, trip.hotel]
+      const categoryNames = trip.categories.length
+        ? trip.categories.map((category) => category.categoryName)
+        : [trip.category?.categoryName];
+      const haystack = [trip.title, trip.slug, ...categoryNames, trip.hotel]
         .filter(Boolean)
         .join(" ")
         .toLocaleLowerCase();
@@ -141,7 +144,9 @@ export default function AdminTripsPage() {
                   <CalendarDays className="h-3 w-3" />
                   {trip.departures.length} огноо
                 </span>
-                {trip.category && <span>{trip.category.categoryName}</span>}
+                {(trip.categories.length ? trip.categories : trip.category ? [trip.category] : []).map((category) => (
+                  <span key={category.id}>{category.categoryName}</span>
+                ))}
               </div>
             </div>
 

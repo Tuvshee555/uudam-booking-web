@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { prisma } from "@/server/prisma";
 import { getCategoryWithTrips } from "@/server/catalog";
+import { tripCountsByCategory } from "@/server/categoryCounts";
 import { localeAlternates } from "@/lib/hreflang";
 import CategoryPageClient from "./CategoryPageClient";
 
@@ -18,10 +19,10 @@ async function findCategory(idOrSlug: string) {
   return prisma.category.findFirst({
     where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
     select: {
+      id: true,
       categoryName: true,
       description: true,
       image: true,
-      _count: { select: { trips: true } },
     },
   });
 }
@@ -36,7 +37,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const description =
     category.description?.trim() ||
-    `${category.categoryName} чиглэлийн ${category._count.trips} аялал.`;
+    `${category.categoryName} чиглэлийн ${
+      (await tripCountsByCategory()).get(category.id) ?? 0
+    } аялал.`;
 
   return {
     title: category.categoryName,

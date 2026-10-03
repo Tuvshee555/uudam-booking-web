@@ -130,7 +130,8 @@ model Trip {
   weather Json?
 
   categoryId String?
-  category   Category? @relation(fields: [categoryId], references: [id])
+  category   Category? @relation("PrimaryTripCategory", fields: [categoryId], references: [id])
+  categories Category[] @relation("TripCategories")
 
   /// Stamped by the chatbot-side sync every time it writes this trip's
   /// content fields (title/description/hotel/included/excluded/notes/
@@ -228,7 +229,12 @@ model Category {
   parent   Category?  @relation("CategoryChildren", fields: [parentId], references: [id])
   children Category[] @relation("CategoryChildren")
 
-  trips Trip[]
+  /// Trips where this category is the primary category kept for old links and
+  /// backwards-compatible imports.
+  primaryTrips Trip[] @relation("PrimaryTripCategory")
+  /// Customer-facing category membership. A trip can belong to several
+  /// categories at once: flight + cruise, land + train, etc.
+  trips        Trip[] @relation("TripCategories")
 
   @@index([parentId])
 }

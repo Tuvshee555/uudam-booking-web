@@ -24,6 +24,7 @@ export type SearchableTrip = {
   durationDays: number;
   departures: { startDate: Date }[];
   category: { categoryName: string } | null;
+  categories: { categoryName: string }[];
 };
 
 export async function loadSearchableTrips(): Promise<SearchableTrip[]> {
@@ -43,6 +44,7 @@ export async function loadSearchableTrips(): Promise<SearchableTrip[]> {
         destinations: true,
         durationDays: true,
         category: { select: { categoryName: true } },
+        categories: { select: { categoryName: true } },
         departures: {
           where: { startDate: { gte: new Date() }, status: { notIn: ["CANCELLED", "DEPARTED"] } },
           orderBy: { startDate: "asc" },
@@ -133,6 +135,7 @@ export function searchTrips(question: string, trips: SearchableTrip[]): ScoredTr
       trip.country ?? "",
       trip.city ?? "",
       trip.category?.categoryName ?? "",
+      ...trip.categories.map((category) => category.categoryName),
       ...trip.destinations,
     ]
       .join(" ")

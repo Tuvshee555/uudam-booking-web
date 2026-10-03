@@ -19,6 +19,7 @@ import {
   toOptionalJsonObject,
   toOptionalNumber,
   toStringArray,
+  toCategoryConnect,
   toTagConnect,
   toVideoUrl,
   toVideoUrls,
@@ -53,7 +54,9 @@ export const GET = handler(async (req: Request) => {
       prisma.trip.findMany({
         where: {
           isPublished: true,
-          ...(categoryId ? { categoryId } : {}),
+          ...(categoryId
+            ? { OR: [{ categoryId }, { categories: { some: { id: categoryId } } }] }
+            : {}),
           ...(featured === "true" ? { isFeatured: true } : {}),
           ...(search
             ? {
@@ -101,6 +104,9 @@ export const POST = handler(async (req: Request) => {
   );
 
   const sourceTripId = safeText(body.sourceTripId, 120) || `trip-web-${crypto.randomUUID()}`;
+  const categoryIds = Array.isArray(body.categoryIds)
+    ? body.categoryIds.filter((entry: unknown): entry is string => typeof entry === "string" && entry.length > 0)
+    : (safeText(body.categoryId, 60) ? [safeText(body.categoryId, 60)!] : []);
   const trip = await prisma.trip.create({
     data: {
       title,
@@ -156,10 +162,11 @@ export const POST = handler(async (req: Request) => {
       childPriceNotes: toStringArray(body.childPriceNotes, 80),
       brochurePdfUrl: safeText(body.brochurePdfUrl, 1000),
 
-      categoryId: safeText(body.categoryId, 60),
+      categoryId: categoryIds[0] ?? null,
       isFeatured: Boolean(body.isFeatured),
       isPublished: body.isPublished === undefined ? true : Boolean(body.isPublished),
 
+      categories: toCategoryConnect(categoryIds),
       tags: toTagConnect(body.tagIds),
       itinerary: { create: normalizeItinerary(body.itinerary) },
       departures: { create: normalizeDepartures(body.departures) },

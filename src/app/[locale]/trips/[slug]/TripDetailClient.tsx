@@ -90,12 +90,26 @@ export default function TripDetailClient({
   const related = useMemo(() => {
     if (!trip || !allTrips) return [];
 
+    const tripCategoryIds = new Set([
+      trip.categoryId,
+      ...trip.categories.map((category) => category.id),
+    ].filter((id): id is string => Boolean(id)));
+
     const shareTag = (candidate: (typeof allTrips)[number]) =>
       candidate.tags.some((tag) => trip.tags.some((t) => t.id === tag.id));
 
+    const shareCategory = (candidate: (typeof allTrips)[number]) => {
+      const candidateCategoryIds = [
+        candidate.categoryId,
+        ...candidate.categories.map((category) => category.id),
+      ].filter((id): id is string => Boolean(id));
+
+      return candidateCategoryIds.some((id) => tripCategoryIds.has(id));
+    };
+
     return allTrips
       .filter((candidate) => candidate.id !== trip.id)
-      .filter((candidate) => (trip.categoryId && candidate.categoryId === trip.categoryId) || shareTag(candidate))
+      .filter((candidate) => shareCategory(candidate) || shareTag(candidate))
       .slice(0, 4);
   }, [trip, allTrips]);
 

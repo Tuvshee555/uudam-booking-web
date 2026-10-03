@@ -20,6 +20,7 @@ import {
   toOptionalJsonObject,
   toOptionalNumber,
   toStringArray,
+  toCategorySet,
   toTagSet,
   toVideoUrl,
   toVideoUrls,
@@ -102,6 +103,9 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
   // records acquire one on their next save instead of remaining invisible to
   // the chatbot and poster forever.
   const sourceTripId = existing.sourceTripId || `trip-web-${existing.id}`;
+  const categoryIds = Array.isArray(body.categoryIds)
+    ? [...new Set(body.categoryIds.filter((entry: unknown): entry is string => typeof entry === "string" && entry.length > 0))]
+    : undefined;
 
   // image is the one field that must never go blank: a photo-led catalog
   // shouldn't be able to publish (or be edited into) a trip with no cover.
@@ -188,10 +192,13 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
         childPriceNotes: optionalArray(body.childPriceNotes),
         brochurePdfUrl: optionalText(body.brochurePdfUrl, 1000),
 
-        categoryId: body.categoryId === undefined ? undefined : safeText(body.categoryId, 60),
+        categoryId: categoryIds === undefined
+          ? body.categoryId === undefined ? undefined : safeText(body.categoryId, 60)
+          : (categoryIds[0] ?? null),
         isFeatured: typeof body.isFeatured === "boolean" ? body.isFeatured : undefined,
         isPublished: typeof body.isPublished === "boolean" ? body.isPublished : undefined,
         salesCount: toOptionalInt(body.salesCount),
+        categories: categoryIds === undefined ? undefined : toCategorySet(categoryIds),
         tags: body.tagIds === undefined ? undefined : toTagSet(body.tagIds),
 
         ...(Array.isArray(body.itinerary)

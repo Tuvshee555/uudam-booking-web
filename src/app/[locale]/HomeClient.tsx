@@ -387,7 +387,9 @@ export default function HomeClient({
                 className="group relative aspect-[16/9] overflow-hidden rounded-2xl border border-border bg-secondary"
               >
                 <CategoryThumb
-                  src={initialTrips?.find((trip) => trip.categoryId === category.id && trip.image)?.image ?? category.image}
+                  src={initialTrips?.find((trip) =>
+                    (trip.categoryId === category.id || trip.categories.some((item) => item.id === category.id)) && trip.image,
+                  )?.image ?? category.image}
                   alt={category.categoryName}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />

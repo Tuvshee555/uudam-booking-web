@@ -279,6 +279,7 @@ export function reconcilePricing(input: {
 /** Shared include shape so every trip response looks the same. */
 export const TRIP_INCLUDE = {
   category: true,
+  categories: { orderBy: { categoryName: "asc" } },
   tags: { orderBy: { name: "asc" } },
   departures: { orderBy: { startDate: "asc" } },
   itinerary: { orderBy: { dayNumber: "asc" } },
@@ -295,6 +296,11 @@ function tagIds(value: unknown): string[] {
   return value.filter((entry): entry is string => typeof entry === "string" && entry.length > 0);
 }
 
+function relationIds(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.filter((entry): entry is string => typeof entry === "string" && entry.length > 0))];
+}
+
 export function toTagConnect(value: unknown) {
   return { connect: tagIds(value).map((id) => ({ id })) };
 }
@@ -302,6 +308,15 @@ export function toTagConnect(value: unknown) {
 export function toTagSet(value: unknown) {
   if (!Array.isArray(value)) return undefined;
   return { set: tagIds(value).map((id) => ({ id })) };
+}
+
+export function toCategoryConnect(value: unknown) {
+  return { connect: relationIds(value).map((id) => ({ id })) };
+}
+
+export function toCategorySet(value: unknown) {
+  if (!Array.isArray(value)) return undefined;
+  return { set: relationIds(value).map((id) => ({ id })) };
 }
 
 /**

@@ -4,6 +4,7 @@ import { requireAdmin } from "@/server/auth";
 import { handler, httpError, json, publicCache, readJson, safeText } from "@/server/http";
 import { cached, invalidateCatalog } from "@/server/cache";
 import { slugify } from "@/server/tripInput";
+import { tripCountsByCategory } from "@/server/categoryCounts";
 
 const CATEGORY_SELECT = {
   id: true,
@@ -12,7 +13,7 @@ const CATEGORY_SELECT = {
   description: true,
   image: true,
   parentId: true,
-  _count: { select: { trips: true, children: true } },
+  _count: { select: { children: true } },
 } as const;
 
 type CategoryRow = {
@@ -22,10 +23,10 @@ type CategoryRow = {
   description: string | null;
   image: string | null;
   parentId: string | null;
-  _count: { trips: number; children: number };
+  _count: { children: number };
 };
 
-function toDto(category: CategoryRow) {
+function toDto(category: CategoryRow, tripCount: number) {
   return {
     id: category.id,
     categoryName: category.categoryName,
@@ -33,7 +34,7 @@ function toDto(category: CategoryRow) {
     description: category.description,
     image: category.image,
     parentId: category.parentId,
-    tripCount: category._count.trips,
+    tripCount,
     childrenCount: category._count.children,
     hasChildren: category._count.children > 0,
   };
@@ -53,7 +54,9 @@ async function listCategories(parentId?: string | null) {
     orderBy: { categoryName: "asc" },
   });
 
-  return categories.map(toDto);
+  const tripCounts = await tripCountsByCategory();
+
+  return categories.map((category) => toDto(category, tripCounts.get(category.id) ?? 0));
 }
 
 export const GET = handler(async (req: Request) => {
@@ -151,7 +154,7 @@ export const DELETE = handler(async (req: Request) => {
   if (!id) throw httpError(400, "Ангиллын ID шаардлагатай");
 
   const [tripCount, childCount] = await Promise.all([
-    prisma.trip.count({ where: { categoryId: id } }),
+    prisma.trip.count({ where: { OR: [{ categoryId: id }, { categories: { some: { id } } }] } }),
     prisma.category.count({ where: { parentId: id } }),
   ]);
 
@@ -161,6 +164,7 @@ export const DELETE = handler(async (req: Request) => {
   // never take the agency's trips with it.
   if (tripCount > 0) {
     await prisma.trip.updateMany({ where: { categoryId: id }, data: { categoryId: null } });
+    await prisma.category.update({ where: { id }, data: { trips: { set: [] } } });
   }
 
   try {

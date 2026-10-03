@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma, withPrismaRetry } from "@/server/prisma";
 import { handler, publicCache } from "@/server/http";
 import { cached } from "@/server/cache";
+import { tripCountsByCategory } from "@/server/categoryCounts";
 
 export type CategoryTreeNode = {
   id: string;
@@ -26,11 +27,11 @@ export const GET = handler(async () => {
           description: true,
           image: true,
           parentId: true,
-          _count: { select: { trips: true } },
         },
         orderBy: { categoryName: "asc" },
       }),
     );
+    const tripCounts = await tripCountsByCategory();
 
     const byId = new Map<string, CategoryTreeNode>();
     const built: CategoryTreeNode[] = [];
@@ -43,7 +44,7 @@ export const GET = handler(async () => {
         description: category.description,
         image: category.image,
         parentId: category.parentId,
-        tripCount: category._count.trips,
+        tripCount: tripCounts.get(category.id) ?? 0,
         children: [],
       });
     }
