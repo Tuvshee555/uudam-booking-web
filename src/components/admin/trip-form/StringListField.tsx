@@ -12,11 +12,13 @@ export default function StringListField({
   values,
   onChange,
   placeholder,
+  hint,
 }: {
   label: string;
   values: string[];
   onChange: (next: string[]) => void;
   placeholder?: string;
+  hint?: string;
 }) {
   const [draft, setDraft] = useState("");
 
@@ -30,6 +32,7 @@ export default function StringListField({
   return (
     <div>
       <Label>{label}</Label>
+      {hint && <p className="mb-1.5 mt-1 text-xs text-muted-foreground">{hint}</p>}
       <div className="flex gap-2">
         <Input
           value={draft}

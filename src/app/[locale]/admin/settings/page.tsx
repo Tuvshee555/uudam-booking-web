@@ -281,15 +281,19 @@ export default function AdminSettingsPage() {
         анхны бичвэр харагдсаар байна.
       </p>
 
-      <Card title="Бүх аялал дээр харагдах тэмдэглэл">
+      <Card
+        title="Бүх аялал дээр харагдах чухал тэмдэглэл"
+        hint="Аялал бүрийн шар “Чухал тэмдэглэл” хайрцагт харагдана."
+      >
         <textarea
           value={tripNotice}
           onChange={(event) => setTripNoticeDraft(event.target.value)}
           rows={6}
-          placeholder="Жишээ нь: Бид гуравдагч этгээдийн үйлчилгээний чанарт хариуцлага хүлээхгүй болно…"
+          placeholder={"Жишээ нь:\nҮнэ болон гарах огноог админ удахгүй баталгаажуулна.\nШинжилгээ өгөх аялагчид 3-р өдөр өглөөний цай уухгүй, өлөн байна."}
           className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
         />
         <p className="mt-2 text-xs text-muted-foreground">
+          Мөр бүр сайт дээр тусдаа тэмдэглэл болж харагдана.
           Тухайн нэг аялалд л зориулсан тэмдэглэл байвал тухайн аяллыг засах
           хуудсан дахь &ldquo;Чухал тэмдэглэл&rdquo; хэсэгт бичнэ — энэ хоёр
           хамт харагдана. Хоосон орхивол ямар ч аялал дээр харагдахгүй.

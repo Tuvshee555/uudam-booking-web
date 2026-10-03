@@ -65,6 +65,13 @@ const DIFFICULTY_LABEL: Record<string, string> = {
   CHALLENGING: "Хүнд",
 };
 
+function noticeLines(value?: string | null) {
+  return (value ?? "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
 export default function TripDetailClient({
   slug,
   initialTrip,
@@ -115,6 +122,10 @@ export default function TripDetailClient({
 
   const hotelMedia = useMemo(() => parseMediaItems(trip?.hotelMedia) ?? [], [trip]);
   const travelerMedia = useMemo(() => parseMediaItems(trip?.travelerMedia) ?? [], [trip]);
+  const siteNoticeLines = useMemo(
+    () => noticeLines(siteSettings?.tripNotice),
+    [siteSettings?.tripNotice],
+  );
   // The weather follows whichever departure the booking panel has selected.
   const [weatherDate, setWeatherDate] = useAnnouncedDeparture(selectedDate);
   const { data: weather } = useTripWeather(trip?.slug, weatherDate);
@@ -150,7 +161,7 @@ export default function TripDetailClient({
         id: "included",
         label: "Багц",
       },
-      (siteSettings?.tripNotice ||
+      (siteNoticeLines.length > 0 ||
         trip.importantNotes.length > 0 ||
         trip.extraFees.length > 0 ||
         trip.roomPrices.length > 0 ||
@@ -166,7 +177,7 @@ export default function TripDetailClient({
       travelerMedia.length > 0 && { id: "traveler-media", label: "Аялагчид" },
       trip.testimonials && trip.testimonials.length > 0 && { id: "reviews", label: "Сэтгэгдэл" },
     ].filter((entry): entry is { id: string; label: string } => Boolean(entry));
-  }, [trip, siteSettings, hotelMedia, travelerMedia, hasWeather, routeStops]);
+  }, [trip, siteNoticeLines, hotelMedia, travelerMedia, hasWeather, routeStops]);
 
   useEffect(() => {
     if (trip) recordRecentlyViewed(trip.slug);
@@ -465,14 +476,14 @@ export default function TripDetailClient({
             </section>
           )}
 
-          {(siteSettings?.tripNotice ||
+          {(siteNoticeLines.length > 0 ||
             trip.importantNotes.length > 0 ||
             trip.extraFees.length > 0 ||
             trip.roomPrices.length > 0 ||
             trip.childPriceNotes.length > 0 ||
             trip.brochurePdfUrl) && (
             <section id="important" className="mt-8 scroll-mt-28 space-y-5">
-              {(siteSettings?.tripNotice || trip.importantNotes.length > 0) && (
+              {(siteNoticeLines.length > 0 || trip.importantNotes.length > 0) && (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-950">
                   <h2 className="flex items-center gap-2 text-lg font-bold">
                     <AlertCircle className="h-5 w-5" />
@@ -482,7 +493,9 @@ export default function TripDetailClient({
                     {/* Standing, site-wide note — set once in admin, shown on
                         every trip — always comes first, then whatever is
                         specific to this one trip. */}
-                    {siteSettings?.tripNotice && <li>{siteSettings.tripNotice}</li>}
+                    {siteNoticeLines.map((note) => (
+                      <li key={`site-${note}`}>{note}</li>
+                    ))}
                     {trip.importantNotes.map((note) => (
                       <li key={note}>{note}</li>
                     ))}

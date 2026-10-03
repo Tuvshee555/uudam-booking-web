@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { AlertCircle, Loader2, Plus, Trash2 } from "lucide-react";
 
 import { api, apiErrorMessage } from "@/lib/api";
 import { departureDateKey } from "@/lib/departureDate";
@@ -773,6 +773,27 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
         />
       </Section>
 
+      <Section title="Чухал тэмдэглэл">
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
+          <h3 className="flex items-center gap-2 text-sm font-bold">
+            <AlertCircle className="h-4 w-4" />
+            Вебсайт дээрх шар тэмдэглэлийн хэсэг
+          </h3>
+          <p className="mt-1 text-xs leading-relaxed text-amber-900/80">
+            Үнэ, гарах өдөр, шинжилгээ, тусгай анхааруулга зэрэг зөвхөн энэ аялалд
+            хамаарах мөрүүдийг энд нэмнэ.
+          </p>
+          <div className="mt-3">
+            <StringListField
+              label="Тэмдэглэлийн мөрүүд"
+              values={form.importantNotes}
+              onChange={(v) => set("importantNotes", v)}
+              placeholder="ж: Үнэ болон гарах огноог админ удахгүй баталгаажуулна."
+            />
+          </div>
+        </div>
+      </Section>
+
       <Section title="Дэлгэрэнгүй">
         <div className="grid gap-4">
           <StringListField label="Онцлох мөчүүд" values={form.highlights} onChange={(v) => set("highlights", v)} />
@@ -780,7 +801,6 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
             <StringListField label="Багцад багтсан" values={form.included} onChange={(v) => set("included", v)} />
             <StringListField label="Багцад ороогүй" values={form.excluded} onChange={(v) => set("excluded", v)} />
           </div>
-          <StringListField label="Чухал тэмдэглэл" values={form.importantNotes} onChange={(v) => set("importantNotes", v)} />
           <div className="grid gap-4 sm:grid-cols-2">
             <StringListField label="Нэмэлт төлбөр" values={form.extraFees} onChange={(v) => set("extraFees", v)} />
             <StringListField label="Өрөөний үнэ" values={form.roomPrices} onChange={(v) => set("roomPrices", v)} />
