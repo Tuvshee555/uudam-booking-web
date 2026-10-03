@@ -9,7 +9,7 @@ function endpoint() {
 
 export function assertChatbotTripSyncConfigured() {
   if (!endpoint() || !process.env.CHATBOT_SYNC_SECRET) {
-    throw httpError(503, "Chatbot sync тохируулаагүй байна. Аяллыг салангид хадгалахаас сэргийлж хадгалсангүй.");
+    throw httpError(424, "Chatbot sync тохируулаагүй байна. Аяллыг chatbot/poster-той салангид болгохгүйн тулд үйлдлийг зогсоолоо.");
   }
 }
 
@@ -28,7 +28,8 @@ export async function syncTripToChatbot(trip: unknown) {
   });
 
   if (!response.ok) {
-    throw httpError(502, "Chatbot, website, poster синк хийхэд алдаа гарлаа. Дахин оролдоно уу.");
+    console.error("Chatbot trip sync failed", response.status, await response.text().catch(() => ""));
+    throw httpError(424, "Chatbot, website, poster синк хийхэд алдаа гарлаа. Дахин оролдоно уу.");
   }
 }
 
@@ -46,6 +47,7 @@ export async function deleteTripFromChatbot(sourceTripId: string | null) {
     cache: "no-store",
   });
   if (!response.ok && response.status !== 404) {
-    throw httpError(502, "Chatbot, website, poster синк хийхэд алдаа гарлаа. Дахин оролдоно уу.");
+    console.error("Chatbot trip delete sync failed", response.status, await response.text().catch(() => ""));
+    throw httpError(424, "Chatbot, website, poster синк хийхэд алдаа гарлаа. Дахин оролдоно уу.");
   }
 }

@@ -213,7 +213,6 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
 
 export const DELETE = handler(async (req: Request, ctx: Ctx) => {
   await requireAdmin(req);
-  assertChatbotTripSyncConfigured();
 
   const { id } = await ctx.params;
   const source = await prisma.trip.findUnique({
