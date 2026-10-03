@@ -46,6 +46,15 @@ async function findTrip(idOrSlug: string) {
   });
 }
 
+function revalidateTripPages(slug: string) {
+  for (const locale of ["mn", "en", "ko"]) {
+    revalidatePath(`/${locale}`, "page");
+    revalidatePath(`/${locale}/trips`, "page");
+    revalidatePath(`/${locale}/trips/${slug}`, "page");
+    revalidatePath(`/${locale}/departures`, "page");
+  }
+}
+
 export const GET = handler(async (req: Request, ctx: Ctx) => {
   const { id } = await ctx.params;
 
@@ -207,14 +216,18 @@ export const DELETE = handler(async (req: Request, ctx: Ctx) => {
   assertChatbotTripSyncConfigured();
 
   const { id } = await ctx.params;
-  const source = await prisma.trip.findUnique({ where: { id }, select: { sourceTripId: true } });
+  const source = await prisma.trip.findUnique({
+    where: { id },
+    select: { sourceTripId: true, slug: true },
+  });
   if (!source) throw httpError(404, "Аялал олдсонгүй");
 
-  const referenced = await prisma.enquiry.count({ where: { tripId: id } });
+  const bookings = await prisma.booking.count({ where: { tripId: id } });
 
-  if (referenced > 0) {
-    // Hard-deleting would wipe the trip off enquiries staff still need to read,
-    // so a trip with history is unpublished instead.
+  if (bookings > 0) {
+    // Bookings keep a required trip relation, so these rows cannot be hard
+    // deleted without damaging payment/traveler history. Enquiries are safe:
+    // their trip relation is optional and becomes null on delete.
     const trip = await prisma.trip.update({
       where: { id },
       data: { isPublished: false, isFeatured: false },
@@ -224,11 +237,12 @@ export const DELETE = handler(async (req: Request, ctx: Ctx) => {
     await syncTripToChatbot(trip);
 
     invalidateCatalog();
+    revalidateTripPages(source.slug);
 
     return json({
       success: true,
       archived: true,
-      message: "Хүсэлт ирсэн аялал тул нуулаа (устгаагүй).",
+      message: "Захиалгатай аялал тул нийтээс нуув (устгаагүй).",
     });
   }
 
@@ -237,6 +251,7 @@ export const DELETE = handler(async (req: Request, ctx: Ctx) => {
   // during its return sync. deleteMany keeps this endpoint idempotent.
   await prisma.trip.deleteMany({ where: { id } });
   invalidateCatalog();
+  revalidateTripPages(source.slug);
 
   return json({ success: true, archived: false });
 });

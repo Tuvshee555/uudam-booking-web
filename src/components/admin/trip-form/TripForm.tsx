@@ -424,7 +424,7 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
 
     const name = existingTrip?.title ? `"${existingTrip.title}"` : "энэ аяллыг";
     const confirmed = window.confirm(
-      `${name} устгах уу?\n\nЗахиалгын хүсэлттэй бол бүр устгахгүй, зөвхөн нийтээс нууж chatbot/poster sync хийнэ.`,
+      `${name} устгах уу?\n\nБаталгаажсан захиалгатай аялал бол бүр устгахгүй, зөвхөн нийтээс нууж chatbot/poster sync хийнэ.`,
     );
 
     if (!confirmed) return;
