@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { CalendarDays, ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,6 +30,25 @@ const EMPTY_DEPARTURE: DepartureDraft = {
 
 export { EMPTY_DEPARTURE };
 
+const WEEKDAYS = ["Ня", "Да", "Мя", "Лх", "Пү", "Ба", "Бя"];
+
+function toIsoDate(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function dateFromIso(value: string) {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatDateLabel(value: string) {
+  const date = dateFromIso(value);
+  if (!date) return value;
+  return `${date.getFullYear()} · ${date.getMonth() + 1}-р сарын ${date.getDate()}`;
+}
+
 /**
  * The three seat states staff actually think in, each backed by a real
  * seatsTotal/seatsLeft pair so online-booking capacity enforcement (which
@@ -57,6 +76,165 @@ function tierForDraft(dep: DepartureDraft): (typeof SEAT_TIERS)[number]["key"] |
   return null;
 }
 
+function CalendarDatePicker({
+  label,
+  value,
+  placeholder = "Огноо сонгох",
+  onChange,
+  allowClear = false,
+}: {
+  label: string;
+  value: string;
+  placeholder?: string;
+  onChange: (value: string) => void;
+  allowClear?: boolean;
+}) {
+  const selected = useMemo(() => dateFromIso(value), [value]);
+  const today = useMemo(() => new Date(), []);
+  const [open, setOpen] = useState(false);
+  const [viewYear, setViewYear] = useState((selected || today).getFullYear());
+  const [viewMonth, setViewMonth] = useState((selected || today).getMonth());
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(event: MouseEvent) {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  const firstWeekday = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const cells = [
+    ...Array.from({ length: firstWeekday }, () => null),
+    ...Array.from({ length: daysInMonth }, (_, index) => index + 1),
+  ];
+
+  function goToMonth(delta: number) {
+    const next = new Date(viewYear, viewMonth + delta, 1);
+    setViewYear(next.getFullYear());
+    setViewMonth(next.getMonth());
+  }
+
+  function pick(day: number) {
+    onChange(toIsoDate(new Date(viewYear, viewMonth, day)));
+    setOpen(false);
+  }
+
+  function toggleOpen() {
+    if (!open) {
+      const base = selected || today;
+      setViewYear(base.getFullYear());
+      setViewMonth(base.getMonth());
+    }
+    setOpen((current) => !current);
+  }
+
+  return (
+    <div ref={rootRef} className="relative">
+      <Label>{label}</Label>
+      <button
+        type="button"
+        onClick={toggleOpen}
+        className={cn(
+          "mt-1 flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2 text-left text-sm shadow-sm transition-colors hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20",
+          value ? "text-foreground" : "text-muted-foreground",
+        )}
+      >
+        <span className="truncate">{value ? formatDateLabel(value) : placeholder}</span>
+        <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-50 mt-2 w-72 rounded-xl border border-border bg-background p-3 shadow-xl">
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => goToMonth(-1)}
+              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary"
+              aria-label="Өмнөх сар"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <div className="text-sm font-semibold">
+              {viewYear} — {viewMonth + 1} сар
+            </div>
+            <button
+              type="button"
+              onClick={() => goToMonth(1)}
+              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary"
+              aria-label="Дараах сар"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="mt-3 grid grid-cols-7 gap-1">
+            {WEEKDAYS.map((weekday) => (
+              <span key={weekday} className="flex h-7 items-center justify-center text-xs font-medium text-muted-foreground">
+                {weekday}
+              </span>
+            ))}
+            {cells.map((day, index) => {
+              if (day == null) return <span key={`empty-${index}`} />;
+              const iso = toIsoDate(new Date(viewYear, viewMonth, day));
+              const isSelected = iso === value;
+              const isToday = iso === toIsoDate(today);
+              return (
+                <button
+                  key={iso}
+                  type="button"
+                  onClick={() => pick(day)}
+                  className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded-md text-sm transition-colors",
+                    isSelected
+                      ? "bg-primary font-semibold text-primary-foreground"
+                      : isToday
+                        ? "border border-primary/40 font-semibold text-primary"
+                        : "text-foreground hover:bg-secondary",
+                  )}
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => {
+                onChange(toIsoDate(today));
+                setOpen(false);
+              }}
+              className="rounded-md border border-border px-2 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary"
+            >
+              Өнөөдөр
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (allowClear) onChange("");
+                setOpen(false);
+              }}
+              disabled={!allowClear}
+              className="rounded-md border border-border px-2 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              Хоослох
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function DepartureEditor({
   departures,
   onChange,
@@ -64,6 +242,11 @@ export default function DepartureEditor({
   departures: DepartureDraft[];
   onChange: (next: DepartureDraft[]) => void;
 }) {
+  function addDeparture(startDate = "") {
+    if (startDate && departures.some((dep) => dep.startDate === startDate)) return;
+    onChange([...departures, { ...EMPTY_DEPARTURE, startDate }]);
+  }
+
   function update(index: number, patch: Partial<DepartureDraft>) {
     onChange(departures.map((dep, i) => (i === index ? { ...dep, ...patch } : dep)));
   }
@@ -82,6 +265,20 @@ export default function DepartureEditor({
 
   return (
     <div className="space-y-3">
+      <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-3">
+        <div className="grid gap-2 sm:grid-cols-[minmax(220px,280px)_1fr] sm:items-end">
+          <CalendarDatePicker
+            label="Гарах өдөр нэмэх"
+            value=""
+            placeholder="Календараас өдөр сонгох"
+            onChange={addDeparture}
+          />
+          <p className="text-xs leading-5 text-muted-foreground">
+            Сонгосон өдөр шууд доор шинэ хөдөлгөөн болж нэмэгдэнэ. Дараа нь суудлын байдал, үнэ өөр байвал мөр дээрээс нь засна.
+          </p>
+        </div>
+      </div>
+
       {departures.map((dep, index) => {
         const activeTier = tierForDraft(dep);
         const isCancelledOrDeparted = dep.status === "CANCELLED" || dep.status === "DEPARTED";
@@ -96,14 +293,19 @@ export default function DepartureEditor({
             </div>
 
             <div className="mt-2 grid gap-3 sm:grid-cols-3">
-              <div>
-                <Label>Эхлэх огноо *</Label>
-                <Input type="date" value={dep.startDate} onChange={(e) => update(index, { startDate: e.target.value })} />
-              </div>
-              <div>
-                <Label>Дуусах огноо</Label>
-                <Input type="date" value={dep.endDate} onChange={(e) => update(index, { endDate: e.target.value })} />
-              </div>
+              <CalendarDatePicker
+                label="Эхлэх огноо *"
+                value={dep.startDate}
+                placeholder="Эхлэх өдөр"
+                onChange={(startDate) => update(index, { startDate })}
+              />
+              <CalendarDatePicker
+                label="Дуусах огноо"
+                value={dep.endDate}
+                placeholder="Дуусах өдөр"
+                onChange={(endDate) => update(index, { endDate })}
+                allowClear
+              />
               <div>
                 <Label>Үнэ (заавал биш, өөрчлөх бол)</Label>
                 <Input type="number" min={0} value={dep.price} onChange={(e) => update(index, { price: e.target.value })} placeholder="Үндсэн үнээр" />
@@ -154,7 +356,7 @@ export default function DepartureEditor({
 
       <button
         type="button"
-        onClick={() => onChange([...departures, { ...EMPTY_DEPARTURE }])}
+        onClick={() => addDeparture()}
         className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border py-2.5 text-sm font-medium text-muted-foreground hover:border-primary/40 hover:text-primary"
       >
         <Plus className="h-4 w-4" />
