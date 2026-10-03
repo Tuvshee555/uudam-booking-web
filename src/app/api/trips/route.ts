@@ -88,14 +88,8 @@ export const POST = handler(async (req: Request) => {
 
   const { price, oldPrice, discount } = reconcilePricing(body);
 
-  if (price === undefined) {
-    throw Object.assign(new Error("Үнэ оруулна уу"), { status: 400 });
-  }
-
-  const image = safeText(body.image, 800);
-  if (!image) {
-    throw Object.assign(new Error("Зураг оруулна уу"), { status: 400 });
-  }
+  const image = safeText(body.image, 800) ?? "";
+  const hasPublicMinimum = Boolean(image) && typeof price === "number" && price > 0;
 
   const slug = await uniqueSlug(
     typeof body.slug === "string" && body.slug.trim()
@@ -146,7 +140,7 @@ export const POST = handler(async (req: Request) => {
       hotelMedia: toMediaJson(body.hotelMedia),
       travelerMedia: toMediaJson(body.travelerMedia),
 
-      price,
+      price: price ?? 0,
       oldPrice: oldPrice ?? null,
       discount: discount ?? 0,
       childPrice: toOptionalNumber(body.childPrice) ?? null,
@@ -164,7 +158,11 @@ export const POST = handler(async (req: Request) => {
 
       categoryId: categoryIds[0] ?? null,
       isFeatured: Boolean(body.isFeatured),
-      isPublished: body.isPublished === undefined ? true : Boolean(body.isPublished),
+      // Website DB requires image/price columns, but staff often need to
+      // create the shared chatbot/poster record before those facts are known.
+      // Save the row as a draft until it has the public minimum instead of
+      // blocking sync or inventing a complete public trip.
+      isPublished: body.isPublished === undefined ? hasPublicMinimum : Boolean(body.isPublished) && hasPublicMinimum,
 
       categories: toCategoryConnect(categoryIds),
       tags: toTagConnect(body.tagIds),
@@ -174,7 +172,12 @@ export const POST = handler(async (req: Request) => {
     include: TRIP_INCLUDE,
   });
 
-  await syncTripToChatbot(trip);
+  try {
+    await syncTripToChatbot(trip);
+  } catch (error) {
+    await prisma.trip.deleteMany({ where: { id: trip.id } });
+    throw error;
+  }
 
   invalidateCatalog();
 
