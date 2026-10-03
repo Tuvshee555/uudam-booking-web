@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 
 import { api, apiErrorMessage } from "@/lib/api";
 import { departureDateKey } from "@/lib/departureDate";
@@ -39,6 +39,125 @@ function flattenCategories(nodes: CategoryNode[], depth = 0): { id: string; labe
 function toDateInput(iso: string | null | undefined): string {
   if (!iso) return "";
   return departureDateKey(iso);
+}
+
+function object(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function text(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function isInfantLabel(label: string, ageRange: string) {
+  const value = `${label} ${ageRange}`.toLowerCase();
+  return /нярай|infant|сар|month/.test(value) || /\b0\s*[-–]\s*2\b/.test(value);
+}
+
+function passengerRowsFromTrip(trip: Trip): PassengerPriceDraft[] {
+  const rows = new Map<string, PassengerPriceDraft>();
+  const add = (row: PassengerPriceDraft) => {
+    const key = `${row.label.trim().toLowerCase()}|${row.ageRange.trim().toLowerCase()}|${row.price}|${row.free}`;
+    if (row.label.trim() || row.ageRange.trim() || row.price.trim() || row.free) rows.set(key, row);
+  };
+
+  const groups = Array.isArray(trip.sourceMetadata?.price_groups) ? trip.sourceMetadata.price_groups : [];
+  for (const group of groups) {
+    const prices = object(group).passenger_prices;
+    if (!Array.isArray(prices)) continue;
+    for (const item of prices) {
+      const row = object(item);
+      const note = text(row.note);
+      const price = typeof row.price === "number" && Number.isFinite(row.price) ? row.price : null;
+      add({
+        label: text(row.label) || "Хүүхэд",
+        ageRange: text(row.age_range),
+        price: price !== null ? String(price) : "",
+        free: price === 0 && /үнэгүй|free/i.test(note),
+      });
+    }
+  }
+
+  const ageBands = ageBandsFor(trip.sourceMetadata);
+  if (rows.size === 0) {
+    if (trip.childPrice !== null) {
+      add({ label: "Хүүхэд", ageRange: ageBands.child, price: String(trip.childPrice), free: trip.childPrice === 0 });
+    }
+    if (trip.infantPrice !== null) {
+      add({ label: "Нярай", ageRange: ageBands.infant, price: String(trip.infantPrice), free: trip.infantPrice === 0 });
+    }
+  }
+
+  return [...rows.values()];
+}
+
+function passengerSummary(rows: PassengerPriceDraft[]) {
+  const clean = rows
+    .map((row) => ({ ...row, amount: row.free ? 0 : numOrUndefined(row.price) }))
+    .filter((row) => row.label.trim() || row.ageRange.trim() || row.amount !== undefined);
+  const infant = clean.find((row) => row.amount !== undefined && isInfantLabel(row.label, row.ageRange));
+  const child = clean.find((row) => row.amount !== undefined && row !== infant);
+  return {
+    childPrice: child?.amount ?? null,
+    infantPrice: infant?.amount ?? null,
+    childAge: child?.ageRange.trim() || "",
+    infantAge: infant?.ageRange.trim() || "",
+  };
+}
+
+function cleanPassengerRows(rows: PassengerPriceDraft[]) {
+  return rows
+    .map((row) => {
+      const label = row.label.trim();
+      const ageRange = row.ageRange.trim();
+      const amount = row.free ? 0 : numOrUndefined(row.price);
+      if (!label && !ageRange && amount === undefined) return null;
+      return {
+        label: label || "Хүүхэд",
+        age_range: ageRange,
+        price: amount ?? null,
+        currency: "MNT",
+        ...(row.free ? { note: "Үнэгүй" } : {}),
+      };
+    })
+    .filter((row): row is NonNullable<typeof row> => Boolean(row));
+}
+
+function withPassengerPricingMetadata(form: FormState) {
+  const passengerPrices = cleanPassengerRows(form.passengerPrices);
+  const summary = passengerSummary(form.passengerPrices);
+  const sourceMetadata = object(form.sourceMetadata);
+  const existingGroups = Array.isArray(sourceMetadata.price_groups)
+    ? sourceMetadata.price_groups.map(object)
+    : [];
+  const groups = (existingGroups.length ? existingGroups : [{
+    label: "Үндсэн үнэ",
+    dates: [],
+    display_dates: [],
+    date_keys: [],
+  }]).map((group) => ({
+    ...group,
+    adult_price: typeof group.adult_price === "number" ? group.adult_price : (numOrUndefined(form.price) ?? null),
+    passenger_prices: passengerPrices,
+    child_price: summary.childPrice,
+    child_age: summary.childAge,
+    infant_price: summary.infantPrice,
+    infant_age: summary.infantAge,
+    currency: text(group.currency) || "MNT",
+  }));
+
+  return {
+    ...sourceMetadata,
+    age_rules: {
+      ...object(sourceMetadata.age_rules),
+      adult: form.adultAge.trim(),
+      child: summary.childAge,
+      infant: summary.infantAge,
+    },
+    price_groups: groups,
+  };
 }
 
 type FormState = {
@@ -83,6 +202,9 @@ type FormState = {
   childPrice: string;
   infantPrice: string;
   singleSupplement: string;
+  adultAge: string;
+  passengerPrices: PassengerPriceDraft[];
+  sourceMetadata: Record<string, unknown>;
 
   sourceTripId: string;
   hotel: string;
@@ -100,6 +222,13 @@ type FormState = {
 
   itinerary: ItineraryDraft[];
   departures: DepartureDraft[];
+};
+
+type PassengerPriceDraft = {
+  label: string;
+  ageRange: string;
+  price: string;
+  free: boolean;
 };
 
 const EMPTY_FORM: FormState = {
@@ -139,6 +268,9 @@ const EMPTY_FORM: FormState = {
   childPrice: "",
   infantPrice: "",
   singleSupplement: "",
+  adultAge: "12+ нас",
+  passengerPrices: [],
+  sourceMetadata: {},
   sourceTripId: "",
   hotel: "",
   foodIncluded: "",
@@ -156,6 +288,7 @@ const EMPTY_FORM: FormState = {
 };
 
 function tripToForm(trip: Trip): FormState {
+  const ageBands = ageBandsFor(trip.sourceMetadata);
   return {
     title: trip.title,
     slug: trip.slug,
@@ -193,6 +326,9 @@ function tripToForm(trip: Trip): FormState {
     childPrice: trip.childPrice ? String(trip.childPrice) : "",
     infantPrice: trip.infantPrice ? String(trip.infantPrice) : "",
     singleSupplement: trip.singleSupplement ? String(trip.singleSupplement) : "",
+    adultAge: ageBands.adult,
+    passengerPrices: passengerRowsFromTrip(trip),
+    sourceMetadata: trip.sourceMetadata ?? {},
     sourceTripId: trip.sourceTripId ?? "",
     hotel: trip.hotel ?? "",
     foodIncluded:
@@ -240,6 +376,7 @@ function buildPayload(form: FormState) {
   // editor clears it, otherwise an old database value silently survives.
   const nullableText = (value: string) => value.trim() || null;
   const nullableNumber = (value: string) => numOrUndefined(value) ?? null;
+  const passengerFareSummary = passengerSummary(form.passengerPrices);
 
   return {
     title: form.title.trim(),
@@ -281,10 +418,11 @@ function buildPayload(form: FormState) {
     price: numOrUndefined(form.price),
     oldPrice: nullableNumber(form.oldPrice),
     discount: nullableNumber(form.discount),
-    childPrice: nullableNumber(form.childPrice),
-    infantPrice: nullableNumber(form.infantPrice),
+    childPrice: passengerFareSummary.childPrice,
+    infantPrice: passengerFareSummary.infantPrice,
     singleSupplement: nullableNumber(form.singleSupplement),
     sourceTripId: nullableText(form.sourceTripId),
+    sourceMetadata: withPassengerPricingMetadata(form),
     hotel: nullableText(form.hotel),
     foodIncluded:
       form.foodIncluded === "true" ? true : form.foodIncluded === "false" ? false : null,
@@ -348,7 +486,6 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
   }, [mode, existingTrip]);
 
   const categoryOptions = flattenCategories(categoryTree ?? []);
-  const ageBands = ageBandsFor(existingTrip?.sourceMetadata);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -590,6 +727,10 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
             <Input type="number" min={0} value={form.price} onChange={(e) => set("price", e.target.value)} />
           </div>
           <div>
+            <Label>Том хүний нас</Label>
+            <Input value={form.adultAge} onChange={(e) => set("adultAge", e.target.value)} placeholder="ж: 12+ нас" />
+          </div>
+          <div>
             <Label>Хуучин үнэ (хямдралтай бол)</Label>
             <Input type="number" min={0} value={form.oldPrice} onChange={(e) => set("oldPrice", e.target.value)} />
           </div>
@@ -598,25 +739,14 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
             <Input type="number" min={0} max={100} value={form.discount} onChange={(e) => set("discount", e.target.value)} />
           </div>
           <div>
-            <Label>Хүүхдийн үнэ</Label>
-            <Input type="number" min={0} value={form.childPrice} onChange={(e) => set("childPrice", e.target.value)} />
-          </div>
-          <div>
-            <Label>Нярайн үнэ</Label>
-            <Input type="number" min={0} value={form.infantPrice} onChange={(e) => set("infantPrice", e.target.value)} />
-          </div>
-          <div>
             <Label>Ганц хүний нэмэгдэл</Label>
             <Input type="number" min={0} value={form.singleSupplement} onChange={(e) => set("singleSupplement", e.target.value)} />
           </div>
         </div>
-        <p className="mt-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-          Насны ангилал (хэн нярай, хэн хүүхэд, хэн том хүн) аялал тус бүрээр өөр байна:{" "}
-          <span className="font-medium text-foreground">
-            Нярай {ageBands.infant} · Хүүхэд {ageBands.child} · Том хүн {ageBands.adult}
-          </span>
-          . Үүнийг chatbot админаас засна — энд засвал дараагийн sync дарж бичнэ.
-        </p>
+        <PassengerPriceEditor
+          rows={form.passengerPrices}
+          onChange={(rows) => set("passengerPrices", rows)}
+        />
       </Section>
 
       <Section title="Дэлгэрэнгүй">
@@ -750,6 +880,103 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
         </div>
       </div>
     </form>
+  );
+}
+
+function PassengerPriceEditor({
+  rows,
+  onChange,
+}: {
+  rows: PassengerPriceDraft[];
+  onChange: (rows: PassengerPriceDraft[]) => void;
+}) {
+  const update = (index: number, next: PassengerPriceDraft) =>
+    onChange(rows.map((row, i) => (i === index ? next : row)));
+  const addRow = (label: string) =>
+    onChange([...rows, { label, ageRange: "", price: "", free: false }]);
+
+  return (
+    <div className="mt-4 rounded-lg border border-border bg-muted/30 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-semibold">Хүүхэд / нярайн нас ба үнэ</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Насны ангилал бүрийг тусдаа мөрөөр оруулна. Үнэгүй бол checkbox дарна.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={() => addRow("Хүүхэд")}>
+            <Plus className="h-3.5 w-3.5" />
+            Хүүхэд
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => addRow("Нярай")}>
+            <Plus className="h-3.5 w-3.5" />
+            Нярай
+          </Button>
+        </div>
+      </div>
+
+      <div className="mt-3 space-y-2">
+        {rows.length === 0 && (
+          <p className="rounded-md border border-dashed border-border px-3 py-3 text-sm text-muted-foreground">
+            Хүүхэд/нярайн тусдаа үнэ байхгүй бол хоосон үлдээнэ.
+          </p>
+        )}
+        {rows.map((row, index) => (
+          <div key={index} className="grid gap-2 rounded-md border border-border bg-card p-2 sm:grid-cols-[1fr_1fr_1fr_auto_auto]">
+            <div>
+              <Label>Ангилал</Label>
+              <Input
+                value={row.label}
+                onChange={(e) => update(index, { ...row, label: e.target.value })}
+                placeholder="ж: Хүүхэд 2-5"
+              />
+            </div>
+            <div>
+              <Label>Нас</Label>
+              <Input
+                value={row.ageRange}
+                onChange={(e) => update(index, { ...row, ageRange: e.target.value })}
+                placeholder="ж: 2-5 нас"
+              />
+            </div>
+            <div>
+              <Label>Үнэ (₮)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={row.free ? "" : row.price}
+                disabled={row.free}
+                onChange={(e) => update(index, { ...row, price: e.target.value })}
+                placeholder={row.free ? "Үнэгүй" : "ж: 2390000"}
+              />
+            </div>
+            <label className="flex items-center gap-2 pt-6 text-sm font-medium text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={row.free}
+                onChange={(e) => update(index, { ...row, free: e.target.checked, price: e.target.checked ? "" : row.price })}
+                className="h-4 w-4 rounded border-input"
+              />
+              Үнэгүй
+            </label>
+            <div className="flex items-end">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => onChange(rows.filter((_, i) => i !== index))}
+                aria-label="Мөр устгах"
+                title="Мөр устгах"
+                className="text-muted-foreground hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

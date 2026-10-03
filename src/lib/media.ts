@@ -9,6 +9,7 @@ export type MediaItem = { url: string; caption: string };
 export type MediaKind = "youtube" | "video" | "image" | "link";
 
 const URL_PATTERN = /https?:\/\/[^\s"'<>]+/;
+const BARE_URL_PATTERN = /(?:www\.)?[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+(?:\/[^\s"'<>]*)?/i;
 
 /**
  * The first http(s) URL inside whatever was typed into a URL box, or null.
@@ -21,8 +22,10 @@ const URL_PATTERN = /https?:\/\/[^\s"'<>]+/;
 export function extractUrl(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
   const match = raw.match(URL_PATTERN);
-  if (!match) return null;
-  return match[0].replace(/[),.;]+$/, "");
+  if (match) return match[0].replace(/[),.;]+$/, "");
+  const bare = raw.match(BARE_URL_PATTERN);
+  if (!bare) return null;
+  return `https://${bare[0].replace(/[),.;]+$/, "")}`;
 }
 
 /** True when the box holds text that is not just a link (a typed label, a stray word). */

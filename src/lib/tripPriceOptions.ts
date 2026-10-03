@@ -25,8 +25,8 @@ export function datePriceOptions(trip: Pick<Trip, "sourceMetadata">, departure: 
   const day = departureDateKey(departure.startDate);
   return groups.flatMap((value) => {
     const group = object(value);
-    const keys = Array.isArray(group.date_keys) ? group.date_keys : [];
-    if (!keys.includes(day)) return [];
+    const keys = Array.isArray(group.date_keys) ? group.date_keys : Array.isArray(group.dates) ? group.dates : [];
+    if (keys.length > 0 && !keys.includes(day)) return [];
     const range = object(group.adult_price_range);
     const passengers = Array.isArray(group.passenger_prices) ? group.passenger_prices : [];
     return [{
@@ -37,9 +37,11 @@ export function datePriceOptions(trip: Pick<Trip, "sourceMetadata">, departure: 
       infant: price(group.infant_price),
       passengers: passengers.map((item) => {
         const passenger = object(item);
+        const baseLabel = String(passenger.label || "Хүүхэд").trim();
+        const ageRange = String(passenger.age_range || "").trim();
         return {
-          label: String(passenger.label || "Хүүхэд"),
-          ageRange: String(passenger.age_range || ""),
+          label: ageRange && !baseLabel.includes(ageRange) ? `${baseLabel} ${ageRange}` : baseLabel,
+          ageRange,
           price: price(passenger.price),
         };
       }),
@@ -51,7 +53,8 @@ export function hasVariablePricing(trip: Pick<Trip, "sourceMetadata">): boolean 
   const groups = trip.sourceMetadata?.price_groups;
   return Array.isArray(groups) && groups.some((value) => {
     const group = object(value);
-    return Boolean(group.hotel || group.adult_price_range);
+    const passengers = Array.isArray(group.passenger_prices) ? group.passenger_prices : [];
+    return Boolean(group.hotel || group.adult_price_range || passengers.length > 0);
   });
 }
 
