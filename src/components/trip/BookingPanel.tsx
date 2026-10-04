@@ -184,8 +184,13 @@ export default function BookingPanel({
   const ageBands = ageBandsFor(trip.sourceMetadata);
   const total = lineTotal({ adults, children, infants }, prices);
   const specialTiers = option?.passengers ?? [];
-  const tierTotal = specialTiers.reduce((sum, item) => sum + (tierCounts[item.label] || 0) * (item.price || 0), 0);
-  const missingTierPrice = specialTiers.some((item) => (tierCounts[item.label] || 0) > 0 && item.price == null);
+  // A detailed passenger tier is an offer that needs a human quote until the
+  // booking API accepts each individual age band. Never collapse it into the
+  // old generic child/infant counters: that hides valid prices such as 2-5.
+  const requiresQuote = quoteOnly || specialTiers.length > 0;
+  const tierKey = (item: typeof specialTiers[number]) => `${item.label}|${item.ageRange}`;
+  const tierTotal = specialTiers.reduce((sum, item) => sum + (tierCounts[tierKey(item)] || 0) * (item.price || 0), 0);
+  const missingTierPrice = specialTiers.some((item) => (tierCounts[tierKey(item)] || 0) > 0 && item.price == null);
   const quoteMin = missingTierPrice ? null : adults * (option?.adult ?? prices.adult) + tierTotal;
   const quoteMax = option?.adultMax != null ? adults * option.adultMax + tierTotal : quoteMin;
   const saleLabel = saleBadgeLabel(trip);
@@ -310,8 +315,8 @@ export default function BookingPanel({
               {option.packageId}
             </div>
           )}
-          <div className="text-xl font-bold text-primary">{quoteOnly && option ? formatAdultOption(option) : formatMnt(prices.adult)}</div>
-          <div className="text-xs text-muted-foreground">{quoteOnly ? "нэг том хүний үнэ" : "нэг том хүн"}</div>
+          <div className="text-xl font-bold text-primary">{requiresQuote && option ? formatAdultOption(option) : formatMnt(prices.adult)}</div>
+          <div className="text-xs text-muted-foreground">{requiresQuote ? "нэг том хүний үнэ" : "нэг том хүн"}</div>
         </div>
         <div className="flex flex-col items-end gap-1.5">
           {saleLabel && (
@@ -325,7 +330,7 @@ export default function BookingPanel({
         </div>
       </div>
 
-      {!quoteOnly && <div className="mt-4 space-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
+      {!requiresQuote && <div className="mt-4 space-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
         <div className="flex justify-between">
           <span>Хүүхэд</span>
           <span className="font-medium text-foreground">{formatFare(prices.child)}</span>
@@ -374,9 +379,9 @@ export default function BookingPanel({
 
           <div className="mt-4 divide-y divide-border border-t border-border">
             <Counter label="Том хүн" hint={adultHint} value={adults} onChange={setAdults} min={1} />
-            {quoteOnly && specialTiers.length > 0 ? specialTiers.map((item) =>
-              <Counter key={item.label} label={item.label} hint={`${item.ageRange} · ${item.price == null ? "Үнэ лавлах" : formatMnt(item.price)}`}
-                value={tierCounts[item.label] || 0} onChange={(value) => setTierCounts((current) => ({ ...current, [item.label]: value }))} />
+            {requiresQuote && specialTiers.length > 0 ? specialTiers.map((item) =>
+              <Counter key={tierKey(item)} label={item.label} hint={`${item.ageRange} · ${item.price == null ? "Үнэ лавлах" : formatMnt(item.price)}`}
+                value={tierCounts[tierKey(item)] || 0} onChange={(value) => setTierCounts((current) => ({ ...current, [tierKey(item)]: value }))} />
             ) : <>
               <Counter label="Хүүхэд" hint={pricedHint(ageBands.child, prices.child)} value={children} onChange={setChildren} />
               <Counter label="Нярай" hint={pricedHint(ageBands.infant, prices.infant)} value={infants} onChange={setInfants} />
@@ -384,24 +389,24 @@ export default function BookingPanel({
           </div>
 
           <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
-            <span className="text-sm text-muted-foreground">{quoteOnly ? "Тооцоолсон үнэ" : "Нийт дүн"}</span>
-            <span className="text-lg font-bold text-primary">{quoteOnly
+            <span className="text-sm text-muted-foreground">{requiresQuote ? "Тооцоолсон үнэ" : "Нийт дүн"}</span>
+            <span className="text-lg font-bold text-primary">{requiresQuote
               ? quoteMin == null ? "Үнэ лавлах" : quoteMax != null && quoteMax > quoteMin
                 ? `${formatMnt(quoteMin)}–${formatMnt(quoteMax)}` : formatMnt(quoteMin)
               : formatMnt(total)}</span>
           </div>
 
-          {quoteOnly && <p className="mt-1 text-xs text-muted-foreground">Эцсийн үнэ, өрөөний сонголтыг ажилтан баталгаажуулна.</p>}
+          {requiresQuote && <p className="mt-1 text-xs text-muted-foreground">Эцсийн үнэ, өрөөний сонголтыг ажилтан баталгаажуулна.</p>}
 
           <Button
             className="mt-4 w-full"
             disabled={!selected}
             onClick={() => {
-              if (quoteOnly && selected) {
-                const counts = specialTiers.map((item) => `${item.label}: ${tierCounts[item.label] || 0}`).join(", ");
+              if (requiresQuote && selected) {
+                const counts = specialTiers.map((item) => `${item.label}: ${tierCounts[tierKey(item)] || 0}`).join(", ");
                 onAsk({ departureId: selected.id, adults,
-                  children: specialTiers.filter((item) => !/нярай|infant/i.test(item.label)).reduce((sum, item) => sum + (tierCounts[item.label] || 0), 0),
-                  infants: specialTiers.filter((item) => /нярай|infant/i.test(item.label)).reduce((sum, item) => sum + (tierCounts[item.label] || 0), 0),
+                  children: specialTiers.filter((item) => !/нярай|infant/i.test(item.label)).reduce((sum, item) => sum + (tierCounts[tierKey(item)] || 0), 0),
+                  infants: specialTiers.filter((item) => /нярай|infant/i.test(item.label)).reduce((sum, item) => sum + (tierCounts[tierKey(item)] || 0), 0),
                   message: [
                     option?.hotel ? `Буудал: ${option.hotel}` : "",
                     option?.packageId ? `Аяллын төрөл: ${option.packageId}` : "",
@@ -413,7 +418,7 @@ export default function BookingPanel({
               }
             }}
           >
-            {selected ? quoteOnly ? "Үнийн санал авах" : "Захиалах" : "Огноогоо сонгоно уу"}
+            {selected ? requiresQuote ? "Үнийн санал авах" : "Захиалах" : "Огноогоо сонгоно уу"}
           </Button>
         </div>
       )}
