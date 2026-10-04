@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Check, Copy, Loader2, Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -14,7 +14,7 @@ import { datePriceOptions, formatAdultOption, hasVariablePricing } from "@/lib/t
 import { roundTemp, shortDate, weatherIcon, weatherLabel, type TripWeatherReport } from "@/lib/weather";
 import DepartureDatePicker from "./DepartureDatePicker";
 import { departureDateKey } from "@/lib/departureDate";
-import { announceDepartureSelect, useTripWeather } from "./TripWeather";
+import { announceDepartureSelect, useAnnouncedDeparture, useTripWeather } from "./TripWeather";
 import QpayPayButton, { QpayPaidBadge } from "./QpayPayButton";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { Button } from "@/components/ui/button";
@@ -167,6 +167,16 @@ export default function BookingPanel({
   // impure, and departures shouldn't vanish while someone is mid-booking.
   const [now] = useState(() => Date.now());
   const openDepartures = useMemo(() => upcomingDepartures(trip, now), [trip, now]);
+  const [announcedDate] = useAnnouncedDeparture(selectedDate);
+
+  useEffect(() => {
+    if (!announcedDate) return;
+    const next = openDepartures.find((departure) => departureDateKey(departure.startDate) === announcedDate);
+    if (!next || next.id === departureId || !availability(next).selectable) return;
+    setDepartureId(next.id);
+    setSelectedOptionKey("");
+    setTierCounts({});
+  }, [announcedDate, departureId, openDepartures]);
 
   const selected = openDepartures.find((d) => d.id === departureId && availability(d).selectable) ?? null;
   const selectedWeatherDate = selected ? departureDateKey(selected.startDate) : selectedDate ?? null;

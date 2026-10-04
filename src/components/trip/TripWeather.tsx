@@ -213,7 +213,10 @@ export default function TripWeather({
               type="button"
               role="tab"
               aria-selected={date === report.departure}
-              onClick={() => onSelectDeparture(date)}
+              onClick={() => {
+                announceDepartureSelect(date);
+                onSelectDeparture(date);
+              }}
               className={cn(
                 "shrink-0 rounded-full border px-3 py-1.5 text-sm font-semibold tabular-nums transition-colors",
                 date === report.departure

@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 
 import BookingPanel from "./BookingPanel";
 import EnquiryPanel from "./EnquiryPanel";
+import { useAnnouncedDeparture } from "./TripWeather";
 
 type Mode = "book" | "ask";
 
@@ -29,6 +30,7 @@ export default function TripSidebar({
 }) {
   const hasPrice = hasKnownTripPrice(trip.price);
   const variablePricing = hasVariablePricing(trip);
+  const [activeDate] = useAnnouncedDeparture(selectedDate);
   const [selectedMode, setSelectedMode] = useState<Mode>("book");
   const [selection, setSelection] = useState<{ departureId: string; message: string; adults: number; children: number; infants: number } | null>(null);
   const mode = hasPrice ? selectedMode : "ask";
@@ -61,9 +63,9 @@ export default function TripSidebar({
       )}
 
       {hasPrice && mode === "book" ? (
-        <BookingPanel trip={trip} bankDetails={bankDetails} selectedDate={selectedDate} onAsk={(next) => { setSelection(next); setSelectedMode("ask"); }} />
+        <BookingPanel trip={trip} bankDetails={bankDetails} selectedDate={activeDate ?? undefined} onAsk={(next) => { setSelection(next); setSelectedMode("ask"); }} />
       ) : (
-        <EnquiryPanel trip={trip} initialSelection={selection} variablePricing={variablePricing} selectedDate={selectedDate} />
+        <EnquiryPanel trip={trip} initialSelection={selection} variablePricing={variablePricing} selectedDate={activeDate ?? undefined} />
       )}
     </div>
   );
