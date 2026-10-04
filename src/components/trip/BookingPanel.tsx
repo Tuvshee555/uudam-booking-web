@@ -253,6 +253,11 @@ export default function BookingPanel({
     <div className="rounded-md border border-border bg-card p-4">
       <div className="flex items-end justify-between">
         <div>
+          {option?.packageId && (
+            <div className="mb-1 inline-flex rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold text-primary-foreground">
+              {option.packageId}
+            </div>
+          )}
           <div className="text-xl font-bold text-primary">{quoteOnly && option ? formatAdultOption(option) : formatMnt(prices.adult)}</div>
           <div className="text-xs text-muted-foreground">{quoteOnly ? "нэг том хүний үнэ" : "нэг том хүн"}</div>
         </div>
@@ -295,12 +300,23 @@ export default function BookingPanel({
             <div className="mt-2 space-y-1.5">
               {choiceOptions.map((item) => <button key={item.key} type="button" aria-pressed={option?.key === item.key}
                 onClick={() => { setSelectedOptionKey(item.key); setTierCounts({}); }}
-                className={`flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-left text-sm ${option?.key === item.key ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}>
-                <span className="min-w-0 truncate font-medium">{item.label || item.hotel || item.packageId || "Сонголт"}</span>
-                <span className="shrink-0 text-xs font-semibold tabular-nums">{formatAdultOption(item)}</span>
+                className={`w-full rounded-md border px-3 py-2 text-left text-sm ${option?.key === item.key ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}>
+                <span className="flex items-center justify-between gap-2">
+                  <span className="min-w-0 font-semibold">{item.label || item.hotel || item.packageId || "Сонголт"}</span>
+                  <span className="shrink-0 text-xs font-bold tabular-nums">{formatAdultOption(item)}</span>
+                </span>
+                {item.packageNote && <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{item.packageNote}</span>}
               </button>)}
             </div>
           </div>}
+
+          {option?.packageId && (
+            <div className="mt-3 rounded-md border border-primary/30 bg-primary/5 p-3">
+              <div className="text-xs font-bold uppercase tracking-wide text-primary">Сонгосон аяллын төрөл</div>
+              <div className="mt-1 text-sm font-semibold">{option.packageId}</div>
+              {option.packageNote && <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{option.packageNote}</p>}
+            </div>
+          )}
 
           <div className="mt-4 divide-y divide-border border-t border-border">
             <Counter label="Том хүн" hint={adultHint} value={adults} onChange={setAdults} min={1} />

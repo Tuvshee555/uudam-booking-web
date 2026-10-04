@@ -210,6 +210,11 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
               {formatMnt(trip.oldPrice)}
             </div>
           )}
+          {option?.packageId && (
+            <div className="mb-1 inline-flex rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold text-primary-foreground">
+              {option.packageId}
+            </div>
+          )}
           <div className="text-xl font-bold text-primary">{variablePricing
             ? optionLabel
             : formatTripStartingPrice(prices.adult)}</div>
@@ -244,6 +249,13 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
         <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
           Дээрх үнэнд юу ороогүйг доорх &ldquo;Багцад ороогүй&rdquo; жагсаалтаас нягтална уу — виз, хувийн зардал зэрэг зарим зүйл ихэвчлэн үнэд ороогүй байдаг.
         </p>
+      )}
+      {option?.packageId && option.packageNote && (
+        <div className="mt-3 rounded-md border border-primary/30 bg-primary/5 p-3">
+          <div className="text-xs font-bold uppercase tracking-wide text-primary">Сонгосон аяллын төрөл</div>
+          <div className="mt-1 text-sm font-semibold">{option.packageId}</div>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{option.packageNote}</p>
+        </div>
       )}
 
       <form onSubmit={submit} className="mt-5">

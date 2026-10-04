@@ -7,6 +7,7 @@ export type DatePriceOption = {
   label: string;
   hotel: string;
   packageId: string;
+  packageNote: string;
   adult: number | null;
   adultMax: number | null;
   child: number | null;
@@ -22,10 +23,22 @@ function price(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
 }
 
+function text(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function defaultPackageNote(packageId: string): string {
+  if (/чөлөөт/i.test(packageId)) return "Хөтөлбөргүй, илүү чөлөөтэй багц. Нислэг, буудал болон үндсэн үйлчилгээтэй.";
+  if (/хөтөлбөр/i.test(packageId)) return "Өдөр тутмын хөтөлбөр, үзвэр үйлчилгээтэй багц.";
+  return "";
+}
+
 export function datePriceOptions(trip: Pick<Trip, "sourceMetadata">, departure: Pick<Departure, "startDate">): DatePriceOption[] {
   const groups = trip.sourceMetadata?.price_groups;
   if (!Array.isArray(groups)) return [];
   const ageRules = object(trip.sourceMetadata?.age_rules);
+  const packageOptions = Array.isArray(trip.sourceMetadata?.package_options)
+    ? trip.sourceMetadata.package_options.map(object) : [];
   const ageRule = (kind: "child" | "infant") =>
     typeof ageRules[kind] === "string" ? ageRules[kind].trim() : "";
   const day = departureDateKey(departure.startDate);
@@ -38,6 +51,9 @@ export function datePriceOptions(trip: Pick<Trip, "sourceMetadata">, departure: 
     const hotel = typeof group.hotel === "string" ? group.hotel.trim() : "";
     const packageId = typeof group.package_id === "string" ? group.package_id.trim() : "";
     const label = hotel || packageId || String(group.label || "").trim();
+    const packageOption = packageOptions.find((item) =>
+      [text(item.id), text(item.label)].filter(Boolean).includes(packageId));
+    const packageNote = text(packageOption?.note) || defaultPackageNote(packageId);
     const passengerOptions = passengers.map((item) => {
       const passenger = object(item);
       const baseLabel = String(passenger.label || "Хүүхэд").trim();
@@ -64,6 +80,7 @@ export function datePriceOptions(trip: Pick<Trip, "sourceMetadata">, departure: 
       label,
       hotel,
       packageId,
+      packageNote,
       adult: price(group.adult_price),
       adultMax: price(range.max),
       child: childPrice,
