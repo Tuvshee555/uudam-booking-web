@@ -827,10 +827,17 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
             <Input type="number" min={0} value={form.singleSupplement} onChange={(e) => set("singleSupplement", e.target.value)} />
           </div>
         </div>
-        <PassengerPriceEditor
-          rows={form.passengerPrices}
-          onChange={(rows) => set("passengerPrices", rows)}
-        />
+        {Array.isArray(form.sourceMetadata.price_groups) && form.sourceMetadata.price_groups.length > 0 ? (
+          <DatedPassengerPriceEditor
+            sourceMetadata={form.sourceMetadata}
+            onChange={(sourceMetadata) => set("sourceMetadata", sourceMetadata)}
+          />
+        ) : (
+          <PassengerPriceEditor
+            rows={form.passengerPrices}
+            onChange={(rows) => set("passengerPrices", rows)}
+          />
+        )}
       </Section>
 
       <Section title="Чухал тэмдэглэл">
@@ -987,12 +994,72 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
   );
 }
 
+function datedGroupLabel(group: Record<string, unknown>, index: number) {
+  const dates = groupDateKeys(group);
+  return dates.length > 0 ? dates.join(", ") : `Үнэний бүлэг ${index + 1}`;
+}
+
+function passengerRowsFromGroup(group: Record<string, unknown>): PassengerPriceDraft[] {
+  const prices = Array.isArray(group.passenger_prices) ? group.passenger_prices : [];
+  return prices.map((value) => {
+    const item = object(value);
+    const amount = typeof item.price === "number" && Number.isFinite(item.price) ? String(item.price) : "";
+    return {
+      label: text(item.label) || "Хүүхэд",
+      ageRange: text(item.age_range),
+      price: amount,
+      free: amount === "0" && /үнэгүй|free/i.test(text(item.note)),
+    };
+  });
+}
+
+function DatedPassengerPriceEditor({
+  sourceMetadata,
+  onChange,
+}: {
+  sourceMetadata: Record<string, unknown>;
+  onChange: (next: Record<string, unknown>) => void;
+}) {
+  const groups = Array.isArray(sourceMetadata.price_groups) ? sourceMetadata.price_groups.map(object) : [];
+
+  const updateGroup = (index: number, rows: PassengerPriceDraft[]) => {
+    const nextGroups = groups.map((group, groupIndex) => groupIndex === index
+      ? { ...group, passenger_prices: cleanPassengerRows(rows) }
+      : group);
+    onChange({ ...sourceMetadata, price_groups: nextGroups });
+  };
+
+  return (
+    <div className="mt-4 space-y-3">
+      <div>
+        <h3 className="text-sm font-semibold">Гарах өдөр бүрийн насны ангилал ба үнэ</h3>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Үнэ нь огноо бүр өөр байж болно. Доорх мөрийг засахад зөвхөн тухайн гарах өдрийн хүүхэд, нярайн үнэ өөрчлөгдөнө.
+        </p>
+      </div>
+      {groups.map((group, index) => (
+        <div key={`${datedGroupLabel(group, index)}-${index}`} className="rounded-lg border border-border bg-muted/30 p-3">
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2 border-b border-border pb-2">
+            <p className="text-sm font-semibold text-primary">{datedGroupLabel(group, index)}</p>
+            {typeof group.adult_price === "number" && (
+              <p className="text-xs text-muted-foreground">Том хүн: {group.adult_price.toLocaleString("mn-MN")}₮</p>
+            )}
+          </div>
+          <PassengerPriceEditor rows={passengerRowsFromGroup(group)} onChange={(rows) => updateGroup(index, rows)} embedded />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function PassengerPriceEditor({
   rows,
   onChange,
+  embedded = false,
 }: {
   rows: PassengerPriceDraft[];
   onChange: (rows: PassengerPriceDraft[]) => void;
+  embedded?: boolean;
 }) {
   const update = (index: number, next: PassengerPriceDraft) =>
     onChange(rows.map((row, i) => (i === index ? next : row)));
@@ -1000,10 +1067,10 @@ function PassengerPriceEditor({
     onChange([...rows, { label, ageRange: "", price: "", free: false }]);
 
   return (
-    <div className="mt-4 rounded-lg border border-border bg-muted/30 p-3">
+    <div className={embedded ? "" : "mt-4 rounded-lg border border-border bg-muted/30 p-3"}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold">Хүүхэд / нярайн нас ба үнэ</h3>
+          {!embedded && <h3 className="text-sm font-semibold">Хүүхэд / нярайн нас ба үнэ</h3>}
           <p className="mt-0.5 text-xs text-muted-foreground">
             Насны ангилал бүрийг тусдаа мөрөөр оруулна. Үнэгүй бол checkbox дарна.
           </p>

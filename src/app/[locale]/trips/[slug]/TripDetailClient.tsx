@@ -73,6 +73,10 @@ function noticeLines(value?: string | null) {
     .filter(Boolean);
 }
 
+function closestSelectableDepartureDate(trip: Trip): string | undefined {
+  return upcomingDepartures(trip).find((departure) => availability(departure).selectable)?.startDate.slice(0, 10);
+}
+
 function ItineraryAccordion({ days }: { days: Trip["itinerary"] }) {
   const [openDayId, setOpenDayId] = useState<string | null>(() => days[0]?.id ?? null);
 
@@ -180,7 +184,8 @@ export default function TripDetailClient({
   );
   // One source of truth: the weather, calendar, price, and enquiry all use
   // this same departure. Keeping it here prevents sibling panels drifting.
-  const [activeDepartureDate, setActiveDepartureDate] = useState<string | undefined>(selectedDate);
+  const [chosenDepartureDate, setChosenDepartureDate] = useState<string | undefined>(selectedDate);
+  const activeDepartureDate = chosenDepartureDate ?? (trip ? closestSelectableDepartureDate(trip) : undefined);
   const { data: weather } = useTripWeather(trip?.slug, activeDepartureDate);
   const hasWeather = Boolean(weather?.days.some((d) => d.hi !== null));
   const routeStops = useMemo<RouteStop[]>(() => {
@@ -429,7 +434,7 @@ export default function TripDetailClient({
               trip={trip}
               bankDetails={siteSettings?.bankDetails}
               selectedDate={activeDepartureDate}
-              onDepartureChange={setActiveDepartureDate}
+              onDepartureChange={setChosenDepartureDate}
             />
             <MessengerButton tripSlug={trip.slug} tripId={trip.id} className="mt-3 w-full" />
             <EnquiryTrustNote />
@@ -443,7 +448,7 @@ export default function TripDetailClient({
                   ? "Очих хотуудын одоогийн цаг агаар — аялал ойртоход таны аяллын өдөр бүрийн мэдээ энд гарна."
                   : "Таны аялах өдрүүдэд, тухайн өдөр байх хотын цаг агаар."}
               </p>
-              <TripWeather report={weather} onSelectDeparture={setActiveDepartureDate} />
+              <TripWeather report={weather} onSelectDeparture={setChosenDepartureDate} />
             </section>
           )}
 
@@ -689,7 +694,7 @@ export default function TripDetailClient({
               trip={trip}
               bankDetails={siteSettings?.bankDetails}
               selectedDate={activeDepartureDate}
-              onDepartureChange={setActiveDepartureDate}
+              onDepartureChange={setChosenDepartureDate}
             />
             <MessengerButton tripSlug={trip.slug} tripId={trip.id} className="mt-3 w-full" />
             <EnquiryTrustNote />
