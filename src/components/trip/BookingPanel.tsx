@@ -343,6 +343,8 @@ export default function BookingPanel({
               track("departure_select", { tripId: trip.id, properties: { departureId: departure.id } });
             }} />
 
+          {bookingWeather && <BookingWeatherSummary report={bookingWeather} />}
+
           {choiceOptions.length > 0 && <div className="mt-4 border-t border-border pt-4">
             <h3 className="text-sm font-semibold">{choiceOptions.some((item) => item.hotel) ? "Буудал" : "Аяллын төрөл"}</h3>
             <div className="mt-2 space-y-1.5">
@@ -386,8 +388,6 @@ export default function BookingPanel({
           </div>
 
           {quoteOnly && <p className="mt-1 text-xs text-muted-foreground">Эцсийн үнэ, өрөөний сонголтыг ажилтан баталгаажуулна.</p>}
-
-          {bookingWeather && <BookingWeatherSummary report={bookingWeather} />}
 
           <Button
             className="mt-4 w-full"
