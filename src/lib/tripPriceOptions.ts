@@ -3,7 +3,10 @@ import { departureDateKey } from "./departureDate.js";
 
 export type PassengerOption = { label: string; ageRange: string; price: number | null };
 export type DatePriceOption = {
+  key: string;
+  label: string;
   hotel: string;
+  packageId: string;
   adult: number | null;
   adultMax: number | null;
   child: number | null;
@@ -29,8 +32,14 @@ export function datePriceOptions(trip: Pick<Trip, "sourceMetadata">, departure: 
     if (keys.length > 0 && !keys.includes(day)) return [];
     const range = object(group.adult_price_range);
     const passengers = Array.isArray(group.passenger_prices) ? group.passenger_prices : [];
+    const hotel = typeof group.hotel === "string" ? group.hotel.trim() : "";
+    const packageId = typeof group.package_id === "string" ? group.package_id.trim() : "";
+    const label = hotel || packageId || String(group.label || "").trim();
     return [{
-      hotel: typeof group.hotel === "string" ? group.hotel.trim() : "",
+      key: `${hotel}|${packageId}|${String(group.label || "")}`,
+      label,
+      hotel,
+      packageId,
       adult: price(group.adult_price),
       adultMax: price(range.max),
       child: price(group.child_price),
@@ -54,7 +63,7 @@ export function hasVariablePricing(trip: Pick<Trip, "sourceMetadata">): boolean 
   return Array.isArray(groups) && groups.some((value) => {
     const group = object(value);
     const passengers = Array.isArray(group.passenger_prices) ? group.passenger_prices : [];
-    return Boolean(group.hotel || group.adult_price_range || passengers.length > 0);
+    return Boolean(group.hotel || group.package_id || group.adult_price_range || passengers.length > 0);
   });
 }
 

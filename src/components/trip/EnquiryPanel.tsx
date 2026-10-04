@@ -106,9 +106,10 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
   const prices = resolvePrices(trip, selected);
   const options = selected ? datePriceOptions(trip, selected) : [];
   const selectedHotel = initialSelection?.message.match(/Буудал: ([^;]+)/)?.[1];
-  const option = options.find((item) => item.hotel === selectedHotel) ?? options[0];
+  const selectedPackage = initialSelection?.message.match(/Аяллын төрөл: ([^;]+)/)?.[1];
+  const option = options.find((item) => item.hotel === selectedHotel || item.packageId === selectedPackage) ?? options[0];
   const optionPrices = options.flatMap((item) => [item.adult, item.adultMax].filter((value): value is number => value != null));
-  const optionLabel = selectedHotel && option ? formatAdultOption(option)
+  const optionLabel = (selectedHotel || selectedPackage) && option ? formatAdultOption(option)
     : optionPrices.length > 1 ? `${formatMnt(Math.min(...optionPrices))}–${formatMnt(Math.max(...optionPrices))}`
     : option ? formatAdultOption(option) : "Үнэ огноо, буудлаас хамаарна";
   const ageBands = ageBandsFor(trip.sourceMetadata);

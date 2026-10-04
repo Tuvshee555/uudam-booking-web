@@ -99,7 +99,7 @@ export default function BookingPanel({
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
   const [infants, setInfants] = useState(0);
-  const [hotel, setHotel] = useState("");
+  const [selectedOptionKey, setSelectedOptionKey] = useState("");
   const [tierCounts, setTierCounts] = useState<Record<string, number>>({});
 
   const [firstName, setFirstName] = useState("");
@@ -120,9 +120,9 @@ export default function BookingPanel({
 
   const selected = openDepartures.find((d) => d.id === departureId && availability(d).selectable) ?? null;
   const options = selected ? datePriceOptions(trip, selected) : [];
-  const hotelOptions = options.filter((option) => option.hotel)
+  const choiceOptions = options.filter((option) => option.hotel || option.packageId || options.length > 1)
     .sort((a, b) => (a.adult ?? Number.POSITIVE_INFINITY) - (b.adult ?? Number.POSITIVE_INFINITY));
-  const option = hotelOptions.find((item) => item.hotel === hotel) ?? hotelOptions[0] ?? options[0] ?? null;
+  const option = choiceOptions.find((item) => item.key === selectedOptionKey) ?? choiceOptions[0] ?? options[0] ?? null;
   const quoteOnly = hasVariablePricing(trip);
   const prices = resolvePrices(trip, selected);
   const ageBands = ageBandsFor(trip.sourceMetadata);
@@ -278,21 +278,19 @@ export default function BookingPanel({
             onSelect={(departure) => {
               setDepartureId(departure.id);
               announceDepartureSelect(departureDateKey(departure.startDate));
-              setHotel("");
+              setSelectedOptionKey("");
               setTierCounts({});
               track("departure_select", { tripId: trip.id, properties: { departureId: departure.id } });
             }} />
 
-          {hotelOptions.length > 0 && <div className="mt-4 border-t border-border pt-4">
-            <h3 className="text-sm font-semibold">Буудал</h3>
+          {choiceOptions.length > 0 && <div className="mt-4 border-t border-border pt-4">
+            <h3 className="text-sm font-semibold">{choiceOptions.some((item) => item.hotel) ? "Буудал" : "Аяллын төрөл"}</h3>
             <div className="mt-2 space-y-1.5">
-              {hotelOptions.map((item) => <button key={item.hotel} type="button" aria-pressed={option?.hotel === item.hotel}
-                onClick={() => { setHotel(item.hotel); setTierCounts({}); }}
-                className={`flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-left text-sm ${option?.hotel === item.hotel ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}>
-                <span className="min-w-0 truncate font-medium">{item.hotel}</span>
-                <span className="shrink-0 text-xs tabular-nums">{item === hotelOptions[0] ? "Хамгийн хямд"
-                  : item.adult != null && hotelOptions[0].adult != null
-                    ? `+${formatMnt(item.adult - hotelOptions[0].adult)}` : formatAdultOption(item)}</span>
+              {choiceOptions.map((item) => <button key={item.key} type="button" aria-pressed={option?.key === item.key}
+                onClick={() => { setSelectedOptionKey(item.key); setTierCounts({}); }}
+                className={`flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-left text-sm ${option?.key === item.key ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}>
+                <span className="min-w-0 truncate font-medium">{item.label || item.hotel || item.packageId || "Сонголт"}</span>
+                <span className="shrink-0 text-xs font-semibold tabular-nums">{formatAdultOption(item)}</span>
               </button>)}
             </div>
           </div>}
@@ -327,7 +325,11 @@ export default function BookingPanel({
                 onAsk({ departureId: selected.id, adults,
                   children: specialTiers.filter((item) => !/нярай|infant/i.test(item.label)).reduce((sum, item) => sum + (tierCounts[item.label] || 0), 0),
                   infants: specialTiers.filter((item) => /нярай|infant/i.test(item.label)).reduce((sum, item) => sum + (tierCounts[item.label] || 0), 0),
-                  message: [option?.hotel ? `Буудал: ${option.hotel}` : "", counts].filter(Boolean).join("; ") });
+                  message: [
+                    option?.hotel ? `Буудал: ${option.hotel}` : "",
+                    option?.packageId ? `Аяллын төрөл: ${option.packageId}` : "",
+                    counts,
+                  ].filter(Boolean).join("; ") });
               } else {
                 setStep("details");
                 track("booking_start", { tripId: trip.id });
