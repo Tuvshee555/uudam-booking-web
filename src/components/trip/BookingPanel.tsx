@@ -11,9 +11,10 @@ import { ageBandsFor, formatFare, formatMnt, lineTotal, resolvePrices } from "@/
 import { availability, formatFullDate, formatDepartureDate, upcomingDepartures } from "@/lib/departures";
 import { saleBadgeLabel } from "@/lib/tripMarketing";
 import { datePriceOptions, formatAdultOption, hasVariablePricing } from "@/lib/tripPriceOptions";
+import { roundTemp, shortDate, weatherIcon, weatherLabel, type TripWeatherReport } from "@/lib/weather";
 import DepartureDatePicker from "./DepartureDatePicker";
 import { departureDateKey } from "@/lib/departureDate";
-import { announceDepartureSelect } from "./TripWeather";
+import { announceDepartureSelect, useTripWeather } from "./TripWeather";
 import QpayPayButton, { QpayPaidBadge } from "./QpayPayButton";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,51 @@ function formatRange(departure: Departure) {
 
 function pricedHint(age: string, price: number | null | undefined) {
   return [age, price == null ? "Үнэ лавлах" : formatMnt(price)].filter(Boolean).join(" · ");
+}
+
+function BookingWeatherSummary({ report }: { report: TripWeatherReport }) {
+  const days = report.days.filter((day) => day.hi !== null && day.lo !== null);
+  if (!days.length) return null;
+  const avgHi = days.reduce((sum, day) => sum + (day.hi ?? 0), 0) / days.length;
+  const avgLo = days.reduce((sum, day) => sum + (day.lo ?? 0), 0) / days.length;
+  const wetDays = days.filter((day) =>
+    day.source === "typical" ? (day.rainChance ?? 0) >= 30 : (day.precipMm ?? 0) >= 1,
+  ).length;
+  const iconDay = days.find((day) => day.symbol) ?? days[0];
+  const typical = days.some((day) => day.source === "typical");
+  const places = [...new Set(days.flatMap((day) => day.place !== null ? [report.places[day.place]?.name] : []).filter(Boolean))]
+    .slice(0, 2)
+    .join(", ");
+
+  return (
+    <div className="mt-4 rounded-md border border-sky-200 bg-sky-50/80 p-3 text-sky-950 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-50">
+      <div className="flex items-start gap-3">
+        {iconDay.symbol && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={weatherIcon(iconDay.symbol)} alt={weatherLabel(iconDay.symbol)} className="h-12 w-12 shrink-0" draggable={false} />
+        )}
+        <div className="min-w-0">
+          <div className="text-xs font-bold uppercase tracking-wide text-sky-700 dark:text-sky-300">
+            {typical ? "Аялах үеийн дундаж цаг агаар" : "Аялах үеийн цаг агаар"}
+          </div>
+          <div className="mt-1 text-sm font-semibold">
+            {shortDate(days[0].date)}–{shortDate(days[days.length - 1].date)}
+            {places ? ` · ${places}` : ""}
+          </div>
+          <p className="mt-1 text-xs leading-relaxed text-sky-800 dark:text-sky-200">
+            Дунджаар өдөртөө <span className="font-semibold">{roundTemp(avgHi)}°C</span>, шөнөдөө{" "}
+            <span className="font-semibold">{roundTemp(avgLo)}°C</span>.
+            {wetDays > 0 ? ` Бороо орох магадлалтай ${wetDays} өдөр байна.` : " Бороо бага магадлалтай."}
+          </p>
+          <p className="mt-1 text-[11px] leading-relaxed text-sky-700 dark:text-sky-300">
+            {typical
+              ? "Энэ нь олон жилийн дундаж. Аялал ойртоход бодит урьдчилсан мэдээгээр автоматаар солигдоно."
+              : "Энэ нь ойрын өдрүүдийн бодит урьдчилсан мэдээ."}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function Counter({
@@ -123,6 +169,8 @@ export default function BookingPanel({
   const openDepartures = useMemo(() => upcomingDepartures(trip, now), [trip, now]);
 
   const selected = openDepartures.find((d) => d.id === departureId && availability(d).selectable) ?? null;
+  const selectedWeatherDate = selected ? departureDateKey(selected.startDate) : selectedDate ?? null;
+  const { data: bookingWeather } = useTripWeather(trip.slug, selectedWeatherDate);
   const options = selected ? datePriceOptions(trip, selected) : [];
   const choiceOptions = options.filter((option) => option.hotel || option.packageId || options.length > 1)
     .sort((a, b) => (a.adult ?? Number.POSITIVE_INFINITY) - (b.adult ?? Number.POSITIVE_INFINITY));
@@ -338,6 +386,8 @@ export default function BookingPanel({
           </div>
 
           {quoteOnly && <p className="mt-1 text-xs text-muted-foreground">Эцсийн үнэ, өрөөний сонголтыг ажилтан баталгаажуулна.</p>}
+
+          {bookingWeather && <BookingWeatherSummary report={bookingWeather} />}
 
           <Button
             className="mt-4 w-full"
