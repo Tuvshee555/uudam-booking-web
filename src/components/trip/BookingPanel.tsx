@@ -179,6 +179,9 @@ export default function BookingPanel({
   const choiceOptions = options.filter((option) => option.hotel || option.packageId || options.length > 1)
     .sort((a, b) => (a.adult ?? Number.POSITIVE_INFINITY) - (b.adult ?? Number.POSITIVE_INFINITY));
   const option = choiceOptions.find((item) => item.key === selectedOptionKey) ?? choiceOptions[0] ?? options[0] ?? null;
+  const hotelChoiceCount = choiceOptions.filter((item) => item.hotel).length;
+  const packageChoiceCount = choiceOptions.filter((item) => item.packageId).length;
+  const showChoicePicker = hotelChoiceCount > 1 || (hotelChoiceCount === 0 && packageChoiceCount > 1);
   const quoteOnly = hasVariablePricing(trip);
   const prices = resolvePrices(trip, selected);
   const ageBands = ageBandsFor(trip.sourceMetadata);
@@ -354,7 +357,7 @@ export default function BookingPanel({
 
           {bookingWeather && <BookingWeatherSummary report={bookingWeather} />}
 
-          {choiceOptions.length > 0 && <div className="mt-4 border-t border-border pt-4">
+          {showChoicePicker && <div className="mt-4 border-t border-border pt-4">
             <h3 className="text-sm font-semibold">{choiceOptions.some((item) => item.hotel) ? "Буудал" : "Аяллын төрөл"}</h3>
             <div className="mt-2 space-y-1.5">
               {choiceOptions.map((item) => <button key={item.key} type="button" aria-pressed={option?.key === item.key}
