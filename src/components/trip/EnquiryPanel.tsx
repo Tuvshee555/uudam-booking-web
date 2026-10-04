@@ -27,6 +27,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Trip } from "@/types/trip";
 
+function pricedHint(age: string, price: number | null | undefined) {
+  return [age, price == null ? "Үнэ лавлах" : formatMnt(price)].filter(Boolean).join(" · ");
+}
+
 function Counter({
   label,
   hint,
@@ -116,6 +120,9 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
   const estimate = lineTotal({ adults, children, infants }, prices);
   const hasPrice = hasKnownTripPrice(prices.adult);
   const saleLabel = saleBadgeLabel(trip);
+  const adultHint = option?.adultMax != null && option.adultMax > (option.adult ?? 0)
+    ? [ageBands.adult, `${formatAdultOption(option)} / хүн`].filter(Boolean).join(" · ")
+    : pricedHint(ageBands.adult, option?.adult ?? prices.adult);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -249,9 +256,9 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
           }} />
 
         <div className="mt-4 divide-y divide-border border-t border-border">
-          <Counter label="Том хүн" hint={ageBands.adult} value={adults} onChange={setAdults} min={1} />
-          <Counter label="Хүүхэд" hint={ageBands.child} value={children} onChange={setChildren} />
-          <Counter label="Нярай" hint={ageBands.infant} value={infants} onChange={setInfants} />
+          <Counter label="Том хүн" hint={adultHint} value={adults} onChange={setAdults} min={1} />
+          <Counter label="Хүүхэд" hint={pricedHint(ageBands.child, option?.child ?? prices.child)} value={children} onChange={setChildren} />
+          <Counter label="Нярай" hint={pricedHint(ageBands.infant, option?.infant ?? prices.infant)} value={infants} onChange={setInfants} />
         </div>
 
         {!variablePricing && <div className="mt-4 flex items-center justify-between border-t border-border pt-4">

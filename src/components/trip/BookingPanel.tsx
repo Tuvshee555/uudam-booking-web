@@ -29,6 +29,10 @@ function formatRange(departure: Departure) {
   return `${startText} — ${formatDepartureDate(departure.endDate)}`;
 }
 
+function pricedHint(age: string, price: number | null | undefined) {
+  return [age, price == null ? "Үнэ лавлах" : formatMnt(price)].filter(Boolean).join(" · ");
+}
+
 function Counter({
   label,
   hint,
@@ -133,6 +137,9 @@ export default function BookingPanel({
   const quoteMin = missingTierPrice ? null : adults * (option?.adult ?? prices.adult) + tierTotal;
   const quoteMax = option?.adultMax != null ? adults * option.adultMax + tierTotal : quoteMin;
   const saleLabel = saleBadgeLabel(trip);
+  const adultHint = option?.adultMax != null && option.adultMax > (option.adult ?? 0)
+    ? [ageBands.adult, `${formatAdultOption(option)} / хүн`].filter(Boolean).join(" · ")
+    : pricedHint(ageBands.adult, option?.adult ?? prices.adult);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -296,13 +303,13 @@ export default function BookingPanel({
           </div>}
 
           <div className="mt-4 divide-y divide-border border-t border-border">
-            <Counter label="Том хүн" hint={ageBands.adult} value={adults} onChange={setAdults} min={1} />
+            <Counter label="Том хүн" hint={adultHint} value={adults} onChange={setAdults} min={1} />
             {quoteOnly && specialTiers.length > 0 ? specialTiers.map((item) =>
               <Counter key={item.label} label={item.label} hint={`${item.ageRange} · ${item.price == null ? "Үнэ лавлах" : formatMnt(item.price)}`}
                 value={tierCounts[item.label] || 0} onChange={(value) => setTierCounts((current) => ({ ...current, [item.label]: value }))} />
             ) : <>
-              <Counter label="Хүүхэд" hint={ageBands.child} value={children} onChange={setChildren} />
-              <Counter label="Нярай" hint={ageBands.infant} value={infants} onChange={setInfants} />
+              <Counter label="Хүүхэд" hint={pricedHint(ageBands.child, prices.child)} value={children} onChange={setChildren} />
+              <Counter label="Нярай" hint={pricedHint(ageBands.infant, prices.infant)} value={infants} onChange={setInfants} />
             </>}
           </div>
 

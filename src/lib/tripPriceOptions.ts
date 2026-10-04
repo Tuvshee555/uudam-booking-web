@@ -25,6 +25,9 @@ function price(value: unknown): number | null {
 export function datePriceOptions(trip: Pick<Trip, "sourceMetadata">, departure: Pick<Departure, "startDate">): DatePriceOption[] {
   const groups = trip.sourceMetadata?.price_groups;
   if (!Array.isArray(groups)) return [];
+  const ageRules = object(trip.sourceMetadata?.age_rules);
+  const ageRule = (kind: "child" | "infant") =>
+    typeof ageRules[kind] === "string" ? ageRules[kind].trim() : "";
   const day = departureDateKey(departure.startDate);
   return groups.flatMap((value) => {
     const group = object(value);
@@ -35,6 +38,27 @@ export function datePriceOptions(trip: Pick<Trip, "sourceMetadata">, departure: 
     const hotel = typeof group.hotel === "string" ? group.hotel.trim() : "";
     const packageId = typeof group.package_id === "string" ? group.package_id.trim() : "";
     const label = hotel || packageId || String(group.label || "").trim();
+    const passengerOptions = passengers.map((item) => {
+      const passenger = object(item);
+      const baseLabel = String(passenger.label || "Хүүхэд").trim();
+      const ageRange = String(passenger.age_range || "").trim();
+      return {
+        label: ageRange && !baseLabel.includes(ageRange) ? `${baseLabel} ${ageRange}` : baseLabel,
+        ageRange,
+        price: price(passenger.price),
+      };
+    });
+    const hasPassenger = (pattern: RegExp) => passengerOptions.some((item) => pattern.test(item.label));
+    const childPrice = price(group.child_price);
+    const infantPrice = price(group.infant_price);
+    if (childPrice != null && !hasPassenger(/хүүхэд|child/i)) {
+      const ageRange = String(group.child_age || ageRule("child")).trim();
+      passengerOptions.push({ label: ageRange ? `Хүүхэд ${ageRange}` : "Хүүхэд", ageRange, price: childPrice });
+    }
+    if (infantPrice != null && !hasPassenger(/нярай|infant/i)) {
+      const ageRange = String(group.infant_age || ageRule("infant")).trim();
+      passengerOptions.push({ label: ageRange ? `Нярай ${ageRange}` : "Нярай", ageRange, price: infantPrice });
+    }
     return [{
       key: `${hotel}|${packageId}|${String(group.label || "")}`,
       label,
@@ -42,18 +66,9 @@ export function datePriceOptions(trip: Pick<Trip, "sourceMetadata">, departure: 
       packageId,
       adult: price(group.adult_price),
       adultMax: price(range.max),
-      child: price(group.child_price),
-      infant: price(group.infant_price),
-      passengers: passengers.map((item) => {
-        const passenger = object(item);
-        const baseLabel = String(passenger.label || "Хүүхэд").trim();
-        const ageRange = String(passenger.age_range || "").trim();
-        return {
-          label: ageRange && !baseLabel.includes(ageRange) ? `${baseLabel} ${ageRange}` : baseLabel,
-          ageRange,
-          price: price(passenger.price),
-        };
-      }),
+      child: childPrice,
+      infant: infantPrice,
+      passengers: passengerOptions,
     }];
   });
 }
