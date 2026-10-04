@@ -15,6 +15,7 @@ export type DepartureDraft = {
   seatsLeft: string;
   price: string;
   childPrice: string;
+  infantPrice: string;
   status: string;
 };
 
@@ -25,6 +26,7 @@ const EMPTY_DEPARTURE: DepartureDraft = {
   seatsLeft: "",
   price: "",
   childPrice: "",
+  infantPrice: "",
   status: "OPEN",
 };
 
@@ -292,7 +294,7 @@ export default function DepartureEditor({
               </button>
             </div>
 
-            <div className="mt-2 grid gap-3 sm:grid-cols-3">
+            <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <CalendarDatePicker
                 label="Эхлэх огноо *"
                 value={dep.startDate}
@@ -307,8 +309,19 @@ export default function DepartureEditor({
                 allowClear
               />
               <div>
-                <Label>Үнэ (заавал биш, өөрчлөх бол)</Label>
+                <Label>Том хүний үнэ (өөр бол)</Label>
                 <Input type="number" min={0} value={dep.price} onChange={(e) => update(index, { price: e.target.value })} placeholder="Үндсэн үнээр" />
+              </div>
+            </div>
+
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label>Хүүхдийн үнэ (өөр бол)</Label>
+                <Input type="number" min={0} value={dep.childPrice} onChange={(e) => update(index, { childPrice: e.target.value })} placeholder="Үндсэн үнээр" />
+              </div>
+              <div>
+                <Label>Нярайн үнэ (өөр бол)</Label>
+                <Input type="number" min={0} value={dep.infantPrice} onChange={(e) => update(index, { infantPrice: e.target.value })} placeholder="Үндсэн үнээр" />
               </div>
             </div>
 

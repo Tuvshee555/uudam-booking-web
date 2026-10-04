@@ -125,6 +125,28 @@ function cleanPassengerRows(rows: PassengerPriceDraft[]) {
     .filter((row): row is NonNullable<typeof row> => Boolean(row));
 }
 
+function groupDateKeys(group: Record<string, unknown>) {
+  const values = [group.date_keys, group.dates, group.display_dates]
+    .flatMap((value) => Array.isArray(value) ? value : []);
+  return values
+    .map((value) => text(value).match(/^\d{4}-\d{2}-\d{2}/)?.[0] || "")
+    .filter(Boolean);
+}
+
+function datedPassengerFares(metadata: unknown, date: string) {
+  const rawGroups = object(metadata).price_groups;
+  const groups: Record<string, unknown>[] = Array.isArray(rawGroups) ? rawGroups.map(object) : [];
+  const group = groups.find((candidate) => groupDateKeys(candidate).includes(date));
+  if (!group) return { child: null as number | null, infant: null as number | null };
+  const prices = Array.isArray(group.passenger_prices) ? group.passenger_prices.map(object) : [];
+  const fareFor = (infant: boolean, flatFare: unknown) => {
+    if (typeof flatFare === "number" && Number.isFinite(flatFare)) return flatFare;
+    const row = prices.find((price) => isInfantLabel(text(price.label), text(price.age_range)) === infant);
+    return typeof row?.price === "number" && Number.isFinite(row.price) ? row.price : null;
+  };
+  return { child: fareFor(false, group.child_price), infant: fareFor(true, group.infant_price) };
+}
+
 function withPassengerPricingMetadata(form: FormState) {
   const passengerPrices = cleanPassengerRows(form.passengerPrices);
   const summary = passengerSummary(form.passengerPrices);
@@ -132,21 +154,53 @@ function withPassengerPricingMetadata(form: FormState) {
   const existingGroups = Array.isArray(sourceMetadata.price_groups)
     ? sourceMetadata.price_groups.map(object)
     : [];
-  const groups = (existingGroups.length ? existingGroups : [{
-    label: "Үндсэн үнэ",
-    dates: [],
-    display_dates: [],
-    date_keys: [],
-  }]).map((group) => ({
-    ...group,
-    adult_price: typeof group.adult_price === "number" ? group.adult_price : (numOrUndefined(form.price) ?? null),
-    passenger_prices: passengerPrices,
-    child_price: summary.childPrice,
-    child_age: summary.childAge,
-    infant_price: summary.infantPrice,
-    infant_age: summary.infantAge,
-    currency: text(group.currency) || "MNT",
-  }));
+  const departuresByDate = new Map(form.departures.map((departure) => [departure.startDate, departure]));
+  const fallbackGroups: Record<string, unknown>[] = form.departures.length
+    ? form.departures.map((departure) => ({
+      label: departure.startDate,
+      dates: [departure.startDate],
+      display_dates: [departure.startDate],
+      date_keys: [departure.startDate],
+    } as Record<string, unknown>))
+    : [{ label: "Үндсэн үнэ", dates: [], display_dates: [], date_keys: [] }];
+  const groups = (existingGroups.length ? existingGroups : fallbackGroups).map((group) => {
+    const departure = groupDateKeys(group).map((date) => departuresByDate.get(date)).find(Boolean);
+    const childPrice = departure ? numOrUndefined(departure.childPrice) : undefined;
+    const infantPrice = departure ? numOrUndefined(departure.infantPrice) : undefined;
+    const adultPrice = departure ? numOrUndefined(departure.price) : undefined;
+    const sourceRows = cleanPassengerRows((Array.isArray(group.passenger_prices) ? group.passenger_prices : [])
+      .map((row) => {
+        const item = object(row);
+        const price = typeof item.price === "number" && Number.isFinite(item.price) ? String(item.price) : "";
+        return {
+          label: text(item.label) || "Хүүхэд",
+          ageRange: text(item.age_range),
+          price,
+          free: item.price === 0 && /үнэгүй|free/i.test(text(item.note)),
+        };
+      }));
+    const rows = sourceRows.length ? sourceRows : passengerPrices;
+    const replaceFare = (isInfant: boolean, fare: number | undefined, ageRange: string) => {
+      if (fare === undefined) return;
+      const index = rows.findIndex((row) => isInfantLabel(row.label, row.age_range) === isInfant);
+      const next = { label: isInfant ? "Нярай" : "Хүүхэд", age_range: ageRange, price: fare, currency: "MNT" };
+      if (index >= 0) rows[index] = { ...rows[index], ...next };
+      else rows.push(next);
+    };
+    replaceFare(false, childPrice, summary.childAge || text(group.child_age));
+    replaceFare(true, infantPrice, summary.infantAge || text(group.infant_age));
+
+    return {
+      ...group,
+      adult_price: adultPrice ?? (typeof group.adult_price === "number" ? group.adult_price : (numOrUndefined(form.price) ?? null)),
+      passenger_prices: rows,
+      child_price: childPrice ?? (typeof group.child_price === "number" ? group.child_price : summary.childPrice),
+      child_age: summary.childAge || text(group.child_age),
+      infant_price: infantPrice ?? (typeof group.infant_price === "number" ? group.infant_price : summary.infantPrice),
+      infant_age: summary.infantAge || text(group.infant_age),
+      currency: text(group.currency) || "MNT",
+    };
+  });
 
   return {
     ...sourceMetadata,
@@ -353,16 +407,21 @@ function tripToForm(trip: Trip): FormState {
       image: day.image ?? "",
       video: day.video ?? "",
     })),
-    departures: trip.departures.map((dep) => ({
-      id: dep.id,
-      startDate: toDateInput(dep.startDate),
-      endDate: toDateInput(dep.endDate),
-      seatsTotal: dep.seatsTotal !== null ? String(dep.seatsTotal) : "",
-      seatsLeft: dep.seatsLeft !== null ? String(dep.seatsLeft) : "",
-      price: dep.price !== null ? String(dep.price) : "",
-      childPrice: dep.childPrice !== null ? String(dep.childPrice) : "",
-      status: dep.status,
-    })),
+    departures: trip.departures.map((dep) => {
+      const startDate = toDateInput(dep.startDate);
+      const fares = datedPassengerFares(trip.sourceMetadata, startDate);
+      return {
+        id: dep.id,
+        startDate,
+        endDate: toDateInput(dep.endDate),
+        seatsTotal: dep.seatsTotal !== null ? String(dep.seatsTotal) : "",
+        seatsLeft: dep.seatsLeft !== null ? String(dep.seatsLeft) : "",
+        price: dep.price !== null ? String(dep.price) : "",
+        childPrice: dep.childPrice !== null ? String(dep.childPrice) : fares.child !== null ? String(fares.child) : "",
+        infantPrice: dep.infantPrice !== null ? String(dep.infantPrice) : fares.infant !== null ? String(fares.infant) : "",
+        status: dep.status,
+      };
+    }),
   };
 }
 
@@ -464,6 +523,7 @@ function buildPayload(form: FormState) {
         seatsLeft: nullableNumber(dep.seatsLeft),
         price: nullableNumber(dep.price),
         childPrice: nullableNumber(dep.childPrice),
+        infantPrice: nullableNumber(dep.infantPrice),
         status: dep.status,
       })),
   };
