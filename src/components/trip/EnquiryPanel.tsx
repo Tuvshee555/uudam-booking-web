@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   Check,
@@ -21,7 +21,6 @@ import { saleBadgeLabel } from "@/lib/tripMarketing";
 import { datePriceOptions, formatAdultOption } from "@/lib/tripPriceOptions";
 import DepartureDatePicker from "./DepartureDatePicker";
 import { departureDateKey } from "@/lib/departureDate";
-import { announceDepartureSelect, useAnnouncedDeparture } from "./TripWeather";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -81,9 +80,10 @@ function Counter({
  * call-back — who, what trip, when, how many — and never pretends to be a
  * checkout. The price shown is explicitly an estimate.
  */
-export default function EnquiryPanel({ trip, initialSelection, variablePricing = false, selectedDate }: {
+export default function EnquiryPanel({ trip, initialSelection, variablePricing = false, selectedDate, onDepartureChange }: {
   trip: Trip;
   selectedDate?: string;
+  onDepartureChange: (date: string) => void;
   initialSelection?: { departureId: string; message: string; adults: number; children: number; infants: number } | null;
   variablePricing?: boolean;
 }) {
@@ -105,16 +105,10 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
   const [now] = useState(() => Date.now());
 
   const openDepartures = useMemo(() => upcomingDepartures(trip, now), [trip, now]);
-  const [announcedDate] = useAnnouncedDeparture(selectedDate);
-
-  useEffect(() => {
-    if (!announcedDate) return;
-    const next = openDepartures.find((departure) => departureDateKey(departure.startDate) === announcedDate);
-    if (!next || next.id === departureId || !availability(next).selectable) return;
-    setDepartureId(next.id);
-  }, [announcedDate, departureId, openDepartures]);
-
-  const selected = openDepartures.find((departure) => departure.id === departureId && availability(departure).selectable) ?? null;
+  const selectedDepartureId = selectedDate
+    ? openDepartures.find((departure) => departureDateKey(departure.startDate) === selectedDate)?.id ?? departureId
+    : departureId;
+  const selected = openDepartures.find((departure) => departure.id === selectedDepartureId && availability(departure).selectable) ?? null;
   const prices = resolvePrices(trip, selected);
   const options = selected ? datePriceOptions(trip, selected) : [];
   const selectedHotel = initialSelection?.message.match(/Буудал: ([^;]+)/)?.[1];
@@ -267,10 +261,10 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
       )}
 
       <form onSubmit={submit} className="mt-5">
-        <DepartureDatePicker departures={openDepartures} selectedId={departureId} basePrice={trip.price}
+        <DepartureDatePicker key={selectedDepartureId ?? "no-departure"} departures={openDepartures} selectedId={selectedDepartureId} basePrice={trip.price}
           onSelect={(departure) => {
             setDepartureId(departure.id);
-            announceDepartureSelect(departureDateKey(departure.startDate));
+            onDepartureChange(departureDateKey(departure.startDate));
             if (message === initialSelection?.message) setMessage("");
             track("departure_select", { tripId: trip.id, properties: { departureId: departure.id } });
           }} />

@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Image from "next/image";
 import {
   AlertCircle,
   BedDouble,
   CalendarDays,
   Check,
+  ChevronDown,
   Clock,
   FileDown,
   FileText,
@@ -33,7 +34,7 @@ import {
 import { parseMediaItems } from "@/lib/media";
 import TripMedia from "@/components/trip/TripMedia";
 import MediaGallery from "@/components/trip/MediaGallery";
-import TripWeather, { useAnnouncedDeparture, useTripWeather } from "@/components/trip/TripWeather";
+import TripWeather, { useTripWeather } from "@/components/trip/TripWeather";
 import RouteMap, { type RouteStop } from "@/components/trip/RouteMap";
 import TripCard from "@/components/trip/TripCard";
 import TripSidebar from "@/components/trip/TripSidebar";
@@ -70,6 +71,55 @@ function noticeLines(value?: string | null) {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
+}
+
+function ItineraryAccordion({ days }: { days: Trip["itinerary"] }) {
+  const [openDayId, setOpenDayId] = useState<string | null>(null);
+
+  return (
+    <ol className="mt-4 divide-y divide-border rounded-xl border border-border bg-card">
+      {days.map((day) => {
+        const open = openDayId === day.id;
+        return (
+          <li key={day.id}>
+            <button
+              type="button"
+              aria-expanded={open}
+              onClick={() => setOpenDayId(open ? null : day.id)}
+              className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-secondary/50 sm:px-5"
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                {day.dayNumber}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-bold leading-snug text-primary">{day.title}</span>
+                {day.location && <span className="mt-0.5 block truncate text-xs text-muted-foreground">{day.location}</span>}
+              </span>
+              <ChevronDown className={`h-5 w-5 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+            </button>
+
+            {open && (
+              <div className="border-t border-border px-4 pb-4 pt-3 sm:px-5">
+                {day.description && <p className="whitespace-pre-line text-[15px] leading-7 text-foreground/80">{day.description}</p>}
+                {day.image && (
+                  <div className="relative mt-3 aspect-[16/9] w-full max-w-xl overflow-hidden rounded-lg bg-secondary">
+                    <Image src={day.image} alt={day.title} fill sizes="(max-width: 640px) 100vw, 576px" className="uudam-photo-drift object-cover" />
+                  </div>
+                )}
+                {day.video && <video src={day.video} controls preload="metadata" playsInline className="mt-3 aspect-video w-full max-w-xl rounded-lg bg-black print:hidden" />}
+                {(day.meals.length > 0 || day.accommodation) && (
+                  <div className="mt-3 flex flex-wrap gap-1.5 text-[11px]">
+                    {day.meals.map((meal) => <span key={meal} className="rounded-full bg-secondary px-2 py-0.5">{meal}</span>)}
+                    {day.accommodation && <span className="rounded-full bg-secondary px-2 py-0.5">{day.accommodation}</span>}
+                  </div>
+                )}
+              </div>
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  );
 }
 
 export default function TripDetailClient({
@@ -126,9 +176,10 @@ export default function TripDetailClient({
     () => noticeLines(siteSettings?.tripNotice),
     [siteSettings?.tripNotice],
   );
-  // The weather follows whichever departure the booking panel has selected.
-  const [weatherDate, setWeatherDate] = useAnnouncedDeparture(selectedDate);
-  const { data: weather } = useTripWeather(trip?.slug, weatherDate);
+  // One source of truth: the weather, calendar, price, and enquiry all use
+  // this same departure. Keeping it here prevents sibling panels drifting.
+  const [activeDepartureDate, setActiveDepartureDate] = useState<string | undefined>(selectedDate);
+  const { data: weather } = useTripWeather(trip?.slug, activeDepartureDate);
   const hasWeather = Boolean(weather?.days.some((d) => d.hi !== null));
   const routeStops = useMemo<RouteStop[]>(() => {
     if (!weather) return [];
@@ -301,6 +352,17 @@ export default function TripDetailClient({
             </a>
           </header>
 
+          <div id="booking-panel" className="mt-6 scroll-mt-28 lg:hidden">
+            <TripSidebar
+              trip={trip}
+              bankDetails={siteSettings?.bankDetails}
+              selectedDate={activeDepartureDate}
+              onDepartureChange={setActiveDepartureDate}
+            />
+            <MessengerButton tripSlug={trip.slug} tripId={trip.id} className="mt-3 w-full" />
+            <EnquiryTrustNote />
+          </div>
+
           {(trip.brochurePdfUrl || chatbotPosterPdfUrl(trip.sourceTripId)) && (
             <a
               href={trip.brochurePdfUrl || chatbotPosterPdfUrl(trip.sourceTripId)!}
@@ -356,71 +418,10 @@ export default function TripDetailClient({
           </section>
 
           {trip.itinerary.length > 0 && (
-            <section id="itinerary" className="mt-8 scroll-mt-28">
-              <h2 className="text-lg font-bold">Өдөр тутмын хөтөлбөр</h2>
-              <ol className="mt-4 space-y-3">
-                {trip.itinerary.map((day, index) => (
-                  <li key={day.id} className="relative flex gap-3 sm:gap-4">
-                    {/* Timeline rail, hidden on the last day so it doesn't
-                        trail off into nothing. */}
-                    {index < trip.itinerary.length - 1 && (
-                      <span className="absolute left-[18px] top-11 h-[calc(100%+0.75rem)] w-px bg-border" />
-                    )}
-                    <span className="z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground shadow-sm ring-4 ring-background">
-                      {day.dayNumber}
-                    </span>
-                    <div className="min-w-0 flex-1 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/25 sm:p-5">
-                      <h3 className="text-base font-bold leading-snug text-primary">{day.title}</h3>
-                      {day.location && (
-                        <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-                          <MapPin className="h-3 w-3" />
-                          {day.location}
-                        </div>
-                      )}
-                      {day.description && (
-                        <p className="mt-2 whitespace-pre-line text-[15px] leading-7 text-foreground/80">
-                          {day.description}
-                        </p>
-                      )}
-                      {day.image && (
-                        <div className="relative mt-3 aspect-[16/9] w-full max-w-xl overflow-hidden rounded-lg bg-secondary">
-                          <Image
-                            src={day.image}
-                            alt={day.title}
-                            fill
-                            sizes="(max-width: 640px) 100vw, 576px"
-                            className="uudam-photo-drift object-cover transition-transform duration-700 hover:scale-105"
-                          />
-                        </div>
-                      )}
-                      {day.video && (
-                        <video
-                          src={day.video}
-                          controls
-                          preload="metadata"
-                          playsInline
-                          className="mt-3 aspect-video w-full max-w-xl rounded-lg bg-black print:hidden"
-                        />
-                      )}
-                      {(day.meals.length > 0 || day.accommodation) && (
-                        <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
-                          {day.meals.map((meal) => (
-                            <span key={meal} className="rounded-full bg-secondary px-2 py-0.5">
-                              🍽 {meal}
-                            </span>
-                          ))}
-                          {day.accommodation && (
-                            <span className="rounded-full bg-secondary px-2 py-0.5">
-                              🏨 {day.accommodation}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </section>
+          <section id="itinerary" className="mt-8 scroll-mt-28">
+            <h2 className="text-lg font-bold">Өдөр тутмын хөтөлбөр</h2>
+            <ItineraryAccordion days={trip.itinerary} />
+          </section>
           )}
 
           {routeStops.length > 0 && (
@@ -440,7 +441,7 @@ export default function TripDetailClient({
                   ? "Очих хотуудын одоогийн цаг агаар — аялал ойртоход таны аяллын өдөр бүрийн мэдээ энд гарна."
                   : "Таны аялах өдрүүдэд, тухайн өдөр байх хотын цаг агаар."}
               </p>
-              <TripWeather report={weather} onSelectDeparture={setWeatherDate} />
+              <TripWeather report={weather} onSelectDeparture={setActiveDepartureDate} />
             </section>
           )}
 
@@ -680,9 +681,14 @@ export default function TripDetailClient({
           available, then releases and scrolls away once the (much longer)
           itinerary column to its left has nothing further below it.
         */}
-        <div id="booking-panel" className="scroll-mt-28">
+        <div className="hidden scroll-mt-28 lg:block">
           <StickyHandoffSidebar topOffset={124} bottomGap={20}>
-            <TripSidebar trip={trip} bankDetails={siteSettings?.bankDetails} selectedDate={selectedDate} />
+            <TripSidebar
+              trip={trip}
+              bankDetails={siteSettings?.bankDetails}
+              selectedDate={activeDepartureDate}
+              onDepartureChange={setActiveDepartureDate}
+            />
             <MessengerButton tripSlug={trip.slug} tripId={trip.id} className="mt-3 w-full" />
             <EnquiryTrustNote />
           </StickyHandoffSidebar>

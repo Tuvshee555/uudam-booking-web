@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Check, Copy, Loader2, Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -14,7 +14,7 @@ import { datePriceOptions, formatAdultOption, hasVariablePricing } from "@/lib/t
 import { roundTemp, shortDate, weatherIcon, weatherLabel, type TripWeatherReport } from "@/lib/weather";
 import DepartureDatePicker from "./DepartureDatePicker";
 import { departureDateKey } from "@/lib/departureDate";
-import { announceDepartureSelect, useAnnouncedDeparture, useTripWeather } from "./TripWeather";
+import { useTripWeather } from "./TripWeather";
 import QpayPayButton, { QpayPaidBadge } from "./QpayPayButton";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { Button } from "@/components/ui/button";
@@ -135,10 +135,12 @@ export default function BookingPanel({
   bankDetails,
   onAsk,
   selectedDate,
+  onDepartureChange,
 }: {
   trip: Trip;
   bankDetails?: string | null;
   selectedDate?: string;
+  onDepartureChange: (date: string) => void;
   onAsk: (selection: { departureId: string; message: string; adults: number; children: number; infants: number }) => void;
 }) {
   const { locale } = useI18n();
@@ -167,18 +169,10 @@ export default function BookingPanel({
   // impure, and departures shouldn't vanish while someone is mid-booking.
   const [now] = useState(() => Date.now());
   const openDepartures = useMemo(() => upcomingDepartures(trip, now), [trip, now]);
-  const [announcedDate] = useAnnouncedDeparture(selectedDate);
-
-  useEffect(() => {
-    if (!announcedDate) return;
-    const next = openDepartures.find((departure) => departureDateKey(departure.startDate) === announcedDate);
-    if (!next || next.id === departureId || !availability(next).selectable) return;
-    setDepartureId(next.id);
-    setSelectedOptionKey("");
-    setTierCounts({});
-  }, [announcedDate, departureId, openDepartures]);
-
-  const selected = openDepartures.find((d) => d.id === departureId && availability(d).selectable) ?? null;
+  const selectedDepartureId = selectedDate
+    ? openDepartures.find((departure) => departureDateKey(departure.startDate) === selectedDate)?.id ?? departureId
+    : departureId;
+  const selected = openDepartures.find((d) => d.id === selectedDepartureId && availability(d).selectable) ?? null;
   const selectedWeatherDate = selected ? departureDateKey(selected.startDate) : selectedDate ?? null;
   const { data: bookingWeather } = useTripWeather(trip.slug, selectedWeatherDate);
   const options = selected ? datePriceOptions(trip, selected) : [];
@@ -344,10 +338,10 @@ export default function BookingPanel({
 
       {step === "select" && (
         <div className="mt-5">
-          <DepartureDatePicker departures={openDepartures} selectedId={departureId} basePrice={trip.price}
+          <DepartureDatePicker key={selectedDepartureId ?? "no-departure"} departures={openDepartures} selectedId={selectedDepartureId} basePrice={trip.price}
             onSelect={(departure) => {
               setDepartureId(departure.id);
-              announceDepartureSelect(departureDateKey(departure.startDate));
+              onDepartureChange(departureDateKey(departure.startDate));
               setSelectedOptionKey("");
               setTierCounts({});
               track("departure_select", { tripId: trip.id, properties: { departureId: departure.id } });
