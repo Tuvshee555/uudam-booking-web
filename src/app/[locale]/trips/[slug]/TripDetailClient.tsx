@@ -74,7 +74,7 @@ function noticeLines(value?: string | null) {
 }
 
 function ItineraryAccordion({ days }: { days: Trip["itinerary"] }) {
-  const [openDayId, setOpenDayId] = useState<string | null>(null);
+  const [openDayId, setOpenDayId] = useState<string | null>(() => days[0]?.id ?? null);
 
   return (
     <ol className="mt-4 divide-y divide-border rounded-xl border border-border bg-card">
@@ -98,8 +98,9 @@ function ItineraryAccordion({ days }: { days: Trip["itinerary"] }) {
               <ChevronDown className={`h-5 w-5 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
             </button>
 
-            {open && (
-              <div className="border-t border-border px-4 pb-4 pt-3 sm:px-5">
+            <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+              <div className="min-h-0 overflow-hidden">
+                <div className="border-t border-border px-4 pb-4 pt-3 sm:px-5">
                 {day.description && <p className="whitespace-pre-line text-[15px] leading-7 text-foreground/80">{day.description}</p>}
                 {day.image && (
                   <div className="relative mt-3 aspect-[16/9] w-full max-w-xl overflow-hidden rounded-lg bg-secondary">
@@ -113,8 +114,9 @@ function ItineraryAccordion({ days }: { days: Trip["itinerary"] }) {
                     {day.accommodation && <span className="rounded-full bg-secondary px-2 py-0.5">{day.accommodation}</span>}
                   </div>
                 )}
+                </div>
               </div>
-            )}
+            </div>
           </li>
         );
       })}
@@ -352,17 +354,6 @@ export default function TripDetailClient({
             </a>
           </header>
 
-          <div id="booking-panel" className="mt-6 scroll-mt-28 lg:hidden">
-            <TripSidebar
-              trip={trip}
-              bankDetails={siteSettings?.bankDetails}
-              selectedDate={activeDepartureDate}
-              onDepartureChange={setActiveDepartureDate}
-            />
-            <MessengerButton tripSlug={trip.slug} tripId={trip.id} className="mt-3 w-full" />
-            <EnquiryTrustNote />
-          </div>
-
           {(trip.brochurePdfUrl || chatbotPosterPdfUrl(trip.sourceTripId)) && (
             <a
               href={trip.brochurePdfUrl || chatbotPosterPdfUrl(trip.sourceTripId)!}
@@ -432,6 +423,17 @@ export default function TripDetailClient({
               </div>
             </section>
           )}
+
+          <div id="booking-panel" className="mt-8 scroll-mt-28 lg:hidden">
+            <TripSidebar
+              trip={trip}
+              bankDetails={siteSettings?.bankDetails}
+              selectedDate={activeDepartureDate}
+              onDepartureChange={setActiveDepartureDate}
+            />
+            <MessengerButton tripSlug={trip.slug} tripId={trip.id} className="mt-3 w-full" />
+            <EnquiryTrustNote />
+          </div>
 
           {weather && hasWeather && (
             <section id="weather" className="mt-8 scroll-mt-28" data-print="hide">
