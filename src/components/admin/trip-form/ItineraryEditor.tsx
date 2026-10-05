@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import ImageUploadField from "./ImageUploadField";
 
 export type ItineraryDraft = {
+  id?: string;
   title: string;
   description: string;
   location: string;
@@ -73,7 +74,7 @@ export default function ItineraryEditor({
    */
   function duplicate(index: number) {
     const next = [...days];
-    next.splice(index + 1, 0, { ...days[index] });
+    next.splice(index + 1, 0, { ...days[index], id: undefined });
     onChange(next);
     setOpenIndex(index + 1);
   }

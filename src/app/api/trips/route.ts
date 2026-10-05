@@ -4,7 +4,9 @@ import { prisma, withPrismaRetry } from "@/server/prisma";
 import { requireAdmin } from "@/server/auth";
 import { handler, json, publicCache, readJson, safeText } from "@/server/http";
 import { cached, invalidateCatalog } from "@/server/cache";
-import { assertChatbotTripSyncConfigured, syncTripToChatbot } from "@/server/chatbotTripSync";
+import { assertChatbotTripSyncConfigured } from "@/server/chatbotTripSync";
+import { queueTripSync, deliverTripSync } from "@/server/tripSyncQueue";
+import { publicTrip } from "@/lib/publicTrip";
 import {
   TRIP_INCLUDE,
   assertTitle,
@@ -75,7 +77,7 @@ export const GET = handler(async (req: Request) => {
     ),
   );
 
-  return publicCache(NextResponse.json(trips));
+  return publicCache(NextResponse.json(trips.map(publicTrip)));
 });
 
 /** POST /api/trips — create a trip (admin). */
@@ -101,7 +103,8 @@ export const POST = handler(async (req: Request) => {
   const categoryIds = Array.isArray(body.categoryIds)
     ? body.categoryIds.filter((entry: unknown): entry is string => typeof entry === "string" && entry.length > 0)
     : (safeText(body.categoryId, 60) ? [safeText(body.categoryId, 60)!] : []);
-  const trip = await prisma.trip.create({
+  const trip = await prisma.$transaction(async (tx) => {
+    const saved = await tx.trip.create({
     data: {
       title,
       slug,
@@ -170,16 +173,12 @@ export const POST = handler(async (req: Request) => {
       departures: { create: normalizeDepartures(body.departures) },
     },
     include: TRIP_INCLUDE,
+    });
+    return queueTripSync(tx, saved);
   });
-
-  try {
-    await syncTripToChatbot(trip);
-  } catch (error) {
-    await prisma.trip.deleteMany({ where: { id: trip.id } });
-    throw error;
-  }
+  await deliverTripSync(trip.id);
 
   invalidateCatalog();
 
-  return json(trip, { status: 201 });
+  return json(await prisma.trip.findUnique({ where: { id: trip.id }, include: TRIP_INCLUDE }), { status: 201 });
 });

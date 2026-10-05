@@ -14,7 +14,7 @@ export function assertChatbotTripSyncConfigured() {
 }
 
 /** Push shared, customer-facing trip facts to the chatbot's canonical record. */
-export async function syncTripToChatbot(trip: unknown) {
+export async function syncTripToChatbot(trip: unknown, previousTrip?: unknown) {
   assertChatbotTripSyncConfigured();
   const response = await fetch(endpoint(), {
     method: "POST",
@@ -22,7 +22,7 @@ export async function syncTripToChatbot(trip: unknown) {
       "content-type": "application/json",
       "x-trip-sync-secret": process.env.CHATBOT_SYNC_SECRET!,
     },
-    body: JSON.stringify({ trip }),
+    body: JSON.stringify({ trip, previousTrip }),
     signal: AbortSignal.timeout(timeoutMs),
     cache: "no-store",
   });

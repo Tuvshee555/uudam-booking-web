@@ -12,11 +12,8 @@ export async function saveDepartures(tx: Prisma.TransactionClient, tripId: strin
       : await tx.departure.create({ data: { ...departure, tripId } });
     keepIds.push(saved.id);
   }
-  // Keep referenced historical dates while closing them to new bookings.
+  // Retain every historical departure, including dates not yet referenced.
   await tx.departure.updateMany({
     where: { tripId, id: { notIn: keepIds } }, data: { status: "CANCELLED" },
-  });
-  await tx.departure.deleteMany({
-    where: { tripId, id: { notIn: keepIds }, bookings: { none: {} }, enquiries: { none: {} } },
   });
 }

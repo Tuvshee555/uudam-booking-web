@@ -5,9 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AlertCircle, Loader2, Plus, Trash2 } from "lucide-react";
+import { Archive, CalendarDays, Check, ClipboardList, Eye, Images, Info, Loader2, Plus, RefreshCw, Save, Scale, Trash2, Wallet } from "lucide-react";
 
 import { api, apiErrorMessage } from "@/lib/api";
+import { changedTripFields } from "@/lib/tripEditPatch";
 import { departureDateKey } from "@/lib/departureDate";
 import { ageBandsFor } from "@/lib/pricing";
 import { isAllowedImageHost } from "@/lib/imageHosts";
@@ -28,6 +29,7 @@ import WeatherPlacesEditor from "./WeatherPlacesEditor";
 import { parseMediaItems, type MediaItem } from "@/lib/media";
 import ItineraryEditor, { type ItineraryDraft } from "./ItineraryEditor";
 import DepartureEditor, { type DepartureDraft } from "./DepartureEditor";
+import TripComparison from "./TripComparison";
 
 function flattenCategories(nodes: CategoryNode[], depth = 0): { id: string; label: string }[] {
   return nodes.flatMap((node) => [
@@ -379,9 +381,9 @@ function tripToForm(trip: Trip): FormState {
     price: String(trip.price),
     oldPrice: trip.oldPrice ? String(trip.oldPrice) : "",
     discount: trip.discount ? String(trip.discount) : "",
-    childPrice: trip.childPrice ? String(trip.childPrice) : "",
-    infantPrice: trip.infantPrice ? String(trip.infantPrice) : "",
-    singleSupplement: trip.singleSupplement ? String(trip.singleSupplement) : "",
+    childPrice: trip.childPrice !== null ? String(trip.childPrice) : "",
+    infantPrice: trip.infantPrice !== null ? String(trip.infantPrice) : "",
+    singleSupplement: trip.singleSupplement !== null ? String(trip.singleSupplement) : "",
     adultAge: ageBands.adult,
     passengerPrices: passengerRowsFromTrip(trip),
     sourceMetadata: trip.sourceMetadata ?? {},
@@ -399,6 +401,7 @@ function tripToForm(trip: Trip): FormState {
     isFeatured: trip.isFeatured,
     isPublished: trip.isPublished,
     itinerary: trip.itinerary.map((day) => ({
+      id: day.id,
       title: day.title,
       description: day.description ?? "",
       location: day.location ?? "",
@@ -458,7 +461,7 @@ function buildPayload(form: FormState) {
     durationDays: numOrUndefined(form.durationDays),
     durationNights: numOrUndefined(form.durationNights),
     minTravelers: numOrUndefined(form.minTravelers),
-    maxTravelers: numOrUndefined(form.maxTravelers),
+    maxTravelers: nullableNumber(form.maxTravelers),
     difficulty: form.difficulty,
     transport: form.transport,
     languages: form.languages,
@@ -484,7 +487,8 @@ function buildPayload(form: FormState) {
     infantPrice: passengerFareSummary.infantPrice,
     singleSupplement: nullableNumber(form.singleSupplement),
     sourceTripId: nullableText(form.sourceTripId),
-    sourceMetadata: withPassengerPricingMetadata(form),
+    sourceMetadata: Array.isArray(form.sourceMetadata.price_groups) && form.sourceMetadata.price_groups.length
+      ? form.sourceMetadata : withPassengerPricingMetadata(form),
     hotel: nullableText(form.hotel),
     foodIncluded:
       form.foodIncluded === "true" ? true : form.foodIncluded === "false" ? false : null,
@@ -502,6 +506,7 @@ function buildPayload(form: FormState) {
     itinerary: form.itinerary
       .filter((day) => day.title.trim())
       .map((day) => ({
+        ...(day.id ? { id: day.id } : {}),
         title: day.title.trim(),
         description: day.description.trim() || undefined,
         location: day.location.trim() || undefined,
@@ -539,14 +544,20 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
   const { data: tags } = useTags();
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const hydrated = useRef(false);
+  const [activeSection, setActiveSection] = useState("facts");
+  const originalForm = useRef<FormState | null>(null);
+  const originalUpdatedAt = useRef<string | undefined>(undefined);
+  const hydrated = useRef<string | undefined>(undefined);
 
   useEffect(() => {
-    if (mode === "edit" && existingTrip && !hydrated.current) {
-      setForm(tripToForm(existingTrip));
-      hydrated.current = true;
+    if (mode === "edit" && existingTrip && existingTrip.id === tripId && hydrated.current !== tripId) {
+      const initial = tripToForm(existingTrip);
+      originalForm.current = initial;
+      originalUpdatedAt.current = existingTrip.updatedAt;
+      setForm(initial);
+      hydrated.current = tripId;
     }
-  }, [mode, existingTrip]);
+  }, [mode, existingTrip, tripId]);
 
   const categoryOptions = flattenCategories(categoryTree ?? []);
 
@@ -556,7 +567,10 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const payload = buildPayload(form);
+      const fullPayload = buildPayload(form);
+      const payload = mode === "edit" && originalForm.current
+        ? { ...changedTripFields(buildPayload(originalForm.current), fullPayload), expectedUpdatedAt: originalUpdatedAt.current }
+        : fullPayload;
       if (mode === "create") {
         const { data } = await api.post("/trips", payload);
         return data as Trip;
@@ -564,14 +578,37 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
       const { data } = await api.put(`/trips/${tripId}`, payload);
       return data as Trip;
     },
-    onSuccess: () => {
+    onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: ["admin", "trips"] });
       queryClient.invalidateQueries({ queryKey: ["trips"] });
       queryClient.invalidateQueries({ queryKey: ["trip", tripId] });
+      if (saved.sourceMetadata?.websiteSyncPending) {
+        toast.warning("Аялал хадгалагдсан. Chatbot sync хүлээгдэж байна.");
+        originalForm.current = tripToForm(saved);
+        originalUpdatedAt.current = saved.updatedAt;
+        setForm(originalForm.current);
+        if (mode === "create") router.push(`/${locale}/admin/trips/${saved.id}/edit`);
+        return;
+      }
       toast.success(mode === "create" ? "Аялал үүсгэлээ" : "Аялал хадгаллаа");
       router.push(`/${locale}/admin/trips`);
     },
     onError: (err) => toast.error(apiErrorMessage(err, "Хадгалахад алдаа гарлаа")),
+  });
+
+  const retrySync = useMutation({
+    mutationFn: async () => (await api.post("/admin/trip-sync", { id: tripId })).data as { complete: boolean; trip: Trip },
+    onSuccess: ({ complete, trip }) => {
+      if (!complete) { toast.warning("Синк хүлээгдэж байна. Хадгалсан мэдээлэл бүрэн үлдсэн."); return; }
+      if (originalForm.current && JSON.stringify(form) === JSON.stringify(originalForm.current)) {
+        originalForm.current = tripToForm(trip);
+        originalUpdatedAt.current = trip.updatedAt;
+        setForm(originalForm.current);
+      }
+      queryClient.invalidateQueries({ queryKey: ["trip", tripId] });
+      toast.success("Chatbot sync дууслаа");
+    },
+    onError: (err) => toast.error(apiErrorMessage(err, "Синк хийхэд алдаа гарлаа")),
   });
 
   const deleteMutation = useMutation({
@@ -624,7 +661,7 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
 
     const name = existingTrip?.title ? `"${existingTrip.title}"` : "энэ аяллыг";
     const confirmed = window.confirm(
-      `${name} устгах уу?\n\nБаталгаажсан захиалгатай аялал бол бүр устгахгүй, зөвхөн нийтээс нууж chatbot/poster sync хийнэ.`,
+      `${name} нийтээс нууж архивлах уу?\n\nАялал, хөтөлбөр, захиалга болон төлбөрийн түүх хадгалагдана.`,
     );
 
     if (!confirmed) return;
@@ -642,8 +679,33 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
   }
 
   return (
-    <form onSubmit={submit} className="space-y-8 pb-16">
-      <Section title="Үндсэн мэдээлэл">
+    <form onSubmit={submit} className="space-y-6 pb-16 min-w-0">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3 text-sm">
+        <span className="inline-flex items-center gap-2 font-medium"><Eye className="h-4 w-4" />{form.isPublished ? "Нийтэд харагдана" : "Ноорог"}</span>
+        {existingTrip?.sourceMetadata?.websiteSyncPending ? (
+          <Button type="button" variant="outline" size="sm" disabled={retrySync.isPending || saveMutation.isPending} onClick={() => retrySync.mutate()} className="gap-2">
+            <RefreshCw className={cn("h-4 w-4", retrySync.isPending && "animate-spin")} />Синк дахин хийх
+          </Button>
+        ) : <span className="inline-flex items-center gap-1.5 text-muted-foreground"><Check className="h-4 w-4" />{mode === "create" ? "Шинэ аялал" : "Хадгалагдсан"}</span>}
+      </div>
+      <div role="tablist" aria-label="Аяллын мэдээлэл" className="sticky top-0 z-20 flex gap-1 overflow-x-auto border-b border-border bg-background py-2">
+        {[
+          { id: "facts", label: "Үндсэн", icon: Info },
+          { id: "pricing", label: "Үнэ, гаралт", icon: Wallet },
+          { id: "itinerary", label: "Хөтөлбөр", icon: CalendarDays },
+          { id: "media", label: "Зураг, бичлэг", icon: Images },
+          { id: "terms", label: "Нөхцөл", icon: ClipboardList },
+          { id: "publishing", label: "Нийтлэх", icon: Eye },
+          { id: "review", label: "Харьцуулах", icon: Scale },
+        ].map(({ id, label, icon: Icon }) => (
+          <button key={id} type="button" role="tab" id={`trip-tab-${id}`} aria-selected={activeSection === id} aria-controls={`trip-panel-${activeSection}`} onClick={() => setActiveSection(id)}
+            className={cn("inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring", activeSection === id ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary/60")}>
+            <Icon className="h-4 w-4" />{label}
+          </button>
+        ))}
+      </div>
+      <div role="tabpanel" id={`trip-panel-${activeSection}`} aria-labelledby={`trip-tab-${activeSection}`} className="space-y-6 min-w-0">
+      <Section title="Үндсэн мэдээлэл" hidden={activeSection !== "facts"}>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <Label>Аяллын нэр *</Label>
@@ -795,7 +857,7 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
         </div>
       </Section>
 
-      <Section title="Зураг, бичлэг">
+      <Section title="Зураг, бичлэг" hidden={activeSection !== "media"}>
         <div className="grid gap-4">
           <ImageUploadField label="Үндсэн зураг" value={form.image} onChange={(v) => set("image", v)} required />
           <MultiImageField label="Нэмэлт зургууд" values={form.extraImages} onChange={(v) => set("extraImages", v)} />
@@ -804,7 +866,7 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
         </div>
       </Section>
 
-      <Section title="Үнэ">
+      <Section title="Үнэ" hidden={activeSection !== "pricing"}>
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
             <Label>Насанд хүрэгчийн үнэ (₮) *</Label>
@@ -812,7 +874,10 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
           </div>
           <div>
             <Label>Том хүний нас</Label>
-            <Input value={form.adultAge} onChange={(e) => set("adultAge", e.target.value)} placeholder="ж: 12+ нас" />
+            <Input value={form.adultAge} onChange={(e) => {
+              const adult = e.target.value;
+              setForm((current) => ({ ...current, adultAge: adult, sourceMetadata: { ...current.sourceMetadata, age_rules: { ...object(current.sourceMetadata.age_rules), adult } } }));
+            }} placeholder="ж: 12+ нас" />
           </div>
           <div>
             <Label>Хуучин үнэ (хямдралтай бол)</Label>
@@ -840,16 +905,8 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
         )}
       </Section>
 
-      <Section title="Чухал тэмдэглэл">
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
-          <h3 className="flex items-center gap-2 text-sm font-bold">
-            <AlertCircle className="h-4 w-4" />
-            Вебсайт дээрх шар тэмдэглэлийн хэсэг
-          </h3>
-          <p className="mt-1 text-xs leading-relaxed text-amber-900/80">
-            Үнэ, гарах өдөр, шинжилгээ, тусгай анхааруулга зэрэг зөвхөн энэ аялалд
-            хамаарах мөрүүдийг энд нэмнэ.
-          </p>
+      <Section title="Чухал тэмдэглэл" hidden={activeSection !== "terms"}>
+        <div>
           <div className="mt-3">
             <StringListField
               label="Тэмдэглэлийн мөрүүд"
@@ -861,7 +918,7 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
         </div>
       </Section>
 
-      <Section title="Дэлгэрэнгүй">
+      <Section title="Багц ба нөхцөл" hidden={activeSection !== "terms"}>
         <div className="grid gap-4">
           <StringListField label="Онцлох мөчүүд" values={form.highlights} onChange={(v) => set("highlights", v)} />
           <div className="grid gap-4 sm:grid-cols-2">
@@ -915,12 +972,12 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
           </div>
           <div>
             <Label>Chatbot source id</Label>
-            <Input value={form.sourceTripId} onChange={(e) => set("sourceTripId", e.target.value)} />
+            <Input value={form.sourceTripId} readOnly />
           </div>
         </div>
       </Section>
 
-      <Section title="Аялагчдын зураг, бичлэг">
+      <Section title="Аялагчдын зураг, бичлэг" hidden={activeSection !== "media"}>
         <MediaListEditor
           label="Аялагчдын зураг, бичлэг, холбоос"
           hint="Энэ аялалд явсан хүмүүсийн дурсамж — аяллын хуудсанд зочид буудлын хэсгийн доор тусдаа хайрцагт харагдана."
@@ -930,20 +987,20 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
       </Section>
 
       {mode === "edit" && tripId && (
-        <Section title="Цаг агаар">
+        <Section title="Цаг агаар" hidden={activeSection !== "itinerary"}>
           <WeatherPlacesEditor tripId={tripId} />
         </Section>
       )}
 
-      <Section title="Өдөр тутмын хөтөлбөр">
+      <Section title="Өдөр тутмын хөтөлбөр" hidden={activeSection !== "itinerary"}>
         <ItineraryEditor days={form.itinerary} onChange={(v) => set("itinerary", v)} />
       </Section>
 
-      <Section title="Хөдөлгөөнүүд (огноонууд)">
+      <Section title="Гарах огноонууд" hidden={activeSection !== "pricing"}>
         <DepartureEditor departures={form.departures} onChange={(v) => set("departures", v)} />
       </Section>
 
-      <Section title="Тохиргоо">
+      <Section title="Нийтлэх" hidden={activeSection !== "publishing"}>
         <div className="flex flex-wrap gap-6">
           <label className="flex items-center gap-2 text-sm font-medium">
             <input type="checkbox" checked={form.isFeatured} onChange={(e) => set("isFeatured", e.target.checked)} className="h-4 w-4 rounded border-input" />
@@ -955,8 +1012,13 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
           </label>
         </div>
       </Section>
-
-      <div className="sticky bottom-4 flex flex-col gap-2 rounded-xl border border-border bg-card p-3 shadow-lg sm:flex-row sm:items-center sm:justify-between">
+      <Section title="Chatbot ба вебсайт" hidden={activeSection !== "review"}>
+        {existingTrip ? <TripComparison trip={existingTrip} patch={form.sourceMetadata.canonicalExtraPatch} onExtraChange={(base, values) => set("sourceMetadata", {
+          ...form.sourceMetadata, canonicalExtraPatch: { base: object(form.sourceMetadata.canonicalExtraPatch).base || base, values },
+        })} /> : <p className="text-sm text-muted-foreground">Ноорог хадгалагдаагүй.</p>}
+      </Section>
+      </div>
+      <div className="sticky bottom-0 z-20 flex flex-col gap-2 border-t border-border bg-background py-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           {mode === "edit" && (
             <Button
@@ -969,9 +1031,9 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
               {deleteMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Trash2 className="h-4 w-4" />
+                <Archive className="h-4 w-4" />
               )}
-              Устгах
+              Архивлах
             </Button>
           )}
         </div>
@@ -985,7 +1047,7 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
             Цуцлах
           </Button>
           <Button type="submit" disabled={saveMutation.isPending || deleteMutation.isPending} className="gap-1.5">
-            {saveMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {mode === "create" ? "Аялал үүсгэх" : "Хадгалах"}
           </Button>
         </div>
@@ -1151,10 +1213,10 @@ function PassengerPriceEditor({
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children, hidden }: { title: string; children: React.ReactNode; hidden?: boolean }) {
   return (
-    <section className="rounded-2xl border border-border bg-card p-5">
-      <h2 className="mb-4 text-base font-bold">{title}</h2>
+    <section hidden={hidden} className="min-w-0 border-t border-border pt-5">
+      <h2 className="mb-4 text-sm font-semibold">{title}</h2>
       {children}
     </section>
   );

@@ -40,7 +40,7 @@ const TRIP_SELECT = {
   durationDays: true,
   weather: true,
   isPublished: true,
-  itinerary: { select: { title: true, accommodation: true, location: true }, orderBy: { dayNumber: "asc" as const } },
+  itinerary: { where: { dayNumber: { gt: 0 } }, select: { title: true, accommodation: true, location: true }, orderBy: { dayNumber: "asc" as const } },
   departures: { select: { startDate: true, status: true }, orderBy: { startDate: "asc" as const } },
 };
 

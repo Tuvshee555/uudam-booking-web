@@ -5,8 +5,11 @@ import { prisma } from "@/server/prisma";
 import { optionalAdmin, requireAdmin } from "@/server/auth";
 import { handler, httpError, json, publicCache, readJson, safeText } from "@/server/http";
 import { invalidateCatalog } from "@/server/cache";
-import { assertChatbotTripSyncConfigured, deleteTripFromChatbot, syncTripToChatbot } from "@/server/chatbotTripSync";
+import { assertChatbotTripSyncConfigured } from "@/server/chatbotTripSync";
+import { queueTripSync, deliverTripSync } from "@/server/tripSyncQueue";
+import { publicTrip } from "@/lib/publicTrip";
 import { saveDepartures } from "@/server/saveDepartures";
+import { saveItinerary } from "@/server/saveItinerary";
 import {
   TRIP_INCLUDE,
   normalizeDepartures,
@@ -70,7 +73,8 @@ export const GET = handler(async (req: Request, ctx: Ctx) => {
     return json(trip);
   }
 
-  return publicCache(NextResponse.json(trip));
+  if (await optionalAdmin(req)) return json(trip);
+  return publicCache(NextResponse.json(publicTrip(trip)));
 });
 
 export const PUT = handler(async (req: Request, ctx: Ctx) => {
@@ -82,7 +86,7 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
 
   const existing = await prisma.trip.findUnique({
     where: { id },
-    select: { id: true, slug: true, title: true, sourceTripId: true },
+    include: TRIP_INCLUDE,
   });
   if (!existing) throw httpError(404, "Аялал олдсонгүй");
 
@@ -120,15 +124,22 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
     value === undefined ? undefined : toStringArray(value);
 
   const trip = await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${sourceTripId}))`;
+    const current = await tx.trip.findUnique({ where: { id } });
+    if (!current || current.updatedAt.getTime() !== existing.updatedAt.getTime()
+      || (typeof body.expectedUpdatedAt === "string" && new Date(body.expectedUpdatedAt).getTime() !== current.updatedAt.getTime())) {
+      throw httpError(409, "Аяллыг өөр ажилтан шинэчилсэн байна. Шинэ мэдээллийг дахин нээнэ үү.");
+    }
+    let removedDays: unknown[] = [];
     if (Array.isArray(body.itinerary)) {
-      await tx.itineraryDay.deleteMany({ where: { tripId: id } });
+      removedDays = await saveItinerary(tx, id, normalizeItinerary(body.itinerary));
     }
 
     if (Array.isArray(body.departures)) {
       await saveDepartures(tx, id, normalizeDepartures(body.departures));
     }
 
-    return tx.trip.update({
+    const saved = await tx.trip.update({
       where: { id },
       data: {
         title,
@@ -183,7 +194,15 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
             ? undefined
             : (toOptionalNumber(body.singleSupplement) ?? null),
         sourceTripId,
-        sourceMetadata: toOptionalJsonObject(body.sourceMetadata) as Prisma.InputJsonValue | undefined,
+        sourceMetadata: body.sourceMetadata !== undefined || removedDays.length
+          ? { ...(toOptionalJsonObject(existing.sourceMetadata) || {}),
+              ...(toOptionalJsonObject(body.sourceMetadata) || {}),
+              ...(removedDays.length ? { archivedItinerary: [
+                ...(Array.isArray((existing.sourceMetadata as Record<string, unknown> | null)?.archivedItinerary)
+                  ? (existing.sourceMetadata as Record<string, unknown>).archivedItinerary as unknown[] : []),
+                ...JSON.parse(JSON.stringify(removedDays)),
+              ] } : {}),
+            } as Prisma.InputJsonValue : undefined,
         hotel: optionalText(body.hotel, 400),
         foodIncluded: toOptionalBoolean(body.foodIncluded),
         departureRule: optionalText(body.departureRule, 1000),
@@ -201,25 +220,24 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
         categories: categoryIds === undefined ? undefined : toCategorySet(categoryIds),
         tags: body.tagIds === undefined ? undefined : toTagSet(body.tagIds),
 
-        ...(Array.isArray(body.itinerary)
-          ? { itinerary: { create: normalizeItinerary(body.itinerary) } }
-          : {}),
       },
       include: TRIP_INCLUDE,
     });
+    return queueTripSync(tx, saved, existing);
   }, { timeout: 15_000 });
 
-  await syncTripToChatbot(trip);
+  await deliverTripSync(trip.id);
   invalidateCatalog();
   revalidatePath("/[locale]/trips/[slug]", "page");
   revalidatePath("/[locale]/departures", "page");
   revalidatePath("/[locale]/trips", "page");
 
-  return json(trip);
+  return json(await prisma.trip.findUnique({ where: { id }, include: TRIP_INCLUDE }));
 });
 
 export const DELETE = handler(async (req: Request, ctx: Ctx) => {
   await requireAdmin(req);
+  assertChatbotTripSyncConfigured();
 
   const { id } = await ctx.params;
   const source = await prisma.trip.findUnique({
@@ -228,19 +246,18 @@ export const DELETE = handler(async (req: Request, ctx: Ctx) => {
   });
   if (!source) throw httpError(404, "Аялал олдсонгүй");
 
-  const bookings = await prisma.booking.count({ where: { tripId: id } });
-
-  if (bookings > 0) {
-    // Bookings keep a required trip relation, so these rows cannot be hard
-    // deleted without damaging payment/traveler history. Enquiries are safe:
-    // their trip relation is optional and becomes null on delete.
-    const trip = await prisma.trip.update({
+  {
+    // Hide instead of deleting, even for unbooked trips, preserving all links.
+    const trip = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${source.sourceTripId || id}))`;
+      const saved = await tx.trip.update({
       where: { id },
       data: { isPublished: false, isFeatured: false },
       include: TRIP_INCLUDE,
     });
-
-    await syncTripToChatbot(trip);
+      return queueTripSync(tx, saved, undefined, true);
+    });
+    const complete = await deliverTripSync(trip.id);
 
     invalidateCatalog();
     revalidateTripPages(source.slug);
@@ -248,16 +265,9 @@ export const DELETE = handler(async (req: Request, ctx: Ctx) => {
     return json({
       success: true,
       archived: true,
-      message: "Захиалгатай аялал тул нийтээс нуув (устгаагүй).",
+      syncPending: !complete,
+      message: "Аяллыг нийтээс нууж архивлалаа. Бүх түүх хадгалагдсан.",
     });
   }
 
-  await deleteTripFromChatbot(source.sourceTripId);
-  // The canonical delete may already have removed this unbooked website row
-  // during its return sync. deleteMany keeps this endpoint idempotent.
-  await prisma.trip.deleteMany({ where: { id } });
-  invalidateCatalog();
-  revalidateTripPages(source.slug);
-
-  return json({ success: true, archived: false });
 });

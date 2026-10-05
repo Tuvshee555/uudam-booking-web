@@ -20,9 +20,9 @@ test("marking one date full keeps both departure IDs and the other date open", a
     { startDate: new Date("2027-10-15"), status: "OPEN", seatsLeft: 40 },
   ]);
   assert.deepEqual(rows.map((row) => [row.id, row.status]), [["first", "SOLD_OUT"], ["second", "OPEN"]]);
-  assert.deepEqual(removal.where.bookings, { none: {} });
-  assert.deepEqual(removal.where.enquiries, { none: {} });
+  assert.equal(removal, undefined);
   await saveDepartures(tx, "trip", [{ startDate: new Date("2027-10-08"), status: "OPEN", seatsLeft: 40 }]);
   assert.equal(rows[0].status, "OPEN");
   assert.equal(rows[1].status, "CANCELLED");
+  assert.equal(removal, undefined);
 });

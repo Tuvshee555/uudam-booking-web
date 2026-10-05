@@ -114,6 +114,7 @@ export function toDifficulty(value: unknown) {
 }
 
 export type ItineraryInput = {
+  id?: string;
   dayNumber: number;
   title: string;
   description: string | null;
@@ -142,6 +143,7 @@ export function normalizeItinerary(value: unknown): ItineraryInput[] {
       if (!title) return null;
 
       return {
+        ...(typeof day?.id === "string" && day.id ? { id: day.id } : {}),
         dayNumber: index + 1,
         title: title.slice(0, 200),
         description:
@@ -282,7 +284,7 @@ export const TRIP_INCLUDE = {
   categories: { orderBy: { categoryName: "asc" } },
   tags: { orderBy: { name: "asc" } },
   departures: { orderBy: { startDate: "asc" } },
-  itinerary: { orderBy: { dayNumber: "asc" } },
+  itinerary: { where: { dayNumber: { gt: 0 } }, orderBy: { dayNumber: "asc" } },
 } as const;
 
 /**
