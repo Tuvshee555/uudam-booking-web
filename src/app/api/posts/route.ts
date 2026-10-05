@@ -3,27 +3,7 @@ import { prisma } from "@/server/prisma";
 import { requireAdmin } from "@/server/auth";
 import { handler, httpError, json, publicCache, readJson, safeText } from "@/server/http";
 import { slugify } from "@/server/tripInput";
-
-/**
- * Post-scoped slug uniqueness. `uniqueSlug` in tripInput queries the trip
- * table directly, so it cannot be reused here.
- */
-export async function uniquePostSlug(base: string, excludeId?: string) {
-  let candidate = base;
-  let counter = 2;
-
-  for (;;) {
-    const existing = await prisma.post.findUnique({
-      where: { slug: candidate },
-      select: { id: true },
-    });
-
-    if (!existing || existing.id === excludeId) return candidate;
-
-    candidate = `${base}-${counter}`;
-    counter += 1;
-  }
-}
+import { uniquePostSlug } from "@/server/contentSlugs";
 
 /** GET /api/posts — published guides, newest first. `?all=true` adds drafts (admin). */
 export const GET = handler(async (req: Request) => {

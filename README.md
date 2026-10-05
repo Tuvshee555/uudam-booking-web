@@ -3,6 +3,23 @@
 Storefront, admin panel and API in **one Next.js 16 app**, deployable as a
 single Vercel project.
 
+## Database Consolidation Audit
+
+`npm run db:audit-merge` compares this website's configured `DATABASE_URL` with
+the sibling `Uudam-Chatbot` database. It uses PostgreSQL read-only transactions,
+inventories every user table and reports counts, schema differences and row
+fingerprint comparisons. Customer records and connection URLs are not printed.
+There is no apply mode. A missing source connection produces an incomplete
+report and exit code 2, while still inventorying the available target.
+
+Existing env files can be selected with `--source-env PATH` and
+`--target-env PATH`. `BOOKING_SOURCE_DATABASE_URL` and
+`CHATBOT_TARGET_DATABASE_URL` can also provide connections. Keep credentials
+in ignored env files. Fingerprints are preliminary comparisons, not backups.
+Trip links, unique-key conflicts, backups and the copy plan must be reviewed
+before migration. Run the audit tests with
+`node --test tests/audit-database-merge.test.mjs`.
+
 Cloned from the three-project food-delivery stack and re-modelled around a
 travel agency that **sells manually**. No git remote is configured — run
 `git init` and connect it when ready.
@@ -176,6 +193,31 @@ from the database when an enquiry arrives, and if the client used different
 rules staff would see a different number than the customer did.
 
 ---
+
+## Database Consolidation
+
+The consolidation tooling copies website tables additively into the chatbot
+database. It refuses existing table/type names, preserves every column value,
+and verifies the copy with server-side multiset comparisons before committing.
+PostgreSQL 18 NOT NULL catalog entries are represented by equivalent column
+requirements on PostgreSQL 17.
+
+Use `scripts/consolidate-databases.mjs` with `--prepare`, `--apply`, or `--verify`
+and a fresh `--directory tmp/<name>`. Connection files and full backups contain
+secrets or customer data: keep them ignored and never commit them. Create
+managed snapshots of both databases before live work. Rehearse on a disposable
+branch first. `--freeze-source` pauses writes without deleting records;
+`--unfreeze-source` restores writes if the cutover must be rolled back.
+
+After a successful cutover, booking `DATABASE_URL` and `DIRECT_URL`, and chatbot
+`NEON_DATABASE_URL` and `BOOKING_DATABASE_URL`, must identify the same chatbot
+database. Do not run schema-reset or destructive Prisma synchronization commands
+against that shared database. Keep the original website database as a read-only
+archive rather than deleting it.
+
+`scripts/verify-consolidated-website.mjs --baseline-url <url>` captures public
+content, page availability, and admin guards; `--compare-url <url>` compares
+against it. Both take the same ignored `--directory tmp/<name>`.
 
 ## Brand
 

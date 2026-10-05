@@ -3,24 +3,7 @@ import { prisma } from "@/server/prisma";
 import { requireAdmin } from "@/server/auth";
 import { handler, httpError, json, publicCache, readJson, safeText } from "@/server/http";
 import { slugify } from "@/server/tripInput";
-
-/** Article-scoped slug uniqueness — same pattern as posts, its own table. */
-export async function uniqueKnowledgeSlug(base: string, excludeId?: string) {
-  let candidate = base;
-  let counter = 2;
-
-  for (;;) {
-    const existing = await prisma.knowledgeArticle.findUnique({
-      where: { slug: candidate },
-      select: { id: true },
-    });
-
-    if (!existing || existing.id === excludeId) return candidate;
-
-    candidate = `${base}-${counter}`;
-    counter += 1;
-  }
-}
+import { uniqueKnowledgeSlug } from "@/server/contentSlugs";
 
 function toStringArray(value: unknown, max: number): string[] {
   if (!Array.isArray(value)) return [];

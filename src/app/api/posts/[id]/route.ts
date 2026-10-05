@@ -3,7 +3,7 @@ import { prisma } from "@/server/prisma";
 import { optionalAdmin, requireAdmin } from "@/server/auth";
 import { handler, httpError, json, publicCache, readJson, safeText } from "@/server/http";
 import { slugify } from "@/server/tripInput";
-import { uniquePostSlug } from "../route";
+import { uniquePostSlug } from "@/server/contentSlugs";
 
 type Ctx = { params: Promise<{ id: string }> };
 
