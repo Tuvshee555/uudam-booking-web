@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +35,7 @@ export default function StringListField({
       {hint && <p className="mb-1.5 mt-1 text-xs text-muted-foreground">{hint}</p>}
       <div className="flex gap-2">
         <Input
+          aria-label={label}
           value={draft}
           placeholder={placeholder}
           onChange={(e) => setDraft(e.target.value)}
@@ -48,9 +49,12 @@ export default function StringListField({
         <button
           type="button"
           onClick={add}
-          className="shrink-0 rounded-md border border-input px-3 text-sm font-medium hover:bg-secondary"
+          disabled={!draft.trim()}
+          title="Нэмэх"
+          aria-label={`${label} нэмэх`}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-input hover:bg-secondary disabled:opacity-40"
         >
-          Нэмэх
+          <Plus className="h-4 w-4" />
         </button>
       </div>
 
@@ -59,13 +63,13 @@ export default function StringListField({
           {values.map((value, index) => (
             <span
               key={`${value}-${index}`}
-              className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs"
+              className="inline-flex max-w-full items-center gap-2 rounded-md bg-secondary px-2.5 py-1.5 text-xs"
             >
-              {value}
+              <span className="min-w-0 break-words">{value}</span>
               <button
                 type="button"
                 onClick={() => onChange(values.filter((_, i) => i !== index))}
-                className="text-muted-foreground hover:text-destructive"
+                className="shrink-0 text-muted-foreground hover:text-destructive"
                 aria-label={`${value} хасах`}
               >
                 <X className="h-3 w-3" />

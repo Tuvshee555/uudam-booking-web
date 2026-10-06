@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Archive, CalendarDays, Check, ClipboardList, Eye, Images, Info, Loader2, Plus, RefreshCw, Save, Scale, Trash2, Wallet } from "lucide-react";
+import { Archive, CalendarDays, Check, ChevronDown, ClipboardList, ExternalLink, Eye, Images, Info, Loader2, Plus, RefreshCw, Save, Scale, Trash2, Wallet } from "lucide-react";
 
 import { api, apiErrorMessage } from "@/lib/api";
 import { changedTripFields } from "@/lib/tripEditPatch";
@@ -30,6 +29,7 @@ import { parseMediaItems, type MediaItem } from "@/lib/media";
 import ItineraryEditor, { type ItineraryDraft } from "./ItineraryEditor";
 import DepartureEditor, { type DepartureDraft } from "./DepartureEditor";
 import TripComparison from "./TripComparison";
+import SelectionField from "./SelectionField";
 
 function flattenCategories(nodes: CategoryNode[], depth = 0): { id: string; label: string }[] {
   return nodes.flatMap((node) => [
@@ -130,9 +130,9 @@ function cleanPassengerRows(rows: PassengerPriceDraft[]) {
 function groupDateKeys(group: Record<string, unknown>) {
   const values = [group.date_keys, group.dates, group.display_dates]
     .flatMap((value) => Array.isArray(value) ? value : []);
-  return values
+  return [...new Set(values
     .map((value) => text(value).match(/^\d{4}-\d{2}-\d{2}/)?.[0] || "")
-    .filter(Boolean);
+    .filter(Boolean))];
 }
 
 function datedPassengerFares(metadata: unknown, date: string) {
@@ -544,6 +544,7 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
   const { data: tags } = useTags();
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [baseline, setBaseline] = useState<string | null>(mode === "create" ? JSON.stringify(EMPTY_FORM) : null);
   const [activeSection, setActiveSection] = useState("facts");
   const originalForm = useRef<FormState | null>(null);
   const originalUpdatedAt = useRef<string | undefined>(undefined);
@@ -555,11 +556,20 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
       originalForm.current = initial;
       originalUpdatedAt.current = existingTrip.updatedAt;
       setForm(initial);
+      setBaseline(JSON.stringify(initial));
       hydrated.current = tripId;
     }
   }, [mode, existingTrip, tripId]);
 
   const categoryOptions = flattenCategories(categoryTree ?? []);
+  const isDirty = baseline !== null && JSON.stringify(form) !== baseline;
+
+  useEffect(() => {
+    if (!isDirty) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [isDirty]);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -579,6 +589,7 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
       return data as Trip;
     },
     onSuccess: (saved) => {
+      setBaseline(JSON.stringify(tripToForm(saved)));
       queryClient.invalidateQueries({ queryKey: ["admin", "trips"] });
       queryClient.invalidateQueries({ queryKey: ["trips"] });
       queryClient.invalidateQueries({ queryKey: ["trip", tripId] });
@@ -587,6 +598,7 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
         originalForm.current = tripToForm(saved);
         originalUpdatedAt.current = saved.updatedAt;
         setForm(originalForm.current);
+        setBaseline(JSON.stringify(originalForm.current));
         if (mode === "create") router.push(`/${locale}/admin/trips/${saved.id}/edit`);
         return;
       }
@@ -604,6 +616,7 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
         originalForm.current = tripToForm(trip);
         originalUpdatedAt.current = trip.updatedAt;
         setForm(originalForm.current);
+        setBaseline(JSON.stringify(originalForm.current));
       }
       queryClient.invalidateQueries({ queryKey: ["trip", tripId] });
       toast.success("Chatbot sync дууслаа");
@@ -629,12 +642,13 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
   function submit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (!form.title.trim()) return toast.error("Аяллын нэрээ оруулна уу");
-    if (!form.description.trim()) return toast.error("Тайлбар оруулна уу");
-    if (!numOrUndefined(form.price)) return toast.error("Үнэ оруулна уу");
-    if (!form.image.trim()) return toast.error("Зураг оруулна уу (URL эсвэл байршуулна уу)");
+    const invalid = (section: string, message: string) => { setActiveSection(section); toast.error(message); };
+    if (!form.title.trim()) return invalid("facts", "Аяллын нэрээ оруулна уу");
+    if (!form.description.trim()) return invalid("facts", "Тайлбар оруулна уу");
+    if (!numOrUndefined(form.price)) return invalid("pricing", "Үнэ оруулна уу");
+    if (!form.image.trim()) return invalid("media", "Үндсэн зураг оруулна уу");
     if (!isAllowedImageHost(form.image)) {
-      return toast.error(
+      return invalid("media",
         'Үндсэн зургийн домэйн дэмжигдэхгүй. "Байршуулах" товчоор оруулна уу.',
       );
     }
@@ -643,13 +657,13 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
       if (!dep.startDate) continue; // dropped at submit time anyway, nothing to validate
 
       if (dep.endDate && dep.endDate < dep.startDate) {
-        return toast.error(`Хөдөлгөөн ${index + 1}: дуусах огноо эхлэх огнооноос өмнө байна`);
+        return invalid("pricing", `Гаралт ${index + 1}: дуусах огноо эхлэх огнооноос өмнө байна`);
       }
 
       const total = numOrUndefined(dep.seatsTotal);
       const left = numOrUndefined(dep.seatsLeft);
       if (total !== undefined && left !== undefined && left > total) {
-        return toast.error(`Хөдөлгөөн ${index + 1}: үлдсэн суудал нийт суудлаас их байна`);
+        return invalid("pricing", `Гаралт ${index + 1}: үлдсэн суудал нийт суудлаас их байна`);
       }
     }
 
@@ -679,14 +693,14 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
   }
 
   return (
-    <form onSubmit={submit} className="space-y-6 pb-16 min-w-0">
+    <form onSubmit={submit} className="min-w-0 space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3 text-sm">
         <span className="inline-flex items-center gap-2 font-medium"><Eye className="h-4 w-4" />{form.isPublished ? "Нийтэд харагдана" : "Ноорог"}</span>
         {existingTrip?.sourceMetadata?.websiteSyncPending ? (
           <Button type="button" variant="outline" size="sm" disabled={retrySync.isPending || saveMutation.isPending} onClick={() => retrySync.mutate()} className="gap-2">
             <RefreshCw className={cn("h-4 w-4", retrySync.isPending && "animate-spin")} />Синк дахин хийх
           </Button>
-        ) : <span className="inline-flex items-center gap-1.5 text-muted-foreground"><Check className="h-4 w-4" />{mode === "create" ? "Шинэ аялал" : "Хадгалагдсан"}</span>}
+        ) : <span role="status" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">{!isDirty && <Check className="h-3.5 w-3.5" />}{mode === "create" ? "Шинэ аялал" : isDirty ? "Хадгалаагүй өөрчлөлт" : "Хадгалагдсан"}</span>}
       </div>
       <div role="tablist" aria-label="Аяллын мэдээлэл" className="sticky top-0 z-20 flex gap-1 overflow-x-auto border-b border-border bg-background py-2">
         {[
@@ -698,105 +712,49 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
           { id: "publishing", label: "Нийтлэх", icon: Eye },
           { id: "review", label: "Харьцуулах", icon: Scale },
         ].map(({ id, label, icon: Icon }) => (
-          <button key={id} type="button" role="tab" id={`trip-tab-${id}`} aria-selected={activeSection === id} aria-controls={`trip-panel-${activeSection}`} onClick={() => setActiveSection(id)}
-            className={cn("inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring", activeSection === id ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary/60")}>
+          <button key={id} type="button" role="tab" id={`trip-tab-${id}`} tabIndex={activeSection === id ? 0 : -1} aria-selected={activeSection === id} aria-controls="trip-editor-panel" onClick={() => setActiveSection(id)}
+            onKeyDown={(event) => {
+              const buttons = Array.from(event.currentTarget.parentElement!.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+              const current = buttons.indexOf(event.currentTarget);
+              const next = event.key === "ArrowRight" ? (current + 1) % buttons.length : event.key === "ArrowLeft" ? (current + buttons.length - 1) % buttons.length : event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1 : -1;
+              if (next < 0) return;
+              event.preventDefault();
+              buttons[next].click();
+              buttons[next].focus();
+              buttons[next].scrollIntoView({ block: "nearest", inline: "nearest" });
+            }}
+            className={cn("inline-flex shrink-0 items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring", activeSection === id ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground")}>
             <Icon className="h-4 w-4" />{label}
           </button>
         ))}
       </div>
-      <div role="tabpanel" id={`trip-panel-${activeSection}`} aria-labelledby={`trip-tab-${activeSection}`} className="space-y-6 min-w-0">
+      <div role="tabpanel" id="trip-editor-panel" aria-labelledby={`trip-tab-${activeSection}`} className="min-w-0 space-y-8">
       <Section title="Үндсэн мэдээлэл" hidden={activeSection !== "facts"}>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <Label>Аяллын нэр *</Label>
             <Input value={form.title} onChange={(e) => set("title", e.target.value)} />
           </div>
-          <div>
-            <Label>Slug (заавал биш)</Label>
-            <Input value={form.slug} onChange={(e) => set("slug", e.target.value)} placeholder="нэрнээс автоматаар үүснэ" />
-          </div>
-          <div className="sm:col-span-2">
-            <Label>Ангилал</Label>
-            {categoryOptions.length > 0 ? (
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {categoryOptions.map((opt) => {
-                  const active = form.categoryIds.includes(opt.id);
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() =>
-                        set(
-                          "categoryIds",
-                          active
-                            ? form.categoryIds.filter((id) => id !== opt.id)
-                            : [...form.categoryIds, opt.id],
-                        )
-                      }
-                      className={cn(
-                        "rounded-full border px-3 py-1.5 text-sm transition-colors",
-                        active
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border hover:border-primary/40",
-                      )}
-                    >
-                      {opt.label}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="mt-1.5 text-sm text-muted-foreground">Ангилал алга байна.</p>
-            )}
-          </div>
-          <div className="sm:col-span-2">
-            <Label>Шошго (үнэ, урамшуулал, тээврийн төрөл гэх мэт)</Label>
-            {tags && tags.length > 0 ? (
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {tags.map((tag) => {
-                  const active = form.tagIds.includes(tag.id);
-                  return (
-                    <button
-                      key={tag.id}
-                      type="button"
-                      onClick={() =>
-                        set(
-                          "tagIds",
-                          active
-                            ? form.tagIds.filter((id) => id !== tag.id)
-                            : [...form.tagIds, tag.id],
-                        )
-                      }
-                      className={cn(
-                        "rounded-full border px-3 py-1.5 text-sm transition-colors",
-                        active
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border hover:border-primary/40",
-                      )}
-                    >
-                      {tag.name}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="mt-1.5 text-sm text-muted-foreground">
-                Шошго алга байна.{" "}
-                <Link href={`/${locale}/admin/tags`} className="font-medium text-primary hover:underline">
-                  Шошгын хэсгээс нэмнэ үү
-                </Link>
-                .
-              </p>
-            )}
-          </div>
           <div className="sm:col-span-2">
             <Label>Товч танилцуулга</Label>
-            <Input value={form.summary} onChange={(e) => set("summary", e.target.value)} placeholder="Жагсаалт болон OG тайлбарт харагдана" />
+            <Textarea rows={2} value={form.summary} onChange={(e) => set("summary", e.target.value)} />
           </div>
           <div className="sm:col-span-2">
             <Label>Дэлгэрэнгүй тайлбар *</Label>
-            <Textarea rows={6} value={form.description} onChange={(e) => set("description", e.target.value)} />
+            <Textarea rows={4} value={form.description} onChange={(e) => set("description", e.target.value)} />
           </div>
+        </div>
+      </Section>
+
+      <Section title="Ангилал, шошго" hidden={activeSection !== "facts"}>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <SelectionField label="Ангилал" options={categoryOptions} selected={form.categoryIds} onChange={(ids) => set("categoryIds", ids)} />
+          <SelectionField label="Шошго" options={(tags ?? []).map((tag) => ({ id: tag.id, label: tag.name }))} selected={form.tagIds} onChange={(ids) => set("tagIds", ids)} />
+        </div>
+      </Section>
+
+      <Section title="Байршил, хугацаа" hidden={activeSection !== "facts"}>
+        <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label>Улс</Label>
             <Input value={form.country} onChange={(e) => set("country", e.target.value)} />
@@ -809,19 +767,24 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
             <StringListField label="Очих газрууд" values={form.destinations} onChange={(v) => set("destinations", v)} placeholder="ж: Токио" />
           </div>
           <div>
-            <Label>Үргэлжлэх (хоног)</Label>
+            <Label>Хоног</Label>
             <Input type="number" min={1} value={form.durationDays} onChange={(e) => set("durationDays", e.target.value)} />
           </div>
           <div>
-            <Label>Үргэлжлэх (шөнө)</Label>
+            <Label>Шөнө</Label>
             <Input type="number" min={0} value={form.durationNights} onChange={(e) => set("durationNights", e.target.value)} />
           </div>
+        </div>
+      </Section>
+
+      <Section title="Аяллын зохион байгуулалт" hidden={activeSection !== "facts"}>
+        <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <Label>Хамгийн бага хүн</Label>
+            <Label>Хүний доод тоо</Label>
             <Input type="number" min={1} value={form.minTravelers} onChange={(e) => set("minTravelers", e.target.value)} />
           </div>
           <div>
-            <Label>Хамгийн их хүн</Label>
+            <Label>Хүний дээд тоо</Label>
             <Input type="number" min={1} value={form.maxTravelers} onChange={(e) => set("maxTravelers", e.target.value)} />
           </div>
           <div>
@@ -851,25 +814,33 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
             <Input value={form.meetingPoint} onChange={(e) => set("meetingPoint", e.target.value)} />
           </div>
           <div>
-            <Label>Газрын зургийн URL (embed)</Label>
+            <Label>Газрын зургийн холбоос</Label>
             <Input value={form.mapUrl} onChange={(e) => set("mapUrl", e.target.value)} placeholder="https://…" />
           </div>
         </div>
       </Section>
 
-      <Section title="Зураг, бичлэг" hidden={activeSection !== "media"}>
-        <div className="grid gap-4">
+      <Section title="Аяллын зургууд" hidden={activeSection !== "media"}>
+        <div className="grid gap-5">
           <ImageUploadField label="Үндсэн зураг" value={form.image} onChange={(v) => set("image", v)} required />
           <MultiImageField label="Нэмэлт зургууд" values={form.extraImages} onChange={(v) => set("extraImages", v)} />
+        </div>
+      </Section>
+      <Section title="Бичлэг, брошур" hidden={activeSection !== "media"}>
+        <div className="grid gap-5">
           <ImageUploadField label="Үндсэн бичлэг" value={form.video} onChange={(v) => set("video", v)} resourceType="video" />
           <MultiImageField label="Нэмэлт бичлэгүүд" values={form.videos} onChange={(v) => set("videos", v)} resourceType="video" />
+          <div>
+            <Label htmlFor="trip-brochure">PDF брошурын холбоос</Label>
+            <Input id="trip-brochure" value={form.brochurePdfUrl} onChange={(e) => set("brochurePdfUrl", e.target.value)} placeholder="https://..." />
+          </div>
         </div>
       </Section>
 
-      <Section title="Үнэ" hidden={activeSection !== "pricing"}>
-        <div className="grid gap-4 sm:grid-cols-3">
+      <Section title="Үндсэн үнэ" hidden={activeSection !== "pricing"}>
+        <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <Label>Насанд хүрэгчийн үнэ (₮) *</Label>
+            <Label>Том хүний үндсэн үнэ (₮) *</Label>
             <Input type="number" min={0} value={form.price} onChange={(e) => set("price", e.target.value)} />
           </div>
           <div>
@@ -879,8 +850,12 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
               setForm((current) => ({ ...current, adultAge: adult, sourceMetadata: { ...current.sourceMetadata, age_rules: { ...object(current.sourceMetadata.age_rules), adult } } }));
             }} placeholder="ж: 12+ нас" />
           </div>
+        </div>
+        <details className="mt-4 border-t border-border pt-3">
+          <summary className="cursor-pointer text-sm font-medium text-muted-foreground">Хямдрал, нэмэгдэл</summary>
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <div>
-            <Label>Хуучин үнэ (хямдралтай бол)</Label>
+            <Label>Хямдрахаас өмнөх үнэ (₮)</Label>
             <Input type="number" min={0} value={form.oldPrice} onChange={(e) => set("oldPrice", e.target.value)} />
           </div>
           <div>
@@ -888,10 +863,13 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
             <Input type="number" min={0} max={100} value={form.discount} onChange={(e) => set("discount", e.target.value)} />
           </div>
           <div>
-            <Label>Ганц хүний нэмэгдэл</Label>
+            <Label>Ганц хүний нэмэгдэл (₮)</Label>
             <Input type="number" min={0} value={form.singleSupplement} onChange={(e) => set("singleSupplement", e.target.value)} />
           </div>
         </div>
+        </details>
+      </Section>
+      <Section title="Насны ангилал, үнэ" hidden={activeSection !== "pricing"}>
         {Array.isArray(form.sourceMetadata.price_groups) && form.sourceMetadata.price_groups.length > 0 ? (
           <DatedPassengerPriceEditor
             sourceMetadata={form.sourceMetadata}
@@ -918,7 +896,7 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
         </div>
       </Section>
 
-      <Section title="Багц ба нөхцөл" hidden={activeSection !== "terms"}>
+      <Section title="Багцын мэдээлэл" hidden={activeSection !== "terms"}>
         <div className="grid gap-4">
           <StringListField label="Онцлох мөчүүд" values={form.highlights} onChange={(v) => set("highlights", v)} />
           <div className="grid gap-4 sm:grid-cols-2">
@@ -930,6 +908,10 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
             <StringListField label="Өрөөний үнэ" values={form.roomPrices} onChange={(v) => set("roomPrices", v)} />
           </div>
           <StringListField label="Хүүхдийн үнийн тэмдэглэл" values={form.childPriceNotes} onChange={(v) => set("childPriceNotes", v)} />
+        </div>
+      </Section>
+      <Section title="Буудал, хоол" hidden={activeSection !== "terms"}>
+        <div className="grid gap-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <Label>Зочид буудал</Label>
@@ -950,17 +932,16 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
           </div>
           <MediaListEditor
             label="Зочид буудлын зураг, бичлэг, холбоос"
-            hint="Аяллын хуудасны “Бэлтгэл мэдээлэл” хэсэгт зочид буудлын нэрийн доор харагдана."
             items={form.hotelMedia}
             onChange={(v) => set("hotelMedia", v)}
           />
+        </div>
+      </Section>
+      <Section title="Аялагчид тавих нөхцөл" hidden={activeSection !== "terms"}>
+        <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <Label>Гарах өдрийн дүрэм</Label>
+            <Label>Гарах өдрийн нөхцөл</Label>
             <Textarea rows={2} value={form.departureRule} onChange={(e) => set("departureRule", e.target.value)} />
-          </div>
-          <div>
-            <Label>PDF / брошур URL</Label>
-            <Input value={form.brochurePdfUrl} onChange={(e) => set("brochurePdfUrl", e.target.value)} placeholder="https://…" />
           </div>
           <div>
             <Label>Шаардлага</Label>
@@ -970,20 +951,19 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
             <Label>Цуцлалтын нөхцөл</Label>
             <Textarea rows={3} value={form.cancellationPolicy} onChange={(e) => set("cancellationPolicy", e.target.value)} />
           </div>
-          <div>
-            <Label>Chatbot source id</Label>
-            <Input value={form.sourceTripId} readOnly />
-          </div>
         </div>
       </Section>
 
       <Section title="Аялагчдын зураг, бичлэг" hidden={activeSection !== "media"}>
         <MediaListEditor
           label="Аялагчдын зураг, бичлэг, холбоос"
-          hint="Энэ аялалд явсан хүмүүсийн дурсамж — аяллын хуудсанд зочид буудлын хэсгийн доор тусдаа хайрцагт харагдана."
           items={form.travelerMedia}
           onChange={(v) => set("travelerMedia", v)}
         />
+      </Section>
+
+      <Section title="Өдөр тутмын хөтөлбөр" hidden={activeSection !== "itinerary"}>
+        <ItineraryEditor days={form.itinerary} onChange={(v) => set("itinerary", v)} />
       </Section>
 
       {mode === "edit" && tripId && (
@@ -992,25 +972,33 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
         </Section>
       )}
 
-      <Section title="Өдөр тутмын хөтөлбөр" hidden={activeSection !== "itinerary"}>
-        <ItineraryEditor days={form.itinerary} onChange={(v) => set("itinerary", v)} />
-      </Section>
-
       <Section title="Гарах огноонууд" hidden={activeSection !== "pricing"}>
         <DepartureEditor departures={form.departures} onChange={(v) => set("departures", v)} />
       </Section>
 
       <Section title="Нийтлэх" hidden={activeSection !== "publishing"}>
-        <div className="flex flex-wrap gap-6">
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <input type="checkbox" checked={form.isFeatured} onChange={(e) => set("isFeatured", e.target.checked)} className="h-4 w-4 rounded border-input" />
+        <div className="grid divide-y divide-border">
+          <label className="flex items-center justify-between gap-4 py-4 text-sm font-medium">
             Онцлох аялал
+            <input type="checkbox" checked={form.isFeatured} onChange={(e) => set("isFeatured", e.target.checked)} className="h-4 w-4 rounded border-input" />
           </label>
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <input type="checkbox" checked={form.isPublished} onChange={(e) => set("isPublished", e.target.checked)} className="h-4 w-4 rounded border-input" />
+          <label className="flex items-center justify-between gap-4 py-4 text-sm font-medium">
             Нийтэд харагдана
+            <input type="checkbox" checked={form.isPublished} onChange={(e) => set("isPublished", e.target.checked)} className="h-4 w-4 rounded border-input" />
           </label>
         </div>
+      </Section>
+      <Section title="Аяллын холбоос" hidden={activeSection !== "publishing"}>
+        {form.slug && <a href={`/${locale}/trips/${encodeURIComponent(form.slug)}`} target="_blank" rel="noopener noreferrer" className="inline-flex max-w-full items-start gap-2 text-sm text-primary hover:underline">
+          <ExternalLink className="mt-0.5 h-4 w-4 shrink-0" /><span className="min-w-0 break-all">/{locale}/trips/{form.slug}</span>
+        </a>}
+        <details className="mt-4 border-t border-border pt-3">
+          <summary className="cursor-pointer text-sm text-muted-foreground">Холбоосын хаяг засах</summary>
+          <div className="mt-4 max-w-xl">
+            <Label htmlFor="trip-address">Хаягийн нэр</Label>
+            <Input id="trip-address" value={form.slug} onChange={(e) => set("slug", e.target.value)} placeholder="Автоматаар үүснэ" />
+          </div>
+        </details>
       </Section>
       <Section title="Chatbot ба вебсайт" hidden={activeSection !== "review"}>
         {existingTrip ? <TripComparison trip={existingTrip} patch={form.sourceMetadata.canonicalExtraPatch} onExtraChange={(base, values) => set("sourceMetadata", {
@@ -1018,22 +1006,24 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
         })} /> : <p className="text-sm text-muted-foreground">Ноорог хадгалагдаагүй.</p>}
       </Section>
       </div>
-      <div className="sticky bottom-0 z-20 flex flex-col gap-2 border-t border-border bg-background py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="sticky bottom-0 z-30 flex items-center justify-between gap-2 border-t border-border bg-background py-3">
         <div>
           {mode === "edit" && (
             <Button
               type="button"
-              variant="destructive"
+              variant="ghost"
               onClick={deleteTrip}
               disabled={deleteMutation.isPending || saveMutation.isPending}
-              className="gap-1.5"
+              aria-label="Аяллыг архивлах"
+              title="Аяллыг архивлах"
+              className="gap-1.5 px-2 text-muted-foreground hover:text-destructive"
             >
               {deleteMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Archive className="h-4 w-4" />
               )}
-              Архивлах
+              <span className="hidden sm:inline">Архивлах</span>
             </Button>
           )}
         </div>
@@ -1041,12 +1031,12 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.push(`/${locale}/admin/trips`)}
+            onClick={() => { if (!isDirty || window.confirm("Хадгалаагүй өөрчлөлтөө орхих уу?")) router.push(`/${locale}/admin/trips`); }}
             disabled={deleteMutation.isPending}
           >
             Цуцлах
           </Button>
-          <Button type="submit" disabled={saveMutation.isPending || deleteMutation.isPending} className="gap-1.5">
+          <Button type="submit" disabled={saveMutation.isPending || deleteMutation.isPending || !isDirty} className="gap-1.5">
             {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {mode === "create" ? "Аялал үүсгэх" : "Хадгалах"}
           </Button>
@@ -1095,20 +1085,18 @@ function DatedPassengerPriceEditor({
     <div className="mt-4 space-y-3">
       <div>
         <h3 className="text-sm font-semibold">Гарах өдөр бүрийн насны ангилал ба үнэ</h3>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          Үнэ нь огноо бүр өөр байж болно. Доорх мөрийг засахад зөвхөн тухайн гарах өдрийн хүүхэд, нярайн үнэ өөрчлөгдөнө.
-        </p>
       </div>
       {groups.map((group, index) => (
-        <div key={`${datedGroupLabel(group, index)}-${index}`} className="rounded-lg border border-border bg-muted/30 p-3">
-          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2 border-b border-border pb-2">
-            <p className="text-sm font-semibold text-primary">{datedGroupLabel(group, index)}</p>
+        <details key={index} open={index === 0} className="group border-b border-border">
+          <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 py-3 [&::-webkit-details-marker]:hidden">
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+            <p className="min-w-0 flex-1 text-sm font-medium">{datedGroupLabel(group, index)}</p>
             {typeof group.adult_price === "number" && (
               <p className="text-xs text-muted-foreground">Том хүн: {group.adult_price.toLocaleString("mn-MN")}₮</p>
             )}
-          </div>
-          <PassengerPriceEditor rows={passengerRowsFromGroup(group)} onChange={(rows) => updateGroup(index, rows)} embedded />
-        </div>
+          </summary>
+          <div className="pb-4"><PassengerPriceEditor rows={passengerRowsFromGroup(group)} onChange={(rows) => updateGroup(index, rows)} embedded /></div>
+        </details>
       ))}
     </div>
   );
@@ -1129,13 +1117,10 @@ function PassengerPriceEditor({
     onChange([...rows, { label, ageRange: "", price: "", free: false }]);
 
   return (
-    <div className={embedded ? "" : "mt-4 rounded-lg border border-border bg-muted/30 p-3"}>
+    <div className={embedded ? "" : "space-y-3"}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           {!embedded && <h3 className="text-sm font-semibold">Хүүхэд / нярайн нас ба үнэ</h3>}
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Насны ангилал бүрийг тусдаа мөрөөр оруулна. Үнэгүй бол checkbox дарна.
-          </p>
         </div>
         <div className="flex gap-2">
           <Button type="button" variant="outline" size="sm" onClick={() => addRow("Хүүхэд")}>
@@ -1156,7 +1141,7 @@ function PassengerPriceEditor({
           </p>
         )}
         {rows.map((row, index) => (
-          <div key={index} className="grid gap-2 rounded-md border border-border bg-card p-2 sm:grid-cols-[1fr_1fr_1fr_auto_auto]">
+          <div key={index} className="grid grid-cols-2 items-end gap-3 border-b border-border py-3 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_auto_auto]">
             <div>
               <Label>Ангилал</Label>
               <Input
@@ -1184,7 +1169,7 @@ function PassengerPriceEditor({
                 placeholder={row.free ? "Үнэгүй" : "ж: 2390000"}
               />
             </div>
-            <label className="flex items-center gap-2 pt-6 text-sm font-medium text-muted-foreground">
+            <label className="flex min-h-9 items-center gap-2 text-sm text-muted-foreground">
               <input
                 type="checkbox"
                 checked={row.free}
@@ -1193,7 +1178,7 @@ function PassengerPriceEditor({
               />
               Үнэгүй
             </label>
-            <div className="flex items-end">
+            <div className="col-start-2 flex justify-end md:col-start-auto">
               <Button
                 type="button"
                 variant="ghost"
@@ -1215,8 +1200,8 @@ function PassengerPriceEditor({
 
 function Section({ title, children, hidden }: { title: string; children: React.ReactNode; hidden?: boolean }) {
   return (
-    <section hidden={hidden} className="min-w-0 border-t border-border pt-5">
-      <h2 className="mb-4 text-sm font-semibold">{title}</h2>
+    <section hidden={hidden} className="min-w-0 border-t border-border pt-5 first:border-t-0 first:pt-0">
+      <h2 className="mb-4 text-base font-semibold">{title}</h2>
       {children}
     </section>
   );

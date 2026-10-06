@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
-import { Loader2, Upload, X } from "lucide-react";
+import { Loader2, Plus, Upload, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -63,6 +63,7 @@ export default function MultiImageField({
 
       <div className="flex gap-2">
         <Input
+          aria-label={`${label} холбоос`}
           value={draft}
           placeholder="https://…"
           onChange={(e) => setDraft(e.target.value)}
@@ -76,15 +77,20 @@ export default function MultiImageField({
         <button
           type="button"
           onClick={addUrl}
-          className="shrink-0 rounded-md border border-input px-3 text-sm font-medium hover:bg-secondary"
+          aria-label={`${label} нэмэх`}
+          title="Нэмэх"
+          disabled={!draft.trim()}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-input hover:bg-secondary disabled:opacity-40"
         >
-          Нэмэх
+          <Plus className="h-4 w-4" />
         </button>
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
-          className="flex shrink-0 items-center gap-1.5 rounded-md border border-input px-3 text-sm font-medium hover:bg-secondary disabled:opacity-50"
+          aria-label={`${label} байршуулах`}
+          title="Байршуулах"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-input hover:bg-secondary disabled:opacity-50"
         >
           {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
         </button>

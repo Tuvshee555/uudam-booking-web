@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,32 +51,14 @@ function formatDateLabel(value: string) {
   return `${date.getFullYear()} · ${date.getMonth() + 1}-р сарын ${date.getDate()}`;
 }
 
-/**
- * The three seat states staff actually think in, each backed by a real
- * seatsTotal/seatsLeft pair so online-booking capacity enforcement (which
- * reads seatsLeft, not status) keeps working without staff ever typing a
- * number. "Дүүрсэн" doubles as the SOLD_OUT status so it also blocks new
- * online bookings, not just displays as full.
- */
-const SEAT_TIERS = [
-  { key: "LOTS", label: "Их суудалтай", status: "OPEN", seatsTotal: 40, seatsLeft: 40 },
-  { key: "LOW", label: "Цөөн суудал үлдсэн", status: "ALMOST_FULL", seatsTotal: 40, seatsLeft: 3 },
-  { key: "FULL", label: "Дүүрсэн", status: "SOLD_OUT", seatsTotal: 40, seatsLeft: 0 },
-] as const;
-
-const OTHER_STATUS_OPTIONS = [
+const STATUS_OPTIONS = [
+  { value: "OPEN", label: "Захиалга авч байна" },
+  { value: "ALMOST_FULL", label: "Цөөн суудал үлдсэн" },
+  { value: "SOLD_OUT", label: "Дүүрсэн" },
   { value: "PAUSED", label: "Одоогоор идэвхгүй" },
   { value: "CANCELLED", label: "Цуцлагдсан" },
   { value: "DEPARTED", label: "Явсан" },
 ];
-
-function tierForDraft(dep: DepartureDraft): (typeof SEAT_TIERS)[number]["key"] | null {
-  const left = Number(dep.seatsLeft);
-  if (dep.status === "SOLD_OUT" || (Number.isFinite(left) && dep.seatsLeft !== "" && left <= 0)) return "FULL";
-  if (dep.status === "ALMOST_FULL" || (Number.isFinite(left) && dep.seatsLeft !== "" && left <= 5)) return "LOW";
-  if (dep.status === "OPEN") return "LOTS";
-  return null;
-}
 
 function CalendarDatePicker({
   label,
@@ -146,6 +128,8 @@ function CalendarDatePicker({
       <Label>{label}</Label>
       <button
         type="button"
+        aria-label={label}
+        aria-expanded={open}
         onClick={toggleOpen}
         className={cn(
           "mt-1 flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2 text-left text-sm shadow-sm transition-colors hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20",
@@ -156,7 +140,7 @@ function CalendarDatePicker({
         <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-2 w-72 rounded-xl border border-border bg-background p-3 shadow-xl">
+        <div className="absolute left-0 top-full z-50 mt-2 w-72 max-w-[calc(100vw-3rem)] rounded-lg border border-border bg-background p-3 shadow-xl">
           <div className="flex items-center justify-between">
             <button
               type="button"
@@ -257,39 +241,29 @@ export default function DepartureEditor({
     onChange(departures.filter((_, i) => i !== index));
   }
 
-  function applyTier(index: number, tier: (typeof SEAT_TIERS)[number]) {
-    update(index, {
-      status: tier.status,
-      seatsTotal: String(tier.seatsTotal),
-      seatsLeft: String(tier.seatsLeft),
-    });
-  }
-
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-3">
-        <div className="grid gap-2 sm:grid-cols-[minmax(220px,280px)_1fr] sm:items-end">
+      <div className="max-w-xs pb-2">
           <CalendarDatePicker
             label="Гарах өдөр нэмэх"
             value=""
             placeholder="Календараас өдөр сонгох"
             onChange={addDeparture}
           />
-          <p className="text-xs leading-5 text-muted-foreground">
-            Сонгосон өдөр шууд доор шинэ хөдөлгөөн болж нэмэгдэнэ. Дараа нь суудлын байдал, үнэ өөр байвал мөр дээрээс нь засна.
-          </p>
-        </div>
       </div>
 
       {departures.map((dep, index) => {
-        const activeTier = tierForDraft(dep);
-        const isCancelledOrDeparted = dep.status === "CANCELLED" || dep.status === "DEPARTED";
-
         return (
-          <div key={index} className="rounded-xl border border-border bg-secondary/30 p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-muted-foreground">Хөдөлгөөн {index + 1}</span>
-              <button type="button" onClick={() => remove(index)} className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
+          <details key={index} open={index === 0 || !dep.startDate} className="group border-b border-border">
+            <summary className="flex cursor-pointer list-none items-center gap-3 py-3 text-sm [&::-webkit-details-marker]:hidden">
+              <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+              <span className="min-w-0 flex-1 break-words font-medium">{dep.startDate || "Шинэ гаралт"}{dep.endDate && ` / ${dep.endDate}`}</span>
+              <span className="hidden text-xs text-muted-foreground sm:inline">{STATUS_OPTIONS.find((option) => option.value === dep.status)?.label}</span>
+              {dep.price && <span className="shrink-0 text-xs tabular-nums">{Number(dep.price).toLocaleString("mn-MN")}₮</span>}
+            </summary>
+            <div className="pb-4">
+            <div className="flex justify-end">
+              <button type="button" onClick={() => { if (window.confirm(`${dep.startDate || "Энэ"} гаралтыг хасах уу?`)) remove(index); }} aria-label="Гаралт хасах" title="Гаралт хасах" className="rounded p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -326,36 +300,15 @@ export default function DepartureEditor({
             </div>
 
             <div className="mt-3">
-              <Label>Суудлын байдал</Label>
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {SEAT_TIERS.map((tier) => (
-                  <button
-                    key={tier.key}
-                    type="button"
-                    onClick={() => applyTier(index, tier)}
-                    className={cn(
-                      "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-                      activeTier === tier.key
-                        ? tier.key === "FULL"
-                          ? "border-destructive bg-destructive/10 text-destructive"
-                          : tier.key === "LOW"
-                            ? "border-amber-500 bg-amber-500/10 text-amber-600"
-                            : "border-primary bg-primary/10 text-primary"
-                        : "border-border text-muted-foreground hover:border-primary/40",
-                    )}
-                  >
-                    {tier.label}
-                  </button>
-                ))}
+              <Label>Захиалгын төлөв</Label>
+              <div className="mt-1.5 max-w-sm">
                 <select
-                  value={isCancelledOrDeparted ? dep.status : ""}
+                  aria-label="Захиалгын төлөв"
+                  value={dep.status}
                   onChange={(e) => update(index, { status: e.target.value })}
-                  className="rounded-full border border-border bg-transparent px-3 py-1.5 text-xs text-muted-foreground focus:outline-none"
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
                 >
-                  <option value="" disabled>
-                    Бусад…
-                  </option>
-                  {OTHER_STATUS_OPTIONS.map((opt) => (
+                  {STATUS_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
@@ -363,25 +316,23 @@ export default function DepartureEditor({
 
               <ExactSeatsOverride dep={dep} onChange={(patch) => update(index, patch)} />
             </div>
-          </div>
+            </div>
+          </details>
         );
       })}
 
       <button
         type="button"
         onClick={() => addDeparture()}
-        className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border py-2.5 text-sm font-medium text-muted-foreground hover:border-primary/40 hover:text-primary"
+        className="flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-secondary"
       >
         <Plus className="h-4 w-4" />
-        Хөдөлгөөн нэмэх
+        Гаралт нэмэх
       </button>
     </div>
   );
 }
 
-/** Collapsed by default — the 3-tier picker above covers normal use; this is
- * for staff who know the exact headcount and don't want the tier's default
- * (e.g. 40) left in place. */
 function ExactSeatsOverride({
   dep,
   onChange,
@@ -398,7 +349,7 @@ function ExactSeatsOverride({
         onClick={() => setOpen(true)}
         className="mt-2 text-[11px] font-medium text-muted-foreground underline-offset-2 hover:text-primary hover:underline"
       >
-        Яг тоогоор оруулах
+        Суудлын тоо
       </button>
     );
   }

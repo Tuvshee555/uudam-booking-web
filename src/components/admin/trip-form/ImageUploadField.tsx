@@ -53,6 +53,7 @@ export default function ImageUploadField({
 
       <div className="flex gap-2">
         <Input
+          aria-label={`${label} холбоос`}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="https://…"
@@ -62,10 +63,11 @@ export default function ImageUploadField({
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
-          className="flex shrink-0 items-center gap-1.5 rounded-md border border-input px-3 text-sm font-medium hover:bg-secondary disabled:opacity-50"
+          title="Байршуулах"
+          aria-label={`${label} байршуулах`}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-input text-sm font-medium hover:bg-secondary disabled:opacity-50"
         >
           {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-          Байршуулах
         </button>
         <input
           ref={fileRef}

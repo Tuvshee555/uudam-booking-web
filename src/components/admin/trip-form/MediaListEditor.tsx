@@ -83,9 +83,9 @@ function MediaRow({
   }
 
   return (
-    <div className="flex gap-3 rounded-xl border border-border bg-secondary/30 p-3">
+    <div className="flex flex-col gap-3 border-b border-border py-3 sm:flex-row">
       {/* Preview tile — this is the whole point: SEE what's attached. */}
-      <div className="relative h-24 w-32 shrink-0 overflow-hidden rounded-lg border border-border bg-secondary">
+      <div className="relative h-24 w-32 shrink-0 overflow-hidden rounded-md border border-border bg-secondary">
         {uploading ? (
           <div className="flex h-full w-full items-center justify-center">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -117,12 +117,13 @@ function MediaRow({
       </div>
 
       <div className="min-w-0 flex-1 space-y-2">
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Input
             value={item.url}
             onChange={(e) => onChange({ ...item, url: e.target.value })}
             placeholder="Холбоос буулгах (YouTube, сайт, зураг)"
-            className={unreadable ? "border-destructive" : undefined}
+            aria-label="Медиа холбоос"
+            className={`min-w-0 basis-full sm:flex-1 sm:basis-0 ${unreadable ? "border-destructive" : ""}`}
           />
           <button
             type="button"
@@ -151,9 +152,10 @@ function MediaRow({
         </div>
 
         <Input
+          aria-label="Медиа тайлбар"
           value={item.caption}
           onChange={(e) => onChange({ ...item, caption: e.target.value })}
-          placeholder="Тайлбар (заавал биш) — ж.нь: Буудлын усан бассейн"
+          placeholder="Тайлбар"
         />
 
         {uploading && (
@@ -201,7 +203,7 @@ export default function MediaListEditor({
       <button
         type="button"
         onClick={() => onChange([...items, { url: "", caption: "" }])}
-        className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border py-2.5 text-sm font-medium text-muted-foreground hover:border-primary/40 hover:text-primary"
+        className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-secondary"
       >
         <Plus className="h-4 w-4" />
         Нэмэх

@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ChevronDown,
   ChevronUp,
   Copy,
-  GripVertical,
   ImageIcon,
+  Plus,
   Trash2,
   Video,
 } from "lucide-react";
@@ -56,7 +57,8 @@ export default function ItineraryEditor({
 }) {
   // Index of the open day. A brand-new trip opens its first day, since there
   // is nothing to survey yet and the alternative is an empty-looking editor.
-  const [openIndex, setOpenIndex] = useState<number | null>(days.length ? null : 0);
+  const [openIndex, setOpenIndex] = useState<number | null>(0);
+  const reduceMotion = useReducedMotion();
 
   function update(index: number, patch: Partial<ItineraryDraft>) {
     onChange(days.map((day, i) => (i === index ? { ...day, ...patch } : day)));
@@ -104,31 +106,24 @@ export default function ItineraryEditor({
           <div
             key={index}
             className={cn(
-              "rounded-xl border bg-card",
+              "rounded-lg border bg-card",
               isOpen ? "border-primary/40 shadow-sm" : "border-border",
             )}
           >
-            {/* Collapsed header — the whole row toggles, so hitting the day is
-                enough; the icon buttons stop propagation to stay usable. */}
-            <div
-              role="button"
-              tabIndex={0}
+            <div className="flex flex-wrap items-center gap-1 p-2">
+            <button
+              type="button"
+              aria-expanded={isOpen}
+              aria-controls={`itinerary-editor-day-${index}`}
               onClick={() => setOpenIndex(isOpen ? null : index)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  setOpenIndex(isOpen ? null : index);
-                }
-              }}
-              className="flex w-full cursor-pointer items-center gap-2.5 p-3 text-left"
+              className="flex min-w-0 flex-1 items-center gap-2.5 rounded p-1 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
             >
-              <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground/40" />
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
                 {index + 1}
               </span>
 
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium">
+                <span className="block break-words text-sm font-medium">
                   {day.title || <span className="text-muted-foreground">Гарчиг оруулаагүй</span>}
                 </span>
                 {summary && (
@@ -138,7 +133,8 @@ export default function ItineraryEditor({
 
               {day.image && <ImageIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
               {day.video && <Video className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
-
+              <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", isOpen && "rotate-180")} />
+            </button>
               <span className="flex shrink-0 items-center gap-0.5">
                 <button
                   type="button"
@@ -148,7 +144,8 @@ export default function ItineraryEditor({
                   }}
                   disabled={index === 0}
                   title="Дээш"
-                  className="rounded p-1 text-muted-foreground hover:bg-secondary disabled:opacity-30"
+                  aria-label="Өдөр дээш шилжүүлэх"
+                  className="rounded p-2 text-muted-foreground hover:bg-secondary disabled:opacity-30"
                 >
                   <ChevronUp className="h-3.5 w-3.5" />
                 </button>
@@ -160,7 +157,8 @@ export default function ItineraryEditor({
                   }}
                   disabled={index === days.length - 1}
                   title="Доош"
-                  className="rounded p-1 text-muted-foreground hover:bg-secondary disabled:opacity-30"
+                  aria-label="Өдөр доош шилжүүлэх"
+                  className="rounded p-2 text-muted-foreground hover:bg-secondary disabled:opacity-30"
                 >
                   <ChevronDown className="h-3.5 w-3.5" />
                 </button>
@@ -171,7 +169,8 @@ export default function ItineraryEditor({
                     duplicate(index);
                   }}
                   title="Хуулах"
-                  className="rounded p-1 text-muted-foreground hover:bg-secondary hover:text-primary"
+                  aria-label="Өдөр хуулах"
+                  className="rounded p-2 text-muted-foreground hover:bg-secondary hover:text-primary"
                 >
                   <Copy className="h-3.5 w-3.5" />
                 </button>
@@ -182,15 +181,18 @@ export default function ItineraryEditor({
                     if (window.confirm(`${index + 1} дэх өдрийг устгах уу?`)) remove(index);
                   }}
                   title="Устгах"
-                  className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  aria-label="Өдөр устгах"
+                  className="rounded p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </span>
             </div>
 
+            <AnimatePresence initial={false}>
             {isOpen && (
-              <div className="grid gap-3 border-t border-border p-4 sm:grid-cols-2">
+              <motion.div id={`itinerary-editor-day-${index}`} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.2 }} className="overflow-hidden">
+              <div className="grid gap-3 border-t border-border p-3 sm:grid-cols-2">
                 <div className="sm:col-span-2">
                   <Label>Гарчиг</Label>
                   <Input
@@ -246,7 +248,9 @@ export default function ItineraryEditor({
                   resourceType="video"
                 />
               </div>
+              </motion.div>
             )}
+            </AnimatePresence>
           </div>
         );
       })}
@@ -254,9 +258,9 @@ export default function ItineraryEditor({
       <button
         type="button"
         onClick={addDay}
-        className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border py-2.5 text-sm font-medium text-muted-foreground hover:border-primary/40 hover:text-primary"
+        className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-secondary"
       >
-        <span className="text-base leading-none">+</span>
+        <Plus className="h-4 w-4" />
         Өдөр нэмэх
         {days.length > 0 && <span className="text-xs opacity-60">({days.length + 1} дэх өдөр)</span>}
       </button>

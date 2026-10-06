@@ -27,6 +27,7 @@ import { useAuth } from "@/app/[locale]/provider/AuthProvider";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import styles from "./admin-workspace.module.css";
 
 export default function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -56,15 +57,15 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       {nav.map(({ href, label, icon: Icon, exact }, index) => {
         const active = exact ? pathname === href : pathname === href || pathname?.startsWith(`${href}/`);
         const group = index === 0 ? "Өдөр тутам" : index === 3 ? "Аяллын сан" : index === 7 ? "Контент" : index === 10 ? "Удирдлага" : null;
-        return <div key={href}>{group && <p className="px-3 pb-2 pt-4 text-xs font-medium text-muted-foreground">{group}</p>}
-          <Link href={href} aria-current={active ? "page" : undefined} onClick={() => setMenuOpen(false)} className={cn("flex min-h-10 items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors", active ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground")}><Icon className="h-4 w-4 shrink-0" /><span className="min-w-0 break-words">{label}</span></Link>
+        return <div key={href}>{group && <p className="px-3 pb-1.5 pt-4 text-[11px] font-medium text-muted-foreground">{group}</p>}
+          <Link href={href} aria-current={active ? "page" : undefined} onClick={() => setMenuOpen(false)} className={cn("flex min-h-10 items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring", active ? "bg-secondary font-semibold text-primary" : "text-muted-foreground hover:bg-secondary hover:text-foreground")}><Icon className="h-4 w-4 shrink-0" /><span className="min-w-0 break-words">{label}</span></Link>
         </div>;
       })}
     </nav>
   );
 
   return (
-    <div className="min-h-screen bg-secondary/30 lg:flex">
+    <div className="min-h-screen bg-background lg:flex">
       <aside className="sticky top-0 hidden h-dvh shrink-0 border-r border-border bg-background lg:flex lg:w-56 lg:flex-col">
         <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-border px-5">
           <Image src="/uudam-logo.jpg" alt="Uudam" width={30} height={30} className="rounded-md" />
@@ -128,7 +129,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
         </div>
 
-        <div className="uudam-container py-8">{children}</div>
+        <main className={cn(styles.content, "mx-auto w-full max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8")}>{children}</main>
       </div>
     </div>
   );

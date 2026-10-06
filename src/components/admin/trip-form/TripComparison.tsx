@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, Check, RefreshCw } from "lucide-react";
 import { api, apiErrorMessage } from "@/lib/api";
@@ -17,6 +18,7 @@ function Value({ value }: { value: unknown }) {
   return <span className="whitespace-pre-wrap break-words">{typeof value === "boolean" ? value ? "Тийм" : "Үгүй" : String(value)}</span>;
 }
 export default function TripComparison({ trip, patch, onExtraChange }: { trip: Trip; patch: unknown; onExtraChange: (base: Row, values: Row) => void }) {
+  const [differencesOnly, setDifferencesOnly] = useState(false);
   const query = useQuery({ queryKey: ["trip-parity", trip.id], queryFn: async () => (await api.get("/admin/trip-parity", { params: { id: trip.id } })).data as { website: Trip; chatbot: Row | null } });
   if (query.isPending) return <p className="text-sm text-muted-foreground" role="status">Харьцуулалт ачаалж байна…</p>;
   if (query.isError) return <div role="alert" className="text-sm text-destructive">{apiErrorMessage(query.error, "Харьцуулалт ачаалсангүй")} <Button type="button" variant="outline" size="sm" onClick={() => query.refetch()}>Дахин ачаалах</Button></div>;
@@ -43,7 +45,9 @@ export default function TripComparison({ trip, patch, onExtraChange }: { trip: T
   const differences = rows.filter((row) => !equal(row.website, row.chatbot));
   return <div className="space-y-5 min-w-0">
     <div className="flex items-center justify-between gap-3 text-sm"><span className="inline-flex items-center gap-2">{differences.length ? <AlertCircle className="h-4 w-4 text-amber-600" /> : <Check className="h-4 w-4 text-emerald-600" />}{differences.length ? `${differences.length} ялгаатай талбар` : "Үндсэн мэдээлэл ижил"}</span><Button type="button" size="icon" variant="ghost" title="Харьцуулалт шинэчлэх" aria-label="Харьцуулалт шинэчлэх" onClick={() => query.refetch()}><RefreshCw className="h-4 w-4" /></Button></div>
-    {rows.map((row) => <section key={row.label} className="border-t border-border pt-3"><h3 className="mb-2 text-sm font-semibold">{row.label}</h3><div className="grid min-w-0 gap-4 text-sm sm:grid-cols-2"><div className="min-w-0"><p className="mb-1 text-xs font-medium text-muted-foreground">Вебсайт</p><Value value={row.website} /></div><div className="min-w-0"><p className="mb-1 text-xs font-medium text-muted-foreground">Chatbot</p><Value value={row.chatbot} /></div></div></section>)}
+    <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={differencesOnly} onChange={(event) => setDifferencesOnly(event.target.checked)} className="h-4 w-4 accent-primary" />Зөвхөн ялгаатай мэдээлэл</label>
+    {(differencesOnly ? differences : rows).map((row) => <details key={row.label} open={!equal(row.website, row.chatbot)} className="border-t border-border"><summary className="cursor-pointer py-3 text-sm font-medium">{row.label}<span className={`ml-3 text-xs ${equal(row.website, row.chatbot) ? "text-muted-foreground" : "text-amber-700"}`}>{equal(row.website, row.chatbot) ? "Ижил" : "Ялгаатай"}</span></summary><div className="grid min-w-0 gap-4 pb-4 text-sm sm:grid-cols-2"><div className="min-w-0"><p className="mb-1 text-xs font-medium text-muted-foreground">Вебсайт</p><Value value={row.website} /></div><div className="min-w-0"><p className="mb-1 text-xs font-medium text-muted-foreground">Chatbot</p><Value value={row.chatbot} /></div></div></details>)}
+    {differencesOnly && !differences.length && <p className="text-sm text-muted-foreground">Ялгаатай мэдээлэл байхгүй.</p>}
     {[...(Array.isArray(extra.shared_conflicts) ? extra.shared_conflicts : []), ...(Array.isArray(website.sourceMetadata?.contentConflicts) ? website.sourceMetadata.contentConflicts : [])].map((entry, index) => {
       const conflict = object(entry);
       return <section key={`conflict-${index}`} className="border-t border-border pt-3 text-sm"><h3 className="mb-2 font-medium text-amber-700">{String(conflict.field || "Шалгах зөрүү")}</h3><div className="grid min-w-0 gap-4 sm:grid-cols-2"><div className="min-w-0"><p className="mb-1 text-xs text-muted-foreground">Вебсайт</p><Value value={conflict.website} /></div><div className="min-w-0"><p className="mb-1 text-xs text-muted-foreground">Chatbot</p><Value value={conflict.chatbot} /></div></div></section>;

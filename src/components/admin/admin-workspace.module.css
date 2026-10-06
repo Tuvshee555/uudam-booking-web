@@ -1,0 +1,20 @@
+.content :global(h1) {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  font-weight: 600;
+}
+
+.content :global(.rounded-2xl),
+.content :global(.rounded-xl) {
+  border-radius: 8px;
+}
+
+.content :global(input),
+.content :global(textarea),
+.content :global(select) {
+  min-width: 0;
+}
+
+.content :global(label) {
+  overflow-wrap: anywhere;
+}
