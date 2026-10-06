@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Plus, Search, Trash2 } from "lucide-react";
-import { pricingDateRows, pricingDates, patchPricingDate, renamePricingDate, passengerPricingRows, type PricingGroup } from "@/lib/adminDatePricing";
+import { pricingDateRows, pricingDates, patchPricingDate, renamePricingDate, passengerPricingRows, passengerName, type PricingGroup } from "@/lib/adminDatePricing";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CalendarDatePicker, ExactSeatsOverride, STATUS_OPTIONS, EMPTY_DEPARTURE, type DepartureDraft } from "./DepartureEditor";
@@ -122,12 +122,13 @@ export default function DatePricingEditor({ metadata, departures, defaultPrice, 
         <span className="text-sm font-medium">Том хүн <span className="ml-1 text-xs font-normal text-muted-foreground">{String(record(metadata.age_rules).adult || "")}</span></span>
         <label className="flex w-44 max-w-[55%] items-center gap-2"><Input aria-label="Сонгосон огнооны том хүний үнэ" type="number" min={0} value={amount(group.adult_price)} placeholder={defaultPrice} onChange={(e) => update({ adult_price: fare(e.target.value), adult_price_range: null })} /><span className="text-xs text-muted-foreground">{currency === "MNT" ? "₮" : currency}</span></label>
       </div>
-      {passengers.map((passenger, index) => <div key={index} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_32px] items-start gap-2 border-b border-border py-3">
-        <div className="space-y-1"><Input aria-label="Зорчигчийн ангилал" value={String(passenger.label || "")} onChange={(e) => updatePassengers(passengers.map((row, i) => i === index ? { ...row, label: e.target.value } : row))} /><Input aria-label="Насны хүрээ" value={String(passenger.age_range || "")} placeholder="Нас" onChange={(e) => updatePassengers(passengers.map((row, i) => i === index ? { ...row, age_range: e.target.value } : row))} className="h-8 text-xs" /></div>
-        <div><Input aria-label={`${passenger.label || "Зорчигч"} үнэ`} type="number" min={0} value={amount(passenger.price)} onChange={(e) => updatePassengers(passengers.map((row, i) => i === index ? { ...row, price: fare(e.target.value), note: row.price === 0 && /үнэгүй|free/i.test(String(row.note)) ? "" : row.note } : row))} />
+      {passengers.map((passenger, index) => <div key={index} className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)_32px] items-start gap-3 border-b border-border py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_32px]">
+        <label className="min-w-0 text-xs text-muted-foreground">Зорчигчийн нэр<Input aria-label="Зорчигчийн ангилал" className="mt-1" value={passengerName(passenger)} placeholder="Хүүхэд, нярай" onChange={(e) => updatePassengers(passengers.map((row, i) => i === index ? { ...row, label: e.target.value } : row))} /></label>
+        <label className="min-w-0 text-xs text-muted-foreground">Насны хүрээ<Input aria-label="Насны хүрээ" className="mt-1" value={String(passenger.age_range || "")} placeholder="4-12 нас" onChange={(e) => updatePassengers(passengers.map((row, i) => i === index ? { ...row, label: passengerName(row), age_range: e.target.value } : row))} /></label>
+        <div className="col-span-2 min-w-0 sm:col-span-1"><label className="text-xs text-muted-foreground">Нэг хүний үнэ ({currency === "MNT" ? "₮" : currency})<Input className="mt-1" aria-label={`${passenger.label || "Зорчигч"} үнэ`} type="number" min={0} disabled={passenger.price === 0 && /үнэгүй|free/i.test(String(passenger.note))} value={amount(passenger.price)} onChange={(e) => updatePassengers(passengers.map((row, i) => i === index ? { ...row, price: fare(e.target.value), note: row.price === 0 && /үнэгүй|free/i.test(String(row.note)) ? "" : row.note } : row))} /></label>
           <label className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground"><input type="checkbox" checked={passenger.price === 0 && /үнэгүй|free/i.test(String(passenger.note))} onChange={(e) => updatePassengers(passengers.map((row, i) => i === index ? { ...row, price: e.target.checked ? 0 : null, note: e.target.checked ? "Үнэгүй" : "" } : row))} />Үнэгүй</label>
         </div>
-        <Button type="button" variant="ghost" size="icon" aria-label="Насны ангилал хасах" title="Насны ангилал хасах" onClick={() => updatePassengers(passengers.filter((_, i) => i !== index))}><Trash2 className="h-3.5 w-3.5" /></Button>
+        <Button type="button" variant="ghost" size="icon" className="col-start-3 row-start-1 mt-5 sm:col-start-4" aria-label="Насны ангилал хасах" title="Насны ангилал хасах" onClick={() => updatePassengers(passengers.filter((_, i) => i !== index))}><Trash2 className="h-3.5 w-3.5" /></Button>
       </div>)}
       <div className="flex gap-3 py-3">{["Хүүхэд", "Нярай"].map((label) => <Button key={label} type="button" variant="ghost" size="sm" onClick={() => updatePassengers([...passengers, { label, age_range: "", price: null, currency }])}><Plus className="h-3.5 w-3.5" />{label}</Button>)}</div>
       {departure && <div className="grid gap-3 border-t border-border pt-4 sm:grid-cols-2">

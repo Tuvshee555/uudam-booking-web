@@ -118,20 +118,23 @@ function MediaRow({
 
       <div className="min-w-0 flex-1 space-y-2">
         <div className="flex flex-wrap gap-2">
+          <label className="min-w-0 basis-full text-xs text-muted-foreground sm:flex-1 sm:basis-0">
+            Холбоос
           <Input
             value={item.url}
             onChange={(e) => onChange({ ...item, url: e.target.value })}
             placeholder="Холбоос буулгах (YouTube, сайт, зураг)"
             aria-label="Медиа холбоос"
-            className={`min-w-0 basis-full sm:flex-1 sm:basis-0 ${unreadable ? "border-destructive" : ""}`}
+            className={`mt-1 ${unreadable ? "border-destructive" : ""}`}
           />
+          </label>
           <button
             type="button"
             onClick={() => imageInput.current?.click()}
             disabled={uploading}
             title="Зураг байршуулах"
             aria-label="Зураг байршуулах"
-            className="flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-input px-3 text-sm font-medium hover:bg-secondary disabled:opacity-50"
+            className="flex h-9 shrink-0 items-center gap-1.5 self-end rounded-md border border-input px-3 text-sm font-medium hover:bg-secondary disabled:opacity-50"
           >
             <Upload className="h-3.5 w-3.5" />
             Зураг
@@ -142,7 +145,7 @@ function MediaRow({
             disabled={uploading}
             title="Бичлэг байршуулах"
             aria-label="Бичлэг байршуулах"
-            className="flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-input px-3 text-sm font-medium hover:bg-secondary disabled:opacity-50"
+            className="flex h-9 shrink-0 items-center gap-1.5 self-end rounded-md border border-input px-3 text-sm font-medium hover:bg-secondary disabled:opacity-50"
           >
             <Upload className="h-3.5 w-3.5" />
             Бичлэг
@@ -151,12 +154,16 @@ function MediaRow({
           <input ref={videoInput} type="file" accept="video/*" className="hidden" onChange={(e) => handleFile(e.target.files?.[0], "video")} />
         </div>
 
+        <label className="block text-xs text-muted-foreground">
+          Тайлбар
         <Input
+          className="mt-1"
           aria-label="Медиа тайлбар"
           value={item.caption}
           onChange={(e) => onChange({ ...item, caption: e.target.value })}
           placeholder="Тайлбар"
         />
+        </label>
 
         {uploading && (
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">

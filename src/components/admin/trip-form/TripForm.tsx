@@ -14,6 +14,7 @@ import { isAllowedImageHost } from "@/lib/imageHosts";
 import { useCategoryTree, useTags, useTrip } from "@/hooks/useTrips";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { cn } from "@/lib/utils";
+import { passengerName } from "@/lib/adminDatePricing";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -917,13 +918,9 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
           <StringListField label="Хүүхдийн үнийн тэмдэглэл" values={form.childPriceNotes} onChange={(v) => set("childPriceNotes", v)} />
         </div>
       </Section>
-      <Section title="Буудал, хоол" hidden={activeSection !== "terms"}>
+      <Section title="Хоол" hidden={activeSection !== "terms"}>
         <div className="grid gap-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <Label htmlFor="trip-hotel">Зочид буудал</Label>
-              <Input id="trip-hotel" value={form.hotel} onChange={(e) => set("hotel", e.target.value)} />
-            </div>
             <div>
               <Label htmlFor="trip-food">Хоол багтсан эсэх</Label>
               <select
@@ -938,11 +935,6 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
               </select>
             </div>
           </div>
-          <MediaListEditor
-            label="Зочид буудлын зураг, бичлэг, холбоос"
-            items={form.hotelMedia}
-            onChange={(v) => set("hotelMedia", v)}
-          />
         </div>
       </Section>
       <Section title="Аялагчид тавих нөхцөл" hidden={activeSection !== "terms"}>
@@ -962,6 +954,15 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
         </div>
       </Section>
 
+      <Section title="Зочид буудал" hidden={activeSection !== "media"}>
+        <div className="grid gap-4">
+          <div>
+            <Label htmlFor="trip-hotel">Буудлын нэр</Label>
+            <Input id="trip-hotel" value={form.hotel} onChange={(e) => set("hotel", e.target.value)} />
+          </div>
+          <MediaListEditor label="Буудлын зураг, бичлэг, холбоос" items={form.hotelMedia} onChange={(v) => set("hotelMedia", v)} />
+        </div>
+      </Section>
       <Section title="Аялагчдын зураг, бичлэг" hidden={activeSection !== "media"}>
         <MediaListEditor
           label="Аялагчдын зураг, бичлэг, холбоос"
@@ -1092,25 +1093,25 @@ function PassengerPriceEditor({
         {rows.map((row, index) => (
           <div key={index} className="grid grid-cols-2 items-end gap-3 border-b border-border py-3 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_auto_auto]">
             <div>
-              <Label>Ангилал</Label>
+              <Label>Зорчигчийн нэр</Label>
               <Input
                 aria-label="Зорчигчийн ангилал"
-                value={row.label}
+                value={passengerName({ label: row.label, age_range: row.ageRange })}
                 onChange={(e) => update(index, { ...row, label: e.target.value })}
-                placeholder="ж: Хүүхэд 2-5"
+                placeholder="Хүүхэд, нярай"
               />
             </div>
             <div>
-              <Label>Нас</Label>
+              <Label>Насны хүрээ</Label>
               <Input
                 aria-label="Насны хүрээ"
                 value={row.ageRange}
-                onChange={(e) => update(index, { ...row, ageRange: e.target.value })}
+                onChange={(e) => update(index, { ...row, label: passengerName({ label: row.label, age_range: row.ageRange }), ageRange: e.target.value })}
                 placeholder="ж: 2-5 нас"
               />
             </div>
             <div>
-              <Label>Үнэ (₮)</Label>
+              <Label>Нэг хүний үнэ (₮)</Label>
               <Input
                 aria-label={`${row.label || "Зорчигч"} үнэ`}
                 type="number"
