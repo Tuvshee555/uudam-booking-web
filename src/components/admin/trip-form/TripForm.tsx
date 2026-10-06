@@ -1093,7 +1093,10 @@ function DatedPassengerPriceEditor({
         <details key={index} open={index === 0} className="group border-b border-border">
           <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 py-3 [&::-webkit-details-marker]:hidden">
             <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
-            <p className="min-w-0 flex-1 text-sm font-medium">{datedGroupLabel(group, index)}</p>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium">{datedGroupLabel(group, index)}</span>
+              {(text(group.package_id) || text(group.note) || text(group.hotel)) && <span className="block break-words text-xs text-muted-foreground">{[text(group.package_id) || text(group.note), text(group.hotel)].filter(Boolean).join(" · ")}</span>}
+            </span>
             {typeof group.adult_price === "number" && (
               <p className="text-xs text-muted-foreground">Том хүн: {group.adult_price.toLocaleString("mn-MN")}₮</p>
             )}

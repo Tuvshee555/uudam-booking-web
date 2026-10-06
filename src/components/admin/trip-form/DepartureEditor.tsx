@@ -257,8 +257,10 @@ export default function DepartureEditor({
           <details key={index} open={index === 0 || !dep.startDate} className="group border-b border-border">
             <summary className="flex cursor-pointer list-none items-center gap-3 py-3 text-sm [&::-webkit-details-marker]:hidden">
               <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
-              <span className="min-w-0 flex-1 break-words font-medium">{dep.startDate || "Шинэ гаралт"}{dep.endDate && ` / ${dep.endDate}`}</span>
-              <span className="hidden text-xs text-muted-foreground sm:inline">{STATUS_OPTIONS.find((option) => option.value === dep.status)?.label}</span>
+              <span className="min-w-0 flex-1 break-words">
+                <span className="block font-medium">{dep.startDate || "Шинэ гаралт"}{dep.endDate && ` / ${dep.endDate}`}</span>
+                <span className="block text-xs text-muted-foreground">{STATUS_OPTIONS.find((option) => option.value === dep.status)?.label}</span>
+              </span>
               {dep.price && <span className="shrink-0 text-xs tabular-nums">{Number(dep.price).toLocaleString("mn-MN")}₮</span>}
             </summary>
             <div className="pb-4">
