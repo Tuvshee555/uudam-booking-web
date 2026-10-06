@@ -732,16 +732,16 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
       <Section title="Үндсэн мэдээлэл" hidden={activeSection !== "facts"}>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <Label>Аяллын нэр *</Label>
-            <Input value={form.title} onChange={(e) => set("title", e.target.value)} />
+            <Label htmlFor="trip-title">Аяллын нэр *</Label>
+            <Input id="trip-title" value={form.title} onChange={(e) => set("title", e.target.value)} />
           </div>
           <div className="sm:col-span-2">
-            <Label>Товч танилцуулга</Label>
-            <Textarea rows={2} value={form.summary} onChange={(e) => set("summary", e.target.value)} />
+            <Label htmlFor="trip-summary">Товч танилцуулга</Label>
+            <Textarea id="trip-summary" rows={2} value={form.summary} onChange={(e) => set("summary", e.target.value)} />
           </div>
           <div className="sm:col-span-2">
-            <Label>Дэлгэрэнгүй тайлбар *</Label>
-            <Textarea rows={4} value={form.description} onChange={(e) => set("description", e.target.value)} />
+            <Label htmlFor="trip-description">Дэлгэрэнгүй тайлбар *</Label>
+            <Textarea id="trip-description" rows={4} value={form.description} onChange={(e) => set("description", e.target.value)} />
           </div>
         </div>
       </Section>
@@ -756,23 +756,23 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
       <Section title="Байршил, хугацаа" hidden={activeSection !== "facts"}>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <Label>Улс</Label>
-            <Input value={form.country} onChange={(e) => set("country", e.target.value)} />
+            <Label htmlFor="trip-country">Улс</Label>
+            <Input id="trip-country" value={form.country} onChange={(e) => set("country", e.target.value)} />
           </div>
           <div>
-            <Label>Хот</Label>
-            <Input value={form.city} onChange={(e) => set("city", e.target.value)} />
+            <Label htmlFor="trip-city">Хот</Label>
+            <Input id="trip-city" value={form.city} onChange={(e) => set("city", e.target.value)} />
           </div>
           <div className="sm:col-span-2">
             <StringListField label="Очих газрууд" values={form.destinations} onChange={(v) => set("destinations", v)} placeholder="ж: Токио" />
           </div>
           <div>
-            <Label>Хоног</Label>
-            <Input type="number" min={1} value={form.durationDays} onChange={(e) => set("durationDays", e.target.value)} />
+            <Label htmlFor="trip-days">Хоног</Label>
+            <Input id="trip-days" type="number" min={1} value={form.durationDays} onChange={(e) => set("durationDays", e.target.value)} />
           </div>
           <div>
-            <Label>Шөнө</Label>
-            <Input type="number" min={0} value={form.durationNights} onChange={(e) => set("durationNights", e.target.value)} />
+            <Label htmlFor="trip-nights">Шөнө</Label>
+            <Input id="trip-nights" type="number" min={0} value={form.durationNights} onChange={(e) => set("durationNights", e.target.value)} />
           </div>
         </div>
       </Section>
@@ -780,16 +780,17 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
       <Section title="Аяллын зохион байгуулалт" hidden={activeSection !== "facts"}>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <Label>Хүний доод тоо</Label>
-            <Input type="number" min={1} value={form.minTravelers} onChange={(e) => set("minTravelers", e.target.value)} />
+            <Label htmlFor="trip-min-travelers">Хүний доод тоо</Label>
+            <Input id="trip-min-travelers" type="number" min={1} value={form.minTravelers} onChange={(e) => set("minTravelers", e.target.value)} />
           </div>
           <div>
-            <Label>Хүний дээд тоо</Label>
-            <Input type="number" min={1} value={form.maxTravelers} onChange={(e) => set("maxTravelers", e.target.value)} />
+            <Label htmlFor="trip-max-travelers">Хүний дээд тоо</Label>
+            <Input id="trip-max-travelers" type="number" min={1} value={form.maxTravelers} onChange={(e) => set("maxTravelers", e.target.value)} />
           </div>
           <div>
-            <Label>Хүндрэл</Label>
+            <Label htmlFor="trip-difficulty">Хүндрэл</Label>
             <select
+              id="trip-difficulty"
               value={form.difficulty}
               onChange={(e) => set("difficulty", e.target.value)}
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
@@ -800,8 +801,8 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
             </select>
           </div>
           <div>
-            <Label>Улирал</Label>
-            <Input value={form.season} onChange={(e) => set("season", e.target.value)} placeholder="ж: Хавар" />
+            <Label htmlFor="trip-season">Улирал</Label>
+            <Input id="trip-season" value={form.season} onChange={(e) => set("season", e.target.value)} placeholder="ж: Хавар" />
           </div>
           <div>
             <StringListField label="Тээвэр" values={form.transport} onChange={(v) => set("transport", v)} placeholder="ж: Онгоц" />
@@ -810,12 +811,12 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
             <StringListField label="Хөтчийн хэл" values={form.languages} onChange={(v) => set("languages", v)} placeholder="ж: Монгол" />
           </div>
           <div>
-            <Label>Цугларах цэг</Label>
-            <Input value={form.meetingPoint} onChange={(e) => set("meetingPoint", e.target.value)} />
+            <Label htmlFor="trip-meeting">Цугларах цэг</Label>
+            <Input id="trip-meeting" value={form.meetingPoint} onChange={(e) => set("meetingPoint", e.target.value)} />
           </div>
           <div>
-            <Label>Газрын зургийн холбоос</Label>
-            <Input value={form.mapUrl} onChange={(e) => set("mapUrl", e.target.value)} placeholder="https://…" />
+            <Label htmlFor="trip-map">Газрын зургийн холбоос</Label>
+            <Input id="trip-map" value={form.mapUrl} onChange={(e) => set("mapUrl", e.target.value)} placeholder="https://…" />
           </div>
         </div>
       </Section>
@@ -840,12 +841,12 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
       <Section title="Үндсэн үнэ" hidden={activeSection !== "pricing"}>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <Label>Том хүний үндсэн үнэ (₮) *</Label>
-            <Input type="number" min={0} value={form.price} onChange={(e) => set("price", e.target.value)} />
+            <Label htmlFor="trip-price">Том хүний үндсэн үнэ (₮) *</Label>
+            <Input id="trip-price" type="number" min={0} value={form.price} onChange={(e) => set("price", e.target.value)} />
           </div>
           <div>
-            <Label>Том хүний нас</Label>
-            <Input value={form.adultAge} onChange={(e) => {
+            <Label htmlFor="trip-adult-age">Том хүний нас</Label>
+            <Input id="trip-adult-age" value={form.adultAge} onChange={(e) => {
               const adult = e.target.value;
               setForm((current) => ({ ...current, adultAge: adult, sourceMetadata: { ...current.sourceMetadata, age_rules: { ...object(current.sourceMetadata.age_rules), adult } } }));
             }} placeholder="ж: 12+ нас" />
@@ -855,16 +856,16 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
           <summary className="cursor-pointer text-sm font-medium text-muted-foreground">Хямдрал, нэмэгдэл</summary>
           <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <div>
-            <Label>Хямдрахаас өмнөх үнэ (₮)</Label>
-            <Input type="number" min={0} value={form.oldPrice} onChange={(e) => set("oldPrice", e.target.value)} />
+            <Label htmlFor="trip-old-price">Хямдрахаас өмнөх үнэ (₮)</Label>
+            <Input id="trip-old-price" type="number" min={0} value={form.oldPrice} onChange={(e) => set("oldPrice", e.target.value)} />
           </div>
           <div>
-            <Label>Хямдрал (%)</Label>
-            <Input type="number" min={0} max={100} value={form.discount} onChange={(e) => set("discount", e.target.value)} />
+            <Label htmlFor="trip-discount">Хямдрал (%)</Label>
+            <Input id="trip-discount" type="number" min={0} max={100} value={form.discount} onChange={(e) => set("discount", e.target.value)} />
           </div>
           <div>
-            <Label>Ганц хүний нэмэгдэл (₮)</Label>
-            <Input type="number" min={0} value={form.singleSupplement} onChange={(e) => set("singleSupplement", e.target.value)} />
+            <Label htmlFor="trip-supplement">Ганц хүний нэмэгдэл (₮)</Label>
+            <Input id="trip-supplement" type="number" min={0} value={form.singleSupplement} onChange={(e) => set("singleSupplement", e.target.value)} />
           </div>
         </div>
         </details>
@@ -914,12 +915,13 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
         <div className="grid gap-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <Label>Зочид буудал</Label>
-              <Input value={form.hotel} onChange={(e) => set("hotel", e.target.value)} />
+              <Label htmlFor="trip-hotel">Зочид буудал</Label>
+              <Input id="trip-hotel" value={form.hotel} onChange={(e) => set("hotel", e.target.value)} />
             </div>
             <div>
-              <Label>Хоол багтсан эсэх</Label>
+              <Label htmlFor="trip-food">Хоол багтсан эсэх</Label>
               <select
+                id="trip-food"
                 value={form.foodIncluded}
                 onChange={(e) => set("foodIncluded", e.target.value)}
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
@@ -940,16 +942,16 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
       <Section title="Аялагчид тавих нөхцөл" hidden={activeSection !== "terms"}>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <Label>Гарах өдрийн нөхцөл</Label>
-            <Textarea rows={2} value={form.departureRule} onChange={(e) => set("departureRule", e.target.value)} />
+            <Label htmlFor="trip-departure-rule">Гарах өдрийн нөхцөл</Label>
+            <Textarea id="trip-departure-rule" rows={2} value={form.departureRule} onChange={(e) => set("departureRule", e.target.value)} />
           </div>
           <div>
-            <Label>Шаардлага</Label>
-            <Textarea rows={3} value={form.requirements} onChange={(e) => set("requirements", e.target.value)} />
+            <Label htmlFor="trip-requirements">Шаардлага</Label>
+            <Textarea id="trip-requirements" rows={3} value={form.requirements} onChange={(e) => set("requirements", e.target.value)} />
           </div>
           <div>
-            <Label>Цуцлалтын нөхцөл</Label>
-            <Textarea rows={3} value={form.cancellationPolicy} onChange={(e) => set("cancellationPolicy", e.target.value)} />
+            <Label htmlFor="trip-cancellation">Цуцлалтын нөхцөл</Label>
+            <Textarea id="trip-cancellation" rows={3} value={form.cancellationPolicy} onChange={(e) => set("cancellationPolicy", e.target.value)} />
           </div>
         </div>
       </Section>
@@ -1004,6 +1006,7 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
         {existingTrip ? <TripComparison trip={existingTrip} patch={form.sourceMetadata.canonicalExtraPatch} onExtraChange={(base, values) => set("sourceMetadata", {
           ...form.sourceMetadata, canonicalExtraPatch: { base: object(form.sourceMetadata.canonicalExtraPatch).base || base, values },
         })} /> : <p className="text-sm text-muted-foreground">Ноорог хадгалагдаагүй.</p>}
+        {form.sourceTripId && <details className="mt-5 border-t border-border pt-3"><summary className="cursor-pointer text-sm text-muted-foreground">Техникийн мэдээлэл</summary><p className="mt-3 break-all font-mono text-xs text-muted-foreground">Chatbot ID: {form.sourceTripId}</p></details>}
       </Section>
       </div>
       <div className="sticky bottom-0 z-30 flex items-center justify-between gap-2 border-t border-border bg-background py-3">
@@ -1145,6 +1148,7 @@ function PassengerPriceEditor({
             <div>
               <Label>Ангилал</Label>
               <Input
+                aria-label="Зорчигчийн ангилал"
                 value={row.label}
                 onChange={(e) => update(index, { ...row, label: e.target.value })}
                 placeholder="ж: Хүүхэд 2-5"
@@ -1153,6 +1157,7 @@ function PassengerPriceEditor({
             <div>
               <Label>Нас</Label>
               <Input
+                aria-label="Насны хүрээ"
                 value={row.ageRange}
                 onChange={(e) => update(index, { ...row, ageRange: e.target.value })}
                 placeholder="ж: 2-5 нас"
@@ -1161,6 +1166,7 @@ function PassengerPriceEditor({
             <div>
               <Label>Үнэ (₮)</Label>
               <Input
+                aria-label={`${row.label || "Зорчигч"} үнэ`}
                 type="number"
                 min={0}
                 value={row.free ? "" : row.price}
