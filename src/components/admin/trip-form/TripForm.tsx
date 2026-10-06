@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Archive, CalendarDays, Check, ChevronDown, ClipboardList, ExternalLink, Eye, Images, Info, Loader2, Plus, RefreshCw, Save, Scale, Trash2, Wallet } from "lucide-react";
+import { Archive, CalendarDays, Check, ClipboardList, ExternalLink, Eye, Images, Info, Loader2, Plus, RefreshCw, Save, Scale, Trash2, Wallet } from "lucide-react";
 
 import { api, apiErrorMessage } from "@/lib/api";
 import { changedTripFields } from "@/lib/tripEditPatch";
@@ -27,7 +27,8 @@ import MediaListEditor from "./MediaListEditor";
 import WeatherPlacesEditor from "./WeatherPlacesEditor";
 import { parseMediaItems, type MediaItem } from "@/lib/media";
 import ItineraryEditor, { type ItineraryDraft } from "./ItineraryEditor";
-import DepartureEditor, { type DepartureDraft } from "./DepartureEditor";
+import { type DepartureDraft } from "./DepartureEditor";
+import DatePricingEditor from "./DatePricingEditor";
 import TripComparison from "./TripComparison";
 import SelectionField from "./SelectionField";
 
@@ -838,7 +839,17 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
         </div>
       </Section>
 
-      <Section title="Үндсэн үнэ" hidden={activeSection !== "pricing"}>
+      <Section title="Үнэ, гаралт" hidden={activeSection !== "pricing"}>
+        <DatePricingEditor
+          metadata={form.sourceMetadata}
+          departures={form.departures}
+          defaultPrice={form.price}
+          defaultRows={cleanPassengerRows(form.passengerPrices)}
+          onChange={(sourceMetadata, departures) => setForm((current) => ({ ...current, sourceMetadata, departures }))}
+        />
+        <details className="mt-6 border-t border-border pt-3">
+          <summary className="cursor-pointer text-sm text-muted-foreground">Үндсэн үнэ, нас, хямдрал</summary>
+          <div className="mt-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label htmlFor="trip-price">Том хүний үндсэн үнэ (₮) *</Label>
@@ -869,19 +880,14 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
           </div>
         </div>
         </details>
-      </Section>
-      <Section title="Насны ангилал, үнэ" hidden={activeSection !== "pricing"}>
-        {Array.isArray(form.sourceMetadata.price_groups) && form.sourceMetadata.price_groups.length > 0 ? (
-          <DatedPassengerPriceEditor
-            sourceMetadata={form.sourceMetadata}
-            onChange={(sourceMetadata) => set("sourceMetadata", sourceMetadata)}
-          />
-        ) : (
+        {!Array.isArray(form.sourceMetadata.price_groups) || form.sourceMetadata.price_groups.length === 0 ? (
           <PassengerPriceEditor
             rows={form.passengerPrices}
             onChange={(rows) => set("passengerPrices", rows)}
           />
-        )}
+        ) : null}
+          </div>
+        </details>
       </Section>
 
       <Section title="Чухал тэмдэглэл" hidden={activeSection !== "terms"}>
@@ -974,10 +980,6 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
         </Section>
       )}
 
-      <Section title="Гарах огноонууд" hidden={activeSection !== "pricing"}>
-        <DepartureEditor departures={form.departures} onChange={(v) => set("departures", v)} />
-      </Section>
-
       <Section title="Нийтлэх" hidden={activeSection !== "publishing"}>
         <div className="grid divide-y divide-border">
           <label className="flex items-center justify-between gap-4 py-4 text-sm font-medium">
@@ -1046,65 +1048,6 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
         </div>
       </div>
     </form>
-  );
-}
-
-function datedGroupLabel(group: Record<string, unknown>, index: number) {
-  const dates = groupDateKeys(group);
-  return dates.length > 0 ? dates.join(", ") : `Үнэний бүлэг ${index + 1}`;
-}
-
-function passengerRowsFromGroup(group: Record<string, unknown>): PassengerPriceDraft[] {
-  const prices = Array.isArray(group.passenger_prices) ? group.passenger_prices : [];
-  return prices.map((value) => {
-    const item = object(value);
-    const amount = typeof item.price === "number" && Number.isFinite(item.price) ? String(item.price) : "";
-    return {
-      label: text(item.label) || "Хүүхэд",
-      ageRange: text(item.age_range),
-      price: amount,
-      free: amount === "0" && /үнэгүй|free/i.test(text(item.note)),
-    };
-  });
-}
-
-function DatedPassengerPriceEditor({
-  sourceMetadata,
-  onChange,
-}: {
-  sourceMetadata: Record<string, unknown>;
-  onChange: (next: Record<string, unknown>) => void;
-}) {
-  const groups = Array.isArray(sourceMetadata.price_groups) ? sourceMetadata.price_groups.map(object) : [];
-
-  const updateGroup = (index: number, rows: PassengerPriceDraft[]) => {
-    const nextGroups = groups.map((group, groupIndex) => groupIndex === index
-      ? { ...group, passenger_prices: cleanPassengerRows(rows) }
-      : group);
-    onChange({ ...sourceMetadata, price_groups: nextGroups });
-  };
-
-  return (
-    <div className="mt-4 space-y-3">
-      <div>
-        <h3 className="text-sm font-semibold">Гарах өдөр бүрийн насны ангилал ба үнэ</h3>
-      </div>
-      {groups.map((group, index) => (
-        <details key={index} open={index === 0} className="group border-b border-border">
-          <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 py-3 [&::-webkit-details-marker]:hidden">
-            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-medium">{datedGroupLabel(group, index)}</span>
-              {(text(group.package_id) || text(group.note) || text(group.hotel)) && <span className="block break-words text-xs text-muted-foreground">{[text(group.package_id) || text(group.note), text(group.hotel)].filter(Boolean).join(" · ")}</span>}
-            </span>
-            {typeof group.adult_price === "number" && (
-              <p className="text-xs text-muted-foreground">Том хүн: {group.adult_price.toLocaleString("mn-MN")}₮</p>
-            )}
-          </summary>
-          <div className="pb-4"><PassengerPriceEditor rows={passengerRowsFromGroup(group)} onChange={(rows) => updateGroup(index, rows)} embedded /></div>
-        </details>
-      ))}
-    </div>
   );
 }
 

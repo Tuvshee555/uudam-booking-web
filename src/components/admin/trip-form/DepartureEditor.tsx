@@ -51,7 +51,7 @@ function formatDateLabel(value: string) {
   return `${date.getFullYear()} · ${date.getMonth() + 1}-р сарын ${date.getDate()}`;
 }
 
-const STATUS_OPTIONS = [
+export const STATUS_OPTIONS = [
   { value: "OPEN", label: "Захиалга авч байна" },
   { value: "ALMOST_FULL", label: "Цөөн суудал үлдсэн" },
   { value: "SOLD_OUT", label: "Дүүрсэн" },
@@ -60,7 +60,7 @@ const STATUS_OPTIONS = [
   { value: "DEPARTED", label: "Явсан" },
 ];
 
-function CalendarDatePicker({
+export function CalendarDatePicker({
   label,
   value,
   placeholder = "Огноо сонгох",
@@ -335,7 +335,7 @@ export default function DepartureEditor({
   );
 }
 
-function ExactSeatsOverride({
+export function ExactSeatsOverride({
   dep,
   onChange,
 }: {
