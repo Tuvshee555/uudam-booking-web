@@ -6,7 +6,8 @@ import type { ReactNode } from "react";
  * Keep booking visible while the traveller reads the trip. The earlier
  * handoff/fixed-position logic could release the box while there was still
  * useful page content, leaving the right column empty. A normal sticky
- * sidebar is predictable; when it is tall, only the sidebar itself scrolls.
+ * sidebar is predictable; when it is tall, it scrolls until its bottom and
+ * then hands scrolling back to the document.
  */
 export default function StickyHandoffSidebar({
   topOffset,
@@ -22,7 +23,7 @@ export default function StickyHandoffSidebar({
   return (
     <div
       style={{ top: topOffset, maxHeight: `calc(100vh - ${topOffset + bottomGap}px)` }}
-      className="lg:sticky lg:overflow-y-auto lg:overscroll-contain lg:pb-1 lg:pr-1"
+      className="lg:sticky lg:overflow-y-auto lg:pb-1 lg:pr-1"
     >
       {children}
     </div>
