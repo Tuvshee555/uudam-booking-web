@@ -191,30 +191,31 @@ export default function MediaListEditor({
   items: MediaItem[];
   onChange: (next: MediaItem[]) => void;
 }) {
+  const visibleItems = items.length ? items : [{ url: "", caption: "" }];
   return (
     <div>
       <Label>{label}</Label>
       {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
 
       <div className="mt-2 space-y-2">
-        {items.map((item, index) => (
+        {visibleItems.map((item, index) => (
           <MediaRow
             key={index}
             item={item}
-            onChange={(next) => onChange(items.map((current, i) => (i === index ? next : current)))}
+            onChange={(next) => onChange(items.length ? items.map((current, i) => (i === index ? next : current)) : [next])}
             onRemove={() => onChange(items.filter((_, i) => i !== index))}
           />
         ))}
       </div>
 
-      <button
+      {items.length > 0 && <button
         type="button"
         onClick={() => onChange([...items, { url: "", caption: "" }])}
         className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-secondary"
       >
         <Plus className="h-4 w-4" />
-        Нэмэх
-      </button>
+        Холбоос нэмэх
+      </button>}
     </div>
   );
 }
