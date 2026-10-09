@@ -1,6 +1,7 @@
 import { prisma } from "@/server/prisma";
 import { requireAdmin } from "@/server/auth";
 import { handler, json } from "@/server/http";
+import { getVisitorStats } from "@/server/visitorStats";
 
 /**
  * GET /api/stats — the office dashboard.
@@ -28,6 +29,7 @@ export const GET = handler(async (req: Request) => {
     upcoming,
     eventCounts,
     byTrip,
+    visitorStats,
   ] = await Promise.all([
     prisma.enquiry.count({ where: { status: "NEW" } }),
     prisma.enquiry.count({ where: { createdAt: { gte: weekStart } } }),
@@ -86,6 +88,9 @@ export const GET = handler(async (req: Request) => {
       orderBy: { _count: { tripId: "desc" } },
       take: 5,
     }),
+
+    // Distinct people, devices and per-person engagement. Never a click count.
+    getVisitorStats(),
   ]);
 
   const topTripIds = byTrip
@@ -112,6 +117,7 @@ export const GET = handler(async (req: Request) => {
     },
     // 30-day funnel signal counts, e.g. { share_click: 12, phone_click: 4 }.
     events: Object.fromEntries(eventCounts.map((row) => [row.name, row._count.name])),
+    visitorStats,
     recentEnquiries: recent,
     upcomingDepartures: upcoming,
     topTrips: byTrip

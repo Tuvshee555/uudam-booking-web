@@ -2,18 +2,23 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   CalendarDays,
   Check,
   FileText,
   Heart,
+  Monitor,
   Inbox,
   Map,
   MessageCircle,
   Phone,
   Share2,
+  Smartphone,
+  Tablet,
   TrendingUp,
+  Users,
 } from "lucide-react";
 
 import { api } from "@/lib/api";
@@ -22,6 +27,7 @@ import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import EnquiryStatusBadge from "@/components/admin/EnquiryStatusBadge";
 import { Button } from "@/components/ui/button";
 import { formatMnt } from "@/lib/pricing";
+import { markStaffDevice } from "@/lib/analytics";
 
 type Stats = {
   stats: {
@@ -61,6 +67,14 @@ type Stats = {
     enquiryCount: number;
   }>;
   events: Record<string, number>;
+  visitorStats: {
+    visitors: { today: number; week: number; month: number };
+    viewsMonth: number;
+    returningMonth: number;
+    devices: Record<string, number>;
+    engagement: Record<string, { people: number; times: number }>;
+    sharesByChannel: Array<{ channel: string; people: number }>;
+  };
 };
 
 export default function AdminDashboard() {
@@ -75,6 +89,12 @@ export default function AdminDashboard() {
     },
     retry: false,
   });
+
+  // Staff looking at their own site are not visitors: once someone has opened
+  // the admin, this browser stops adding to the visitor numbers.
+  useEffect(() => {
+    markStaffDevice();
+  }, []);
 
   if (isPending) {
     return (
@@ -114,6 +134,15 @@ export default function AdminDashboard() {
     { icon: FileText, label: "Ноорог аялал", value: data.stats.draftCount },
   ];
 
+  const vs = data.visitorStats;
+  const deviceRows = [
+    { key: "mobile", label: "Утас", icon: Smartphone, count: vs.devices.mobile ?? 0 },
+    { key: "desktop", label: "Компьютер", icon: Monitor, count: vs.devices.desktop ?? 0 },
+    { key: "tablet", label: "Таблет", icon: Tablet, count: vs.devices.tablet ?? 0 },
+    { key: "unknown", label: "Тодорхойгүй", icon: Users, count: vs.devices.unknown ?? 0 },
+  ].filter((row) => row.count > 0);
+  const deviceTotal = deviceRows.reduce((sum, row) => sum + row.count, 0);
+
   return (
     <>
       <h1 className="text-2xl font-bold">Хяналтын самбар</h1>
@@ -147,6 +176,56 @@ export default function AdminDashboard() {
           <span className="font-semibold text-primary">Харах →</span>
         </Link>
       )}
+
+      <section className="mt-8 rounded-2xl border border-border bg-card p-5">
+        <h2 className="flex items-center gap-2 text-lg font-bold">
+          <Users className="h-4 w-4 text-primary" />
+          Сайтад орсон хүмүүс
+        </h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Нэг төхөөрөмж хэдэн ч удаа нээсэн нэг хүн гэж тоолно. Та өөрөө нэвтэрсэн төхөөрөмжөөр орсон нь тоологдохгүй.
+        </p>
+
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            { label: "Өнөөдөр", value: vs.visitors.today },
+            { label: "Сүүлийн 7 хоног", value: vs.visitors.week },
+            { label: "Энэ сар", value: vs.visitors.month },
+            { label: "Буцаж ирсэн (энэ сар)", value: vs.returningMonth },
+          ].map(({ label, value }) => (
+            <div key={label} className="rounded-xl border border-border p-3">
+              <div className="text-xl font-bold">{value}</div>
+              <div className="text-xs text-muted-foreground">{label}</div>
+            </div>
+          ))}
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Энэ сар {vs.viewsMonth} удаа хуудас нээгдсэнээс {vs.visitors.month} өөр хүн орсон.
+        </p>
+
+        {deviceTotal > 0 && (
+          <div className="mt-5">
+            <div className="text-sm font-semibold">Ямар төхөөрөмжөөр орсон (энэ сар)</div>
+            <ul className="mt-3 space-y-2.5">
+              {deviceRows.map(({ key, label, icon: Icon, count }) => (
+                <li key={key} className="flex items-center gap-3">
+                  <Icon className="h-4 w-4 shrink-0 text-primary" />
+                  <span className="w-24 shrink-0 text-sm">{label}</span>
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-secondary">
+                    <div
+                      className="h-full rounded-full bg-primary"
+                      style={{ width: `${Math.round((count / deviceTotal) * 100)}%` }}
+                    />
+                  </div>
+                  <span className="w-24 shrink-0 text-right text-xs text-muted-foreground">
+                    {count} хүн · {Math.round((count / deviceTotal) * 100)}%
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <section className="rounded-2xl border border-border bg-card p-5">
@@ -235,12 +314,11 @@ export default function AdminDashboard() {
         </section>
       </div>
 
-      {Object.keys(data.events).length > 0 && (
+      {Object.keys(vs.engagement).length > 0 && (
         <section className="mt-6 rounded-2xl border border-border bg-card p-5">
           <h2 className="text-lg font-bold">Энэ сарын идэвх</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Хүсэлт болгоогүй ч сайттай харьцсан дохио — хуудас хараад юу ч хийхгүй
-            орхисон эсэхийг харах боломжтой.
+            Хүсэлт болгоогүй ч сайттай харьцсан хүмүүс. Том тоо нь хэдэн өөр хүн, жижиг тоо нь нийт хэдэн удаа дарсныг заана.
           </p>
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {[
@@ -250,13 +328,19 @@ export default function AdminDashboard() {
               { key: "messenger_click", label: "Messenger дарсан", icon: MessageCircle },
               { key: "departure_select", label: "Огноо сонгосон", icon: CalendarDays },
               { key: "custom_trip_submit", label: "Захиалгат хүсэлт", icon: TrendingUp },
-            ].map(({ key, label, icon: Icon }) => (
-              <div key={key} className="rounded-xl border border-border p-3">
-                <Icon className="h-4 w-4 text-primary" />
-                <div className="mt-2 text-lg font-bold">{data.events[key] ?? 0}</div>
-                <div className="text-xs text-muted-foreground">{label}</div>
-              </div>
-            ))}
+            ].map(({ key, label, icon: Icon }) => {
+              const entry = vs.engagement[key] ?? { people: 0, times: 0 };
+              return (
+                <div key={key} className="rounded-xl border border-border p-3">
+                  <Icon className="h-4 w-4 text-primary" />
+                  <div className="mt-2 text-lg font-bold">{entry.people} хүн</div>
+                  <div className="text-xs text-muted-foreground">
+                    {label}
+                    {entry.times > entry.people && ` · нийт ${entry.times} удаа`}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </section>
       )}

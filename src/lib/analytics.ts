@@ -17,6 +17,25 @@ function randomId() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+const STAFF_KEY = "uudam-staff";
+
+/** Marks this browser as staff, so their own visits to the public site are not counted as visitors. */
+export function markStaffDevice() {
+  try {
+    localStorage.setItem(STAFF_KEY, "1");
+  } catch {
+    // Storage blocked: their visits are simply counted.
+  }
+}
+
+function isStaffDevice(): boolean {
+  try {
+    return localStorage.getItem(STAFF_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export function getVisitorId(): string {
   try {
     const existing = localStorage.getItem(VISITOR_KEY);
@@ -108,6 +127,7 @@ export function track(
     | "booking_submit",
   options?: { tripId?: string; properties?: Record<string, unknown> },
 ) {
+  if (isStaffDevice()) return;
   try {
     const payload = JSON.stringify({
       name,
@@ -135,6 +155,7 @@ export type TrackInput = {
 
 /** Open a view. Returns the row id the exit beacon needs, or null on failure. */
 export async function trackView({ path, source }: TrackInput): Promise<string | null> {
+  if (isStaffDevice()) return null;
   try {
     const res = await fetch("/api/track", {
       method: "POST",
