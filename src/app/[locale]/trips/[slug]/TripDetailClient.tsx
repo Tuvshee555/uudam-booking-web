@@ -77,8 +77,17 @@ function closestSelectableDepartureDate(trip: Trip): string | undefined {
   return upcomingDepartures(trip).find((departure) => availability(departure).selectable)?.startDate.slice(0, 10);
 }
 
+const MEAL_SLOTS = [
+  { match: /өглөө/i, label: "Өглөөний цай" },
+  { match: /өдөр/i, label: "Өдрийн хоол" },
+  { match: /орой/i, label: "Оройн хоол" },
+] as const;
+
 function ItineraryAccordion({ days }: { days: Trip["itinerary"] }) {
   const [openDayId, setOpenDayId] = useState<string | null>(() => days[0]?.id ?? null);
+  // A trip whose days carry no meal data at all says nothing about meals; once any
+  // day has them, every day shows all three so a missing meal reads as "not included".
+  const showMeals = days.some((day) => day.meals.length > 0);
 
   return (
     <ol className="mt-4 divide-y divide-border rounded-xl border border-border bg-card">
@@ -112,11 +121,32 @@ function ItineraryAccordion({ days }: { days: Trip["itinerary"] }) {
                   </div>
                 )}
                 {day.video && <video src={day.video} controls preload="metadata" playsInline className="mt-3 aspect-video w-full max-w-xl rounded-lg bg-black print:hidden" />}
-                {(day.meals.length > 0 || day.accommodation) && (
-                  <div className="mt-3 flex flex-wrap gap-1.5 text-[11px]">
-                    {day.meals.map((meal) => <span key={meal} className="rounded-full bg-secondary px-2 py-0.5">{meal}</span>)}
-                    {day.accommodation && <span className="rounded-full bg-secondary px-2 py-0.5">{day.accommodation}</span>}
-                  </div>
+                {showMeals && (
+                  <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-[13px]" aria-label="Хоол">
+                    {MEAL_SLOTS.map(({ match, label }) => {
+                      const included = day.meals.some((meal) => match.test(meal));
+                      return (
+                        <li
+                          key={label}
+                          className={`flex items-center gap-1.5 ${included ? "font-medium text-foreground" : "text-muted-foreground"}`}
+                        >
+                          {included ? (
+                            <Check className="h-4 w-4 text-primary" aria-hidden="true" />
+                          ) : (
+                            <X className="h-4 w-4 text-muted-foreground/60" aria-hidden="true" />
+                          )}
+                          <span>{label}</span>
+                          <span className="sr-only">{included ? "багтсан" : "багтаагүй"}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                {day.accommodation && (
+                  <p className="mt-2 flex items-center gap-1.5 text-[13px] text-foreground/80">
+                    <BedDouble className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                    {day.accommodation}
+                  </p>
                 )}
                 </div>
               </div>
