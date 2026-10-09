@@ -6,7 +6,7 @@ import { CalendarDays, Clock, MapPin, Play, Star, Users } from "lucide-react";
 
 import type { Trip } from "@/types/trip";
 import { formatMnt, formatTripStartingPrice, hasKnownTripPrice } from "@/lib/pricing";
-import { availability, formatDepartureDate, nextDeparture } from "@/lib/departures";
+import { availability, formatDepartureDate, nextBookableDeparture, nextDeparture } from "@/lib/departures";
 import {
   isSoldOutDeparture,
   marketingSeatFacts,
@@ -19,7 +19,7 @@ import { formatTripTitle } from "@/lib/tripDisplay";
 
 export default function TripCard({ trip }: { trip: Trip }) {
   const { locale } = useI18n();
-  const departure = nextDeparture(trip);
+  const departure = nextBookableDeparture(trip) ?? nextDeparture(trip);
   const hasVideo = Boolean(trip.video) || trip.videos.length > 0;
 
   const seats = departure ? availability(departure) : null;

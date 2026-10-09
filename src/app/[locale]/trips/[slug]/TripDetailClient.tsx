@@ -25,7 +25,7 @@ import type { Trip } from "@/types/trip";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { recordRecentlyViewed } from "@/lib/analytics";
 import { formatTripTitle } from "@/lib/tripDisplay";
-import { availability, nextDeparture, upcomingDepartures } from "@/lib/departures";
+import { availability, nextBookableDeparture, nextDeparture, upcomingDepartures } from "@/lib/departures";
 import {
   isSoldOutDeparture,
   marketingSeatFacts,
@@ -292,8 +292,8 @@ export default function TripDetailClient({
 
   const detailSaleLabel = saleBadgeLabel(trip);
   const detailSeatFacts = marketingSeatFacts(trip);
-  const detailSoldOut = isSoldOutDeparture(nextDeparture(trip));
-  const selectableDeparture = upcomingDepartures(trip).some((departure) => availability(departure).selectable);
+  const selectableDeparture = nextBookableDeparture(trip);
+  const detailSoldOut = !selectableDeparture && isSoldOutDeparture(nextDeparture(trip));
   const mobileCtaClosed = detailSoldOut && !selectableDeparture;
 
   return (

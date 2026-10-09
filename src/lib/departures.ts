@@ -28,6 +28,11 @@ export function nextDeparture(trip: Trip, now = Date.now()): Departure | null {
   return upcomingDepartures(trip, now)[0] ?? null;
 }
 
+/** The first date a customer can actually select, skipping sold-out dates. */
+export function nextBookableDeparture(trip: Trip, now = Date.now()): Departure | null {
+  return upcomingDepartures(trip, now).find((departure) => availability(departure).selectable) ?? null;
+}
+
 /** Sort key for "soonest departure"; trips with no date sink to the bottom. */
 export function soonestDepartureTime(trip: Trip, now = Date.now()): number {
   const next = nextDeparture(trip, now);
