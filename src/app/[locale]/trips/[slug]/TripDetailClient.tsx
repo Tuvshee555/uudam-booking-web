@@ -11,6 +11,7 @@ import {
   Clock,
   FileDown,
   FileText,
+  ExternalLink,
   Languages,
   MapPin,
   Mountain,
@@ -44,6 +45,7 @@ import SaveButton from "@/components/trip/SaveButton";
 import DownloadTripButton from "@/components/trip/DownloadTripButton";
 import MessengerButton from "@/components/trip/MessengerButton";
 import { Button } from "@/components/ui/button";
+import { hotelLinksFromMetadata, hotelTextSegments, type HotelLink } from "@/lib/hotelLinks";
 
 /**
  * Trips imported from the chatbot project carry sourceTripId="trip-<poster
@@ -82,7 +84,7 @@ const MEAL_SLOTS = [
   { match: /орой/i, label: "Оройн хоол" },
 ] as const;
 
-function ItineraryAccordion({ days }: { days: Trip["itinerary"] }) {
+function ItineraryAccordion({ days, hotelLinks }: { days: Trip["itinerary"]; hotelLinks: HotelLink[] }) {
   const [openDayId, setOpenDayId] = useState<string | null>(() => days[0]?.id ?? null);
   // A trip whose days carry no meal data at all says nothing about meals; once any
   // day has them, every day shows all three so a missing meal reads as "not included".
@@ -144,7 +146,21 @@ function ItineraryAccordion({ days }: { days: Trip["itinerary"] }) {
                 {day.accommodation && (
                   <p className="mt-2 flex items-center gap-1.5 text-[13px] text-foreground/80">
                     <BedDouble className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-                    {day.accommodation}
+                    <span>
+                      {hotelTextSegments(day.accommodation, hotelLinks).map((segment, index) => segment.url ? (
+                        <a
+                          key={`${segment.url}-${index}`}
+                          href={segment.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-baseline gap-1 font-semibold text-primary underline decoration-primary/35 underline-offset-4 transition-colors hover:text-primary/75 focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          title="Зочид буудлын хуудсыг шинэ цонхонд нээх"
+                        >
+                          {segment.text}
+                          <ExternalLink className="h-3 w-3 shrink-0 self-center" aria-hidden="true" />
+                        </a>
+                      ) : <span key={`text-${index}`}>{segment.text}</span>)}
+                    </span>
                   </p>
                 )}
                 </div>
@@ -436,7 +452,7 @@ export default function TripDetailClient({
           {trip.itinerary.length > 0 && (
           <section id="itinerary" className="mt-8 scroll-mt-28">
             <h2 className="text-lg font-bold">Өдөр тутмын хөтөлбөр</h2>
-            <ItineraryAccordion days={trip.itinerary} />
+            <ItineraryAccordion days={trip.itinerary} hotelLinks={hotelLinksFromMetadata(trip.sourceMetadata)} />
           </section>
           )}
 
