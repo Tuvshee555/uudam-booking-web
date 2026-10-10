@@ -56,10 +56,12 @@ function MediaRow({
   item,
   onChange,
   onRemove,
+  hideUploadedUrl,
 }: {
   item: MediaItem;
   onChange: (next: MediaItem) => void;
   onRemove: () => void;
+  hideUploadedUrl?: boolean;
 }) {
   const imageInput = useRef<HTMLInputElement>(null);
   const videoInput = useRef<HTMLInputElement>(null);
@@ -69,6 +71,7 @@ function MediaRow({
   const kind = url ? mediaKind(url) : null;
   const unreadable = item.url.trim().length > 0 && !url;
   const empty = !item.url.trim();
+  const uploaded = /^https:\/\/res\.cloudinary\.com\//i.test(url ?? "");
 
   async function handleFile(file: File | undefined, resourceType: "image" | "video") {
     if (!file) return;
@@ -120,13 +123,19 @@ function MediaRow({
         <div className="flex flex-wrap gap-2">
           <label className="min-w-0 basis-full text-xs text-muted-foreground sm:flex-1 sm:basis-0">
             Холбоос
-          <Input
-            value={item.url}
-            onChange={(e) => onChange({ ...item, url: e.target.value })}
-            placeholder="Холбоос буулгах (YouTube, сайт, зураг)"
-            aria-label="Медиа холбоос"
-            className={`mt-1 ${unreadable ? "border-destructive" : ""}`}
-          />
+          {hideUploadedUrl && uploaded ? (
+            <span className="mt-1 flex h-9 items-center rounded-md border border-input bg-secondary px-3 text-sm text-muted-foreground">
+              {kind === "video" ? "Бичлэг байршуулсан" : "Зураг байршуулсан"}
+            </span>
+          ) : (
+            <Input
+              value={item.url}
+              onChange={(e) => onChange({ ...item, url: e.target.value })}
+              placeholder="YouTube эсвэл зурагны холбоос"
+              aria-label="Медиа холбоос"
+              className={`mt-1 ${unreadable ? "border-destructive" : ""}`}
+            />
+          )}
           </label>
           <button
             type="button"
@@ -185,11 +194,13 @@ export default function MediaListEditor({
   hint,
   items,
   onChange,
+  hideUploadedUrl = false,
 }: {
   label: string;
   hint?: string;
   items: MediaItem[];
   onChange: (next: MediaItem[]) => void;
+  hideUploadedUrl?: boolean;
 }) {
   const visibleItems = items.length ? items : [{ url: "", caption: "" }];
   return (
@@ -204,6 +215,7 @@ export default function MediaListEditor({
             item={item}
             onChange={(next) => onChange(items.length ? items.map((current, i) => (i === index ? next : current)) : [next])}
             onRemove={() => onChange(items.filter((_, i) => i !== index))}
+            hideUploadedUrl={hideUploadedUrl}
           />
         ))}
       </div>

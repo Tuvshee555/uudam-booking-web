@@ -5,13 +5,13 @@ import Image from "next/image";
 import { ExternalLink } from "lucide-react";
 
 import { isAllowedImageHost } from "@/lib/imageHosts";
-import { mediaKind, youtubeEmbed, type MediaItem } from "@/lib/media";
+import { extractUrl, mediaKind, youtubeEmbed, type MediaItem } from "@/lib/media";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 function linkLabel(item: MediaItem) {
   if (item.caption) return item.caption;
   try {
-    return new URL(item.url).hostname.replace(/^www\./, "");
+    return new URL(extractUrl(item.url) ?? item.url).hostname.replace(/^www\./, "");
   } catch {
     return "Холбоос";
   }

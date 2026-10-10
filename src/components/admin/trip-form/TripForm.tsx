@@ -25,8 +25,10 @@ import StringListField from "./StringListField";
 import ImageUploadField from "./ImageUploadField";
 import MultiImageField from "./MultiImageField";
 import MediaListEditor from "./MediaListEditor";
+import HotelProfilesEditor from "./HotelProfilesEditor";
 import WeatherPlacesEditor from "./WeatherPlacesEditor";
 import { parseMediaItems, type MediaItem } from "@/lib/media";
+import { hotelProfilesFromData, type HotelProfile } from "@/lib/hotelLinks";
 import ItineraryEditor, { type ItineraryDraft } from "./ItineraryEditor";
 import { type DepartureDraft } from "./DepartureEditor";
 import DatePricingEditor from "./DatePricingEditor";
@@ -273,6 +275,7 @@ type FormState = {
   childPriceNotes: string[];
   brochurePdfUrl: string;
   hotelMedia: MediaItem[];
+  hotelProfiles: HotelProfile[];
   travelerMedia: MediaItem[];
 
   isFeatured: boolean;
@@ -338,6 +341,7 @@ const EMPTY_FORM: FormState = {
   childPriceNotes: [],
   brochurePdfUrl: "",
   hotelMedia: [],
+  hotelProfiles: [],
   travelerMedia: [],
   isFeatured: false,
   isPublished: true,
@@ -399,6 +403,7 @@ function tripToForm(trip: Trip): FormState {
     childPriceNotes: trip.childPriceNotes,
     brochurePdfUrl: trip.brochurePdfUrl ?? "",
     hotelMedia: parseMediaItems(trip.hotelMedia) ?? [],
+    hotelProfiles: hotelProfilesFromData(trip.sourceMetadata, trip.hotel, trip.hotelMedia),
     travelerMedia: parseMediaItems(trip.travelerMedia) ?? [],
     isFeatured: trip.isFeatured,
     isPublished: trip.isPublished,
@@ -443,6 +448,21 @@ function buildPayload(form: FormState) {
   const nullableText = (value: string) => value.trim() || null;
   const nullableNumber = (value: string) => numOrUndefined(value) ?? null;
   const passengerFareSummary = passengerSummary(form.passengerPrices);
+  const hotelProfiles = form.hotelProfiles
+    .filter((hotel) => hotel.name.trim())
+    .map((hotel) => ({
+      name: hotel.name.trim(),
+      url: hotel.url.trim(),
+      description: hotel.description.trim(),
+      media: hotel.media.filter((item) => item.url.trim()),
+    }));
+  const pricingMetadata = Array.isArray(form.sourceMetadata.price_groups) && form.sourceMetadata.price_groups.length
+    ? form.sourceMetadata : withPassengerPricingMetadata(form);
+  const sourceMetadata = {
+    ...pricingMetadata,
+    hotel_profiles: hotelProfiles,
+    hotel_links: hotelProfiles.filter((hotel) => hotel.url).map(({ name, url }) => ({ name, url })),
+  };
 
   return {
     title: form.title.trim(),
@@ -489,9 +509,8 @@ function buildPayload(form: FormState) {
     infantPrice: passengerFareSummary.infantPrice,
     singleSupplement: nullableNumber(form.singleSupplement),
     sourceTripId: nullableText(form.sourceTripId),
-    sourceMetadata: Array.isArray(form.sourceMetadata.price_groups) && form.sourceMetadata.price_groups.length
-      ? form.sourceMetadata : withPassengerPricingMetadata(form),
-    hotel: nullableText(form.hotel),
+    sourceMetadata,
+    hotel: nullableText(hotelProfiles.map((hotel) => hotel.name).join(", ") || form.hotel),
     foodIncluded:
       form.foodIncluded === "true" ? true : form.foodIncluded === "false" ? false : null,
     departureRule: nullableText(form.departureRule),
@@ -499,7 +518,9 @@ function buildPayload(form: FormState) {
     roomPrices: form.roomPrices,
     childPriceNotes: form.childPriceNotes,
     brochurePdfUrl: nullableText(form.brochurePdfUrl),
-    hotelMedia: form.hotelMedia.filter((item) => item.url.trim()),
+    hotelMedia: hotelProfiles.length
+      ? hotelProfiles.flatMap((hotel) => hotel.media)
+      : form.hotelMedia.filter((item) => item.url.trim()),
     travelerMedia: form.travelerMedia.filter((item) => item.url.trim()),
 
     isFeatured: form.isFeatured,
@@ -955,13 +976,7 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
       </Section>
 
       <Section title="Зочид буудал" hidden={activeSection !== "media"}>
-        <div className="grid gap-4">
-          <div>
-            <Label htmlFor="trip-hotel">Буудлын нэр</Label>
-            <Input id="trip-hotel" value={form.hotel} onChange={(e) => set("hotel", e.target.value)} />
-          </div>
-          <MediaListEditor label="Буудлын зураг, бичлэг, холбоос" items={form.hotelMedia} onChange={(v) => set("hotelMedia", v)} />
-        </div>
+        <HotelProfilesEditor hotels={form.hotelProfiles} onChange={(hotels) => set("hotelProfiles", hotels)} />
       </Section>
       <Section title="Аялагчдын зураг, бичлэг" hidden={activeSection !== "media"}>
         <MediaListEditor

@@ -45,7 +45,7 @@ import SaveButton from "@/components/trip/SaveButton";
 import DownloadTripButton from "@/components/trip/DownloadTripButton";
 import MessengerButton from "@/components/trip/MessengerButton";
 import { Button } from "@/components/ui/button";
-import { hotelLinksFromMetadata, hotelTextSegments, type HotelLink } from "@/lib/hotelLinks";
+import { hotelProfilesFromData, hotelTextSegments, type HotelLink, type HotelProfile } from "@/lib/hotelLinks";
 
 /**
  * Trips imported from the chatbot project carry sourceTripId="trip-<poster
@@ -173,6 +173,21 @@ function ItineraryAccordion({ days, hotelLinks }: { days: Trip["itinerary"]; hot
   );
 }
 
+function HotelNameLink({ hotel }: { hotel: HotelProfile }) {
+  if (!hotel.url) return <span>{hotel.name}</span>;
+  return (
+    <a
+      href={hotel.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1 font-semibold text-primary underline decoration-primary/35 underline-offset-4 transition-colors hover:text-primary/75"
+    >
+      {hotel.name}
+      <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+    </a>
+  );
+}
+
 export default function TripDetailClient({
   slug,
   initialTrip,
@@ -221,7 +236,10 @@ export default function TripDetailClient({
       .slice(0, 4);
   }, [trip, allTrips]);
 
-  const hotelMedia = useMemo(() => parseMediaItems(trip?.hotelMedia) ?? [], [trip]);
+  const hotelProfiles = useMemo(
+    () => trip ? hotelProfilesFromData(trip.sourceMetadata, trip.hotel, trip.hotelMedia) : [],
+    [trip],
+  );
   const travelerMedia = useMemo(() => parseMediaItems(trip?.travelerMedia) ?? [], [trip]);
   const siteNoticeLines = useMemo(
     () => noticeLines(siteSettings?.tripNotice),
@@ -274,13 +292,13 @@ export default function TripDetailClient({
         trip.languages.length > 0 ||
         trip.meetingPoint ||
         trip.hotel ||
-        hotelMedia.length > 0 ||
+        hotelProfiles.length > 0 ||
         trip.foodIncluded !== null ||
         trip.departureRule) && { id: "notes", label: "Бэлтгэл" },
       travelerMedia.length > 0 && { id: "traveler-media", label: "Аялагчид" },
       trip.testimonials && trip.testimonials.length > 0 && { id: "reviews", label: "Сэтгэгдэл" },
     ].filter((entry): entry is { id: string; label: string } => Boolean(entry));
-  }, [trip, siteNoticeLines, hotelMedia, travelerMedia, hasWeather, routeStops]);
+  }, [trip, siteNoticeLines, hotelProfiles, travelerMedia, hasWeather, routeStops]);
 
   useEffect(() => {
     if (trip) recordRecentlyViewed(trip.slug);
@@ -452,7 +470,7 @@ export default function TripDetailClient({
           {trip.itinerary.length > 0 && (
           <section id="itinerary" className="mt-8 scroll-mt-28">
             <h2 className="text-lg font-bold">Өдөр тутмын хөтөлбөр</h2>
-            <ItineraryAccordion days={trip.itinerary} hotelLinks={hotelLinksFromMetadata(trip.sourceMetadata)} />
+            <ItineraryAccordion days={trip.itinerary} hotelLinks={hotelProfiles.filter((hotel) => hotel.url)} />
           </section>
           )}
 
@@ -576,7 +594,7 @@ export default function TripDetailClient({
             trip.languages.length > 0 ||
             trip.meetingPoint ||
             trip.hotel ||
-            hotelMedia.length > 0 ||
+            hotelProfiles.length > 0 ||
             trip.foodIncluded !== null ||
             trip.departureRule) && (
             <section id="notes" className="mt-8 scroll-mt-28 rounded-2xl border border-border p-5">
@@ -607,13 +625,17 @@ export default function TripDetailClient({
                     <dd className="mt-1 text-sm">{trip.meetingPoint}</dd>
                   </div>
                 )}
-                {trip.hotel && (
+                {(hotelProfiles.length > 0 || trip.hotel) && (
                   <div>
                     <dt className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       <BedDouble className="h-3 w-3" />
                       Зочид буудал
                     </dt>
-                    <dd className="mt-1 text-sm">{trip.hotel}</dd>
+                    <dd className="mt-1 space-y-1 text-sm">
+                      {hotelProfiles.length > 0
+                        ? hotelProfiles.map((hotel, index) => <div key={`${hotel.name}-${index}`}><HotelNameLink hotel={hotel} /></div>)
+                        : trip.hotel}
+                    </dd>
                   </div>
                 )}
                 {trip.foodIncluded !== null && (
@@ -653,15 +675,19 @@ export default function TripDetailClient({
                 )}
               </dl>
 
-              {hotelMedia.length > 0 && (
-                <div className="mt-5 border-t border-border pt-4">
-                  <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    <BedDouble className="h-3 w-3" />
-                    Зочид буудлын зураг, бичлэг
-                  </h3>
-                  <div className="mt-3">
-                    <MediaGallery items={hotelMedia} title={trip.hotel || "Зочид буудал"} />
-                  </div>
+              {hotelProfiles.some((hotel) => hotel.description || hotel.media.length > 0) && (
+                <div className="mt-5 grid gap-4 border-t border-border pt-4 sm:grid-cols-2">
+                  {hotelProfiles.filter((hotel) => hotel.description || hotel.media.length > 0).map((hotel, index) => (
+                    <article key={`${hotel.name}-${index}`} className="min-w-0 rounded-lg border border-border p-4">
+                      <h3 className="text-sm"><HotelNameLink hotel={hotel} /></h3>
+                      {hotel.description && <p className="mt-2 whitespace-pre-line text-sm leading-6 text-muted-foreground">{hotel.description}</p>}
+                      {hotel.media.length > 0 && (
+                        <div className="mt-3">
+                          <MediaGallery items={hotel.media} title={hotel.name} />
+                        </div>
+                      )}
+                    </article>
+                  ))}
                 </div>
               )}
             </section>

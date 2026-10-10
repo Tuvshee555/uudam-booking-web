@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { hotelLinksFromMetadata, hotelTextSegments } from "../src/lib/hotelLinks.ts";
+import { hotelLinksFromMetadata, hotelProfilesFromData, hotelTextSegments } from "../src/lib/hotelLinks.ts";
 
 test("hotel links accept only named HTTPS destinations", () => {
   assert.deepEqual(hotelLinksFromMetadata({ hotel_links: [
@@ -30,4 +30,26 @@ test("unknown accommodation remains plain text", () => {
   assert.deepEqual(hotelTextSegments("Хөтөлбөрийн дагуух зочид буудал", []), [
     { text: "Хөтөлбөрийн дагуух зочид буудал" },
   ]);
+});
+
+test("hotel profiles keep each hotel's own media and description", () => {
+  const profiles = hotelProfilesFromData({ hotel_profiles: [
+    { name: "Hotel One", url: "https://one.example/", description: "Beach", media: [{ url: "https://res.cloudinary.com/demo/image/upload/one.webp", caption: "Pool" }] },
+    { name: "Hotel Two", url: "https://two.example/", description: "City", media: [] },
+  ] }, "ignored", []);
+
+  assert.equal(profiles.length, 2);
+  assert.equal(profiles[0].media[0].caption, "Pool");
+  assert.equal(profiles[1].description, "City");
+});
+
+test("legacy hotel data remains visible in the first inferred hotel", () => {
+  const profiles = hotelProfilesFromData({ hotel_links: [
+    { name: "Hotel One", url: "https://one.example/" },
+    { name: "Hotel Two", url: "https://two.example/" },
+  ] }, "Hotel One, Hotel Two", [{ url: "https://res.cloudinary.com/demo/image/upload/one.webp", caption: "" }]);
+
+  assert.equal(profiles.length, 2);
+  assert.equal(profiles[0].media.length, 1);
+  assert.equal(profiles[1].media.length, 0);
 });

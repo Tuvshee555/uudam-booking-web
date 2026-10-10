@@ -3,6 +3,11 @@ export type HotelLink = {
   url: string;
 };
 
+export type HotelProfile = HotelLink & {
+  description: string;
+  media: Array<{ url: string; caption: string }>;
+};
+
 export type HotelTextSegment = {
   text: string;
   url?: string;
@@ -24,6 +29,19 @@ function safeHotelUrl(value: unknown): string | null {
   }
 }
 
+function hotelMedia(value: unknown): HotelProfile["media"] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    const item = record(entry);
+    const url = safeHotelUrl(item.url);
+    if (!url) return [];
+    return [{
+      url: url.slice(0, 1000),
+      caption: typeof item.caption === "string" ? item.caption.trim().slice(0, 200) : "",
+    }];
+  }).slice(0, 30);
+}
+
 export function hotelLinksFromMetadata(metadata: Record<string, unknown> | null | undefined): HotelLink[] {
   const raw = metadata?.hotel_links;
   if (!Array.isArray(raw)) return [];
@@ -38,6 +56,41 @@ export function hotelLinksFromMetadata(metadata: Record<string, unknown> | null 
     seen.add(key);
     return [{ name, url }];
   });
+}
+
+export function hotelProfilesFromData(
+  metadata: Record<string, unknown> | null | undefined,
+  hotel: string | null | undefined,
+  legacyMedia: unknown,
+): HotelProfile[] {
+  const raw = metadata?.hotel_profiles;
+  if (Array.isArray(raw)) {
+    const profiles = raw.flatMap((value) => {
+      const item = record(value);
+      const name = typeof item.name === "string" ? item.name.trim() : "";
+      if (!name) return [];
+      return [{
+        name,
+        url: safeHotelUrl(item.url) ?? "",
+        description: typeof item.description === "string" ? item.description.trim() : "",
+        media: hotelMedia(item.media),
+      }];
+    });
+    if (profiles.length) return profiles;
+  }
+
+  const links = hotelLinksFromMetadata(metadata);
+  if (links.length) {
+    const media = hotelMedia(legacyMedia);
+    return links.map((link, index) => ({
+      ...link,
+      description: "",
+      media: index === 0 ? media : [],
+    }));
+  }
+
+  const name = hotel?.trim();
+  return name ? [{ name, url: "", description: "", media: hotelMedia(legacyMedia) }] : [];
 }
 
 /** Split accommodation copy while preserving its original punctuation and wording. */
