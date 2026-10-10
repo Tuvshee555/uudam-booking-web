@@ -28,7 +28,6 @@ import { formatTripTitle } from "@/lib/tripDisplay";
 import { availability, nextBookableDeparture, nextDeparture, upcomingDepartures } from "@/lib/departures";
 import {
   isSoldOutDeparture,
-  marketingSeatFacts,
   saleBadgeLabel,
 } from "@/lib/tripMarketing";
 import { parseMediaItems } from "@/lib/media";
@@ -291,7 +290,6 @@ export default function TripDetailClient({
   }
 
   const detailSaleLabel = saleBadgeLabel(trip);
-  const detailSeatFacts = marketingSeatFacts(trip);
   const selectableDeparture = nextBookableDeparture(trip);
   const detailSoldOut = !selectableDeparture && isSoldOutDeparture(nextDeparture(trip));
   const mobileCtaClosed = detailSoldOut && !selectableDeparture;
@@ -331,14 +329,6 @@ export default function TripDetailClient({
                   Суудал дүүрсэн
                 </span>
               )}
-              {detailSeatFacts.filter((fact) => fact !== "Суудал дүүрсэн").map((fact) => (
-                <span
-                  key={fact}
-                  className="rounded-full bg-gold/15 px-2.5 py-1 font-semibold text-navy-deep ring-1 ring-gold/25 dark:text-gold"
-                >
-                  {fact}
-                </span>
-              ))}
               {trip.country && (
                 <span className="flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 font-medium">
                   <MapPin className="h-3 w-3" />

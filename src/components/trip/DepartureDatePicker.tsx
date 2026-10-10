@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-import { availability } from "@/lib/departures";
+import { availability, formatDepartureDate } from "@/lib/departures";
 import { departureDateKey } from "@/lib/departureDate";
 import type { Departure } from "@/types/trip";
 import { cn } from "@/lib/utils";
@@ -35,6 +35,11 @@ export default function DepartureDatePicker({
   const [year, month] = current.split("-").map(Number);
   const days = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const leading = (new Date(Date.UTC(year, month - 1, 1)).getUTCDay() + 6) % 7;
+  // "Few seats" is shown on the one date it is true for: a dot on that day, a
+  // legend, and a note once that date is picked. Nothing about it is said for
+  // the trip as a whole.
+  const selectedSeats = selected ? availability(selected) : null;
+  const hasTight = departures.some((departure) => availability(departure).tone === "tight");
   const byDay = new Map(departures.filter((departure) => monthKey(departure.startDate) === current)
     .map((departure) => [Number(departureDateKey(departure.startDate).slice(8, 10)), departure]));
 
@@ -67,10 +72,13 @@ export default function DepartureDatePicker({
             <button key={day} type="button" disabled={!seats?.selectable} onClick={() => onSelect(departure)}
               aria-label={`${current}-${String(day).padStart(2, "0")}, ${seats?.label}, эхлэх үнэ ${price.toLocaleString("en-US")} төгрөг`}
               aria-pressed={active}
-              className={cn("flex h-9 flex-col items-center justify-center rounded-md border text-xs leading-tight transition-colors",
+              className={cn("relative flex h-9 flex-col items-center justify-center rounded-md border text-xs leading-tight transition-colors",
                 active ? "border-primary bg-primary font-semibold text-primary-foreground" : "border-border bg-secondary/45 hover:border-primary",
                 !seats?.selectable && "border-destructive/25 bg-destructive/5 text-destructive")}
             >
+              {seats?.tone === "tight" && (
+                <span aria-hidden className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-background" />
+              )}
               <span className="font-semibold">{day}</span>
               <span className="text-[9px] tabular-nums opacity-80">{!seats?.selectable ? (departure.status === "SOLD_OUT" || departure.seatsLeft === 0 ? "Дүүрсэн" : seats?.label) : price > 0 ? shortPrice(price) : "—"}</span>
             </button>
@@ -78,6 +86,17 @@ export default function DepartureDatePicker({
         })}
       </div>
       <p className="mt-2 text-[11px] text-muted-foreground">Үнэ: сая ₮, нэг том хүний эхлэх үнэ.</p>
+      {hasTight && (
+        <p className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <span aria-hidden className="h-2 w-2 rounded-full bg-destructive" />
+          Цөөн суудалтай өдөр
+        </p>
+      )}
+      {selected && selectedSeats?.tone === "tight" && (
+        <p role="status" className="mt-2 rounded-md bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive">
+          {formatDepartureDate(selected.startDate)} — цөөн суудал үлдсэн. Захиалгаа түргэн баталгаажуулаарай.
+        </p>
+      )}
     </div>
   );
 }

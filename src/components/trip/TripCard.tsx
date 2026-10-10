@@ -2,19 +2,14 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { CalendarDays, Clock, MapPin, Play, Star, Users } from "lucide-react";
+import { CalendarDays, Clock, MapPin, Play, Star } from "lucide-react";
 
 import type { Trip } from "@/types/trip";
 import { formatMnt, formatTripStartingPrice, hasKnownTripPrice } from "@/lib/pricing";
-import { availability, formatDepartureDate, nextBookableDeparture, nextDeparture } from "@/lib/departures";
-import {
-  isSoldOutDeparture,
-  marketingSeatFacts,
-  saleBadgeLabel,
-} from "@/lib/tripMarketing";
+import { formatDepartureDate, nextBookableDeparture, nextDeparture } from "@/lib/departures";
+import { isSoldOutDeparture, saleBadgeLabel } from "@/lib/tripMarketing";
 import SaveButton from "@/components/trip/SaveButton";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
-import { cn } from "@/lib/utils";
 import { formatTripTitle } from "@/lib/tripDisplay";
 
 export default function TripCard({ trip }: { trip: Trip }) {
@@ -22,9 +17,11 @@ export default function TripCard({ trip }: { trip: Trip }) {
   const departure = nextBookableDeparture(trip) ?? nextDeparture(trip);
   const hasVideo = Boolean(trip.video) || trip.videos.length > 0;
 
-  const seats = departure ? availability(departure) : null;
+  // Seat wording is deliberately NOT on the card. "Few seats" is true of one
+  // date and is shown beside that date (date picker, departures list); a card
+  // summarises the whole trip and a seat warning there reads as a claim about
+  // all of it. Only "sold out" is a statement about the trip, and it has its badge.
   const saleLabel = saleBadgeLabel(trip);
-  const seatFacts = marketingSeatFacts(trip);
   const soldOut = isSoldOutDeparture(departure);
 
   return (
@@ -116,24 +113,6 @@ export default function TripCard({ trip }: { trip: Trip }) {
           </div>
         )}
 
-        {seatFacts.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {seatFacts.map((fact) => (
-              <span
-                key={fact}
-                className={cn(
-                  "rounded-full border px-2 py-0.5 text-[10px] font-semibold",
-                  fact === "Суудал дүүрсэн"
-                    ? "border-destructive/25 bg-destructive/10 text-destructive"
-                    : "border-gold/30 bg-gold/10 text-navy-deep dark:text-gold",
-                )}
-              >
-                {fact}
-              </span>
-            ))}
-          </div>
-        )}
-
         <div className="mt-3 flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <Clock className="h-3.5 w-3.5" />
@@ -143,18 +122,6 @@ export default function TripCard({ trip }: { trip: Trip }) {
             <span className="flex items-center gap-1">
               <CalendarDays className="h-3.5 w-3.5" />
               {formatDepartureDate(departure.startDate)}
-            </span>
-          )}
-          {seats && (
-            <span
-              className={cn(
-                "flex items-center gap-1",
-                seats.tone === "tight" && "font-semibold text-destructive",
-                seats.tone === "closed" && "font-semibold text-destructive",
-              )}
-            >
-              <Users className="h-3.5 w-3.5" />
-              {seats.label}
             </span>
           )}
         </div>

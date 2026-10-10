@@ -53,7 +53,7 @@ function formatDateLabel(value: string) {
 
 export const STATUS_OPTIONS = [
   { value: "OPEN", label: "Захиалга авч байна" },
-  { value: "ALMOST_FULL", label: "Цөөн суудал үлдсэн" },
+  { value: "ALMOST_FULL", label: "Цөөн суудал" },
   { value: "SOLD_OUT", label: "Дүүрсэн" },
   { value: "PAUSED", label: "Одоогоор идэвхгүй" },
   { value: "CANCELLED", label: "Цуцлагдсан" },
@@ -316,6 +316,10 @@ export default function DepartureEditor({
                 </select>
               </div>
 
+              <p className="mt-1.5 max-w-sm text-xs text-muted-foreground">
+                «Цөөн суудал» гэж сонговол зөвхөн энэ ({dep.startDate || "сонгосон"}) өдрийн хажууд харагдана. Бусад өдөрт нөлөөлөхгүй.
+              </p>
+
               <ExactSeatsOverride dep={dep} onChange={(patch) => update(index, patch)} />
             </div>
             </div>
@@ -351,7 +355,7 @@ export function ExactSeatsOverride({
         onClick={() => setOpen(true)}
         className="mt-2 text-[11px] font-medium text-muted-foreground underline-offset-2 hover:text-primary hover:underline"
       >
-        Суудлын тоо
+        Суудлын тоо (зөвхөн тоо; «Цөөн суудал»-ыг төлвөөс сонгоно)
       </button>
     );
   }

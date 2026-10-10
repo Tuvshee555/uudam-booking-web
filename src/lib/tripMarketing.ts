@@ -82,15 +82,6 @@ export function seatCountLabel(left: number | null, total?: number | null): stri
   return `${left} суудал үлдсэн`;
 }
 
-export function marketingSeatFacts(trip: Trip): string[] {
-  const badge = marketingBadgeFor(trip);
-  const facts = [
-    badge.seatsPercentLeft !== null ? `${badge.seatsPercentLeft}% суудал үлдсэн` : null,
-    seatCountLabel(badge.seatsLeft, badge.seatsTotal),
-  ].filter((value): value is string => Boolean(value));
-  return [...new Set(facts)];
-}
-
 export function isSoldOutDeparture(departure: Departure | null | undefined): boolean {
   return Boolean(
     departure &&

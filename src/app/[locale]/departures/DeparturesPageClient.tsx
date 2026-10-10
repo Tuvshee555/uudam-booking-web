@@ -110,7 +110,7 @@ export default function DeparturesPageClient({ trips }: { trips: Trip[] }) {
                     className="flex items-center justify-between gap-3 py-3 transition-colors hover:text-primary">
                     <div className="min-w-0">
                       <div className="truncate text-sm font-semibold">{trip.title}</div>
-                      <div className="mt-0.5 text-xs text-muted-foreground">{trip.durationDays} хоног · {seats.label}</div>
+                      <div className="mt-0.5 text-xs text-muted-foreground">{trip.durationDays} хоног · <span className={seats.tone !== "open" ? "font-semibold text-destructive" : ""}>{seats.label}</span></div>
                     </div>
                     <div className="shrink-0 text-right">
                       <div className="text-sm font-semibold tabular-nums text-primary">{formatTripStartingPrice(departure.price ?? trip.price)}</div>

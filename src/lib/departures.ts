@@ -72,17 +72,17 @@ export function availability(departure: Departure): Availability {
   if (status === "PAUSED") {
     return { label: "Одоогоор идэвхгүй", tone: "closed", selectable: false };
   }
-  if (status === "ALMOST_FULL") {
-    return { label: "Цөөн суудал", tone: "tight", selectable: true };
-  }
-
-  // OPEN. Staff may still have flagged a low seat count without moving the
-  // status, so treat a small number as the same "few places" signal.
+  // A count of zero means no seats at all, whatever else the date says (the
+  // chatbot reads it the same way).
   const seatsLeft = departure.seatsLeft;
   if (seatsLeft !== null && seatsLeft <= 0) {
     return { label: "Суудал дүүрсэн", tone: "closed", selectable: false };
   }
-  if (seatsLeft !== null && seatsLeft <= 5) {
+
+  // "Few seats" belongs to ONE date and is something staff choose for it. It is
+  // never worked out from a typed seat count: counts are not decremented, so a
+  // stale "3" used to call a date low long after it had filled or emptied.
+  if (status === "ALMOST_FULL") {
     return { label: "Цөөн суудал", tone: "tight", selectable: true };
   }
 
