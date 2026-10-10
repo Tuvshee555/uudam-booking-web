@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+import { resolveShortLink } from "@/lib/shortLink";
+
 const LOCALES = ["mn", "en", "ko"];
 const DEFAULT_LOCALE = "mn";
 
@@ -14,7 +16,7 @@ const PUBLIC_ADMIN_PATHS = ["/admin/log-in", "/admin/forgot-password", "/admin/r
  * admin panel share a deployment: every path gets a locale prefix, and only
  * `/admin/*` is gated on a session cookie.
  */
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (STATIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
@@ -26,6 +28,10 @@ export function proxy(request: NextRequest) {
   );
 
   if (!hasLocale) {
+    // uudamtravel.mn/<alias>: a short link? (no-op unless SHORTLINK_ORIGIN is set)
+    const shortLink = await resolveShortLink(request);
+    if (shortLink) return shortLink;
+
     const url = request.nextUrl.clone();
     url.pathname = `/${DEFAULT_LOCALE}${pathname}`;
     return NextResponse.redirect(url);
