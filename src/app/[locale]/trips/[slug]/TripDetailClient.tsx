@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import {
   AlertCircle,
   BedDouble,
@@ -192,10 +193,8 @@ export default function TripDetailClient({
   slug,
   initialTrip,
   initialSiteSettings,
-  selectedDate,
 }: {
   slug: string;
-  selectedDate?: string;
   /**
    * The trip the server page already fetched. Seeding the query with it is what
    * puts the itinerary, price and departures into the initial HTML instead of
@@ -205,6 +204,19 @@ export default function TripDetailClient({
   initialSiteSettings?: { tripNotice: string | null };
 }) {
   const { locale } = useI18n();
+
+  // Read client-side, not as a page-level `searchParams` prop: a server
+  // component that reads `searchParams` is forced fully dynamic by Next (no
+  // ISR, no CDN caching, "Cache-Control: no-store" on every response) even
+  // though the trip DATA has nothing to do with this param — it only seeds
+  // which departure date starts selected, so a shared
+  // `?departure=2026-11-01` link opens on that date. Reading it here instead
+  // costs nothing (this component already mounts client-side) and lets the
+  // actual page be cached again.
+  const searchParams = useSearchParams();
+  const rawDeparture = searchParams.get("departure");
+  const selectedDate =
+    rawDeparture && /^\d{4}-\d{2}-\d{2}$/.test(rawDeparture) ? rawDeparture : undefined;
 
   const { data: trip, isLoading } = useTrip(slug, initialTrip);
   const { data: siteSettings } = useSiteSettings(initialSiteSettings);

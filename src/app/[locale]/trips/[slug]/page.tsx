@@ -13,7 +13,21 @@ import { formatTripTitle } from "@/lib/tripDisplay";
 import type { Trip } from "@/types/trip";
 import TripDetailClient from "./TripDetailClient";
 
-type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ departure?: string }> };
+type Props = { params: Promise<{ slug: string }> };
+
+/**
+ * No `revalidate` export used to mean "cached until a save revalidates it",
+ * which is what you want — except this page ALSO read `searchParams` (the
+ * `?departure=` that pre-selects a date), and a server component that reads
+ * searchParams is forced fully dynamic by Next regardless of any other
+ * setting: no ISR, no edge caching, `Cache-Control: no-store` on every
+ * response. That `?departure=` read has moved to the client component
+ * (useSearchParams, which doesn't affect server caching) specifically so
+ * this page can be a normal cached page again. Saving a trip revalidates
+ * this path immediately (see revalidateTripPages in /api/trips/[id]), so
+ * this is a safety net, matching the other catalogue pages.
+ */
+export const revalidate = 300;
 
 /**
  * Server-only lookup. Two jobs, which is why it fetches the whole trip rather
@@ -89,9 +103,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function TripDetailPage({ params, searchParams }: Props) {
+export default async function TripDetailPage({ params }: Props) {
   const { slug } = await params;
-  const { departure } = await searchParams;
   const [trip, siteSettings] = await Promise.all([findPublishedTrip(slug), getSiteSettings()]);
 
   // A shared link to a trip that's since been unpublished or deleted should
@@ -153,7 +166,6 @@ export default async function TripDetailPage({ params, searchParams }: Props) {
       )}
       <TripDetailClient
         slug={slug}
-        selectedDate={typeof departure === "string" && /^\d{4}-\d{2}-\d{2}$/.test(departure) ? departure : undefined}
         initialTrip={serializeTrip(trip)}
         initialSiteSettings={siteSettings}
       />
