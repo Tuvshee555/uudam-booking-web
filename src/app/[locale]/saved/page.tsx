@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { prisma } from "@/server/prisma";
 import { TRIP_INCLUDE } from "@/server/tripInput";
-import { publicTrip } from "@/lib/publicTrip";
+import { listTrip } from "@/lib/publicTrip";
 import type { Trip } from "@/types/trip";
 import SavedPageClient from "./SavedPageClient";
 
@@ -31,5 +31,5 @@ export default async function SavedPage() {
     orderBy: { createdAt: "desc" },
   });
 
-  return <SavedPageClient initialTrips={JSON.parse(JSON.stringify(trips.map(publicTrip))) as Trip[]} />;
+  return <SavedPageClient initialTrips={JSON.parse(JSON.stringify(trips.map(listTrip))) as Trip[]} />;
 }

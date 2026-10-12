@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { prisma } from "@/server/prisma";
 import { TRIP_INCLUDE } from "@/server/tripInput";
-import { publicTrip } from "@/lib/publicTrip";
+import { listTrip } from "@/lib/publicTrip";
 import type { Trip } from "@/types/trip";
 import DeparturesPageClient from "./DeparturesPageClient";
 
@@ -46,5 +46,5 @@ export default async function DeparturesPage() {
     include: TRIP_INCLUDE,
   });
 
-  return <DeparturesPageClient trips={JSON.parse(JSON.stringify(trips.map(publicTrip))) as Trip[]} />;
+  return <DeparturesPageClient trips={JSON.parse(JSON.stringify(trips.map(listTrip))) as Trip[]} />;
 }

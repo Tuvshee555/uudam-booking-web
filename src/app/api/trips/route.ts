@@ -6,7 +6,7 @@ import { handler, json, publicCache, readJson, safeText } from "@/server/http";
 import { cached, invalidateCatalog } from "@/server/cache";
 import { assertChatbotTripSyncConfigured } from "@/server/chatbotTripSync";
 import { queueTripSync, deliverTripSync } from "@/server/tripSyncQueue";
-import { publicTrip } from "@/lib/publicTrip";
+import { listTrip } from "@/lib/publicTrip";
 import {
   TRIP_INCLUDE,
   assertTitle,
@@ -77,7 +77,7 @@ export const GET = handler(async (req: Request) => {
     ),
   );
 
-  return publicCache(NextResponse.json(trips.map(publicTrip)));
+  return publicCache(NextResponse.json(trips.map(listTrip)));
 });
 
 /** POST /api/trips — create a trip (admin). */

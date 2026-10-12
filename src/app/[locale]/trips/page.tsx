@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { prisma } from "@/server/prisma";
 import { localeAlternates } from "@/lib/hreflang";
 import { TRIP_INCLUDE } from "@/server/tripInput";
-import { publicTrip } from "@/lib/publicTrip";
+import { listTrip } from "@/lib/publicTrip";
 import type { Trip } from "@/types/trip";
 import TripsPageClient from "./TripsPageClient";
 
@@ -34,7 +34,7 @@ async function publishedTrips(): Promise<Trip[]> {
   });
 
   // Matches NextResponse.json: Dates become ISO strings, as the client type expects.
-  return JSON.parse(JSON.stringify(trips.map(publicTrip))) as Trip[];
+  return JSON.parse(JSON.stringify(trips.map(listTrip))) as Trip[];
 }
 
 /**
