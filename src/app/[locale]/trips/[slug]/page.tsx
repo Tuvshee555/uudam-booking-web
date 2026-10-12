@@ -8,6 +8,7 @@ import { TRIP_INCLUDE } from "@/server/tripInput";
 import { getSiteSettings } from "@/server/catalog";
 import { formatTripStartingPrice, hasKnownTripPrice } from "@/lib/pricing";
 import { localeAlternates } from "@/lib/hreflang";
+import { publicTrip } from "@/lib/publicTrip";
 import { formatTripTitle } from "@/lib/tripDisplay";
 import type { Trip } from "@/types/trip";
 import TripDetailClient from "./TripDetailClient";
@@ -49,7 +50,7 @@ const findPublishedTrip = cache(async (slug: string) => {
  * serialises Dates to ISO strings, and the client `Trip` type expects strings.
  */
 function serializeTrip(trip: NonNullable<Awaited<ReturnType<typeof findPublishedTrip>>>): Trip {
-  return JSON.parse(JSON.stringify(trip)) as Trip;
+  return JSON.parse(JSON.stringify(publicTrip(trip))) as Trip;
 }
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://uudamtravel.mn";

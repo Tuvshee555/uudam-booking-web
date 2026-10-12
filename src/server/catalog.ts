@@ -2,6 +2,7 @@ import { prisma } from "@/server/prisma";
 import { TRIP_INCLUDE } from "@/server/tripInput";
 import { tripCountsByCategory } from "@/server/categoryCounts";
 import type { CategoryNode, Trip } from "@/types/trip";
+import { publicTrip } from "@/lib/publicTrip";
 
 /**
  * Server-side reads of the public catalogue, shaped exactly like the API
@@ -20,7 +21,7 @@ export async function getPublishedTrips(): Promise<Trip[]> {
     orderBy: { createdAt: "desc" },
   });
 
-  return JSON.parse(JSON.stringify(trips)) as Trip[];
+  return JSON.parse(JSON.stringify(trips.map(publicTrip))) as Trip[];
 }
 
 /**
@@ -69,7 +70,8 @@ export async function getCategoryWithTrips(
 
   return {
     category: { id: target.id, categoryName: target.categoryName, slug: target.slug },
-    trips: JSON.parse(JSON.stringify(trips)) as Trip[],
+    // Drafts are an admin view and keep staff-only fields; the public page never does.
+    trips: JSON.parse(JSON.stringify(includeDrafts ? trips : trips.map(publicTrip))) as Trip[],
   };
 }
 
