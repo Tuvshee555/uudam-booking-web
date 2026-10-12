@@ -1,11 +1,12 @@
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Script from "next/script";
 
 import { prisma } from "@/server/prisma";
 import { TRIP_INCLUDE } from "@/server/tripInput";
-import { getSiteSettings } from "@/server/catalog";
+import { getSiteSettings as getSiteSettingsUncached } from "@/server/catalog";
 import { formatTripStartingPrice, hasKnownTripPrice } from "@/lib/pricing";
 import { localeAlternates } from "@/lib/hreflang";
 import { publicTrip } from "@/lib/publicTrip";
@@ -14,6 +15,29 @@ import type { Trip } from "@/types/trip";
 import TripDetailClient from "./TripDetailClient";
 
 type Props = { params: Promise<{ slug: string }> };
+
+/**
+ * The missing piece that made every other fix on this page a no-op: Next
+ * only adds a dynamic segment to its prerender manifest — the thing that
+ * makes ANY caching (revalidate export, unstable_cache, ISR) apply to a
+ * route at all — when `generateStaticParams` is defined for it, even if it
+ * returns nothing. Confirmed directly against `.next/prerender-manifest.json`:
+ * every OTHER route on this site (home, trips list, category, discover,
+ * guide — none of which define their own generateStaticParams, because
+ * their only dynamic segment is `[locale]`, satisfied by the layout's) was
+ * present under `dynamicRoutes`; `/[locale]/trips/[slug]` was not present
+ * AT ALL. Every response carried `Cache-Control: no-store` regardless of
+ * the revalidate export below or the unstable_cache wraps further down —
+ * there was no prerender entry for the runtime to populate.
+ *
+ * ~30 published trips, so pre-rendering all of them at build time (rather
+ * than an empty array + first-visitor-pays-the-render-cost) means no
+ * visitor ever hits an uncached render for an existing trip.
+ */
+export async function generateStaticParams() {
+  const trips = await prisma.trip.findMany({ where: { isPublished: true }, select: { slug: true } });
+  return trips.map((trip) => ({ slug: trip.slug }));
+}
 
 /**
  * No `revalidate` export used to mean "cached until a save revalidates it",
@@ -41,21 +65,47 @@ export const revalidate = 300;
  *    everything, which left crawlers a page whose only headings were the
  *    footer's.
  *
- * `cache` dedupes the query across `generateMetadata` and the page render,
- * which are separate invocations within the same request.
+ * Wrapped in BOTH caches, for two different jobs:
+ * - `unstable_cache` is what actually persists the result ACROSS requests and
+ *   visitors. Without it, `export const revalidate` above does nothing at
+ *   all: Next's route cache only knows how to cache `fetch()` calls (or
+ *   `unstable_cache`-wrapped ones) discovered during render — a plain
+ *   Prisma query is invisible to it, and since this route has no
+ *   `generateStaticParams` either (so there's no pre-built HTML to serve as
+ *   the cached artifact), every request rendered from scratch regardless of
+ *   the revalidate export. Confirmed live: every response carried
+ *   `Cache-Control: no-store` and `X-Vercel-Cache: MISS`, even on repeat
+ *   requests for the identical slug, until this wrap was added.
+ * - `cache` (React) still dedupes the query WITHIN a single request, so
+ *   `generateMetadata` and the page body (separate invocations) share one
+ *   call instead of two.
+ *
+ * `revalidatePath` on a trip save (see revalidateTripPages in
+ * /api/trips/[id]) invalidates this the same as a `fetch`-based cache would.
  */
-const findPublishedTrip = cache(async (slug: string) => {
-  return prisma.trip.findFirst({
-    where: { slug, isPublished: true },
-    include: {
-      ...TRIP_INCLUDE,
-      testimonials: {
-        where: { isPublished: true },
-        orderBy: { createdAt: "desc" },
-        take: 20,
-      },
+const findPublishedTrip = cache(
+  unstable_cache(
+    async (slug: string) => {
+      return prisma.trip.findFirst({
+        where: { slug, isPublished: true },
+        include: {
+          ...TRIP_INCLUDE,
+          testimonials: {
+            where: { isPublished: true },
+            orderBy: { createdAt: "desc" },
+            take: 20,
+          },
+        },
+      });
     },
-  });
+    ["trip-detail"],
+    { revalidate: 300 },
+  ),
+);
+
+/** Same gap, same fix, for the shared site settings (trip notice / bank details) this page also reads. */
+const getSiteSettings = unstable_cache(getSiteSettingsUncached, ["trip-detail-site-settings"], {
+  revalidate: 300,
 });
 
 /**

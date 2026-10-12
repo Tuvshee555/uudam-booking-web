@@ -1,13 +1,29 @@
+import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { prisma } from "@/server/prisma";
-import { getCategoryWithTrips } from "@/server/catalog";
-import { tripCountsByCategory } from "@/server/categoryCounts";
+import { getCategoryWithTrips as getCategoryWithTripsUncached } from "@/server/catalog";
+import { tripCountsByCategory as tripCountsByCategoryUncached } from "@/server/categoryCounts";
 import { localeAlternates } from "@/lib/hreflang";
 import CategoryPageClient from "./CategoryPageClient";
 
 type Props = { params: Promise<{ id: string }> };
+
+/**
+ * Pre-render every real category at build time. Without `generateStaticParams`
+ * defined at all (even returning []), Next never adds this route to its
+ * prerender manifest, and NOTHING caches — not this `revalidate`, not
+ * `unstable_cache` below, nothing — every visit renders from scratch.
+ * Confirmed directly against `.next/prerender-manifest.json` on the sibling
+ * trips/[slug] route, which had the identical symptom (permanent
+ * `Cache-Control: no-store`) until this was added there.
+ */
+export async function generateStaticParams() {
+  const categories = await prisma.category.findMany({ select: { slug: true, id: true } });
+  return categories.map((category) => ({ id: category.slug ?? category.id }));
+}
 
 /**
  * Without this the page is prerendered once at build time and its trip list
@@ -20,16 +36,46 @@ type Props = { params: Promise<{ id: string }> };
  */
 export const revalidate = 300;
 
-async function findCategory(idOrSlug: string) {
-  return prisma.category.findFirst({
-    where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
-    select: {
-      id: true,
-      categoryName: true,
-      description: true,
-      image: true,
+/**
+ * `cache` dedupes within one request (generateMetadata + the page share a
+ * call); `unstable_cache` is what persists it across requests and visitors
+ * — plain Prisma queries are invisible to Next's route cache otherwise.
+ */
+const findCategory = cache(
+  unstable_cache(
+    async (idOrSlug: string) => {
+      return prisma.category.findFirst({
+        where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
+        select: {
+          id: true,
+          categoryName: true,
+          description: true,
+          image: true,
+        },
+      });
     },
-  });
+    ["category-detail"],
+    { revalidate: 300 },
+  ),
+);
+
+const getCategoryWithTrips = unstable_cache(getCategoryWithTripsUncached, ["category-detail-trips"], {
+  revalidate: 300,
+});
+
+/**
+ * `tripCountsByCategory` returns a `Map`, which doesn't survive
+ * `unstable_cache`'s serialization (it comes back a plain object, so `.get`
+ * is gone — this broke the build the first time). Cache the serializable
+ * entries array instead and rebuild the Map after.
+ */
+const getTripCountEntries = unstable_cache(
+  async () => [...(await tripCountsByCategoryUncached())],
+  ["category-detail-counts"],
+  { revalidate: 300 },
+);
+async function tripCountsByCategory() {
+  return new Map(await getTripCountEntries());
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

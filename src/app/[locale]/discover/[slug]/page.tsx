@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
@@ -10,8 +11,29 @@ import { formatFullDate } from "@/lib/departures";
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
-const findArticle = cache(async (slug: string) =>
-  prisma.knowledgeArticle.findFirst({ where: { slug, isPublished: true } }),
+/**
+ * Pre-render every published article at build time. Without
+ * `generateStaticParams` defined at all (even returning []), Next never adds
+ * this route to its prerender manifest and nothing caches — not `revalidate`,
+ * not `unstable_cache`, nothing. See the identical fix (and the full story)
+ * on trips/[slug]/page.tsx.
+ */
+export async function generateStaticParams() {
+  const articles = await prisma.knowledgeArticle.findMany({
+    where: { isPublished: true },
+    select: { slug: true },
+  });
+  return articles.map((article) => ({ slug: article.slug }));
+}
+
+export const revalidate = 300;
+
+const findArticle = cache(
+  unstable_cache(
+    async (slug: string) => prisma.knowledgeArticle.findFirst({ where: { slug, isPublished: true } }),
+    ["discover-article"],
+    { revalidate: 300 },
+  ),
 );
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

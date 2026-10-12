@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
@@ -8,8 +9,26 @@ import { prisma } from "@/server/prisma";
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
-const findPost = cache(async (slug: string) =>
-  prisma.post.findFirst({ where: { slug, isPublished: true } }),
+/**
+ * Pre-render every published guide at build time. Without
+ * `generateStaticParams` defined at all (even returning []), Next never adds
+ * this route to its prerender manifest and nothing caches — not `revalidate`,
+ * not `unstable_cache`, nothing. See the identical fix (and the full story)
+ * on trips/[slug]/page.tsx.
+ */
+export async function generateStaticParams() {
+  const posts = await prisma.post.findMany({ where: { isPublished: true }, select: { slug: true } });
+  return posts.map((post) => ({ slug: post.slug }));
+}
+
+export const revalidate = 300;
+
+const findPost = cache(
+  unstable_cache(
+    async (slug: string) => prisma.post.findFirst({ where: { slug, isPublished: true } }),
+    ["guide-post"],
+    { revalidate: 300 },
+  ),
 );
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

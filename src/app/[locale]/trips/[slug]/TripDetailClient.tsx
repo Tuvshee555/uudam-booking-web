@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import {
@@ -189,11 +189,7 @@ function HotelNameLink({ hotel }: { hotel: HotelProfile }) {
   );
 }
 
-export default function TripDetailClient({
-  slug,
-  initialTrip,
-  initialSiteSettings,
-}: {
+type TripDetailClientProps = {
   slug: string;
   /**
    * The trip the server page already fetched. Seeding the query with it is what
@@ -202,9 +198,29 @@ export default function TripDetailClient({
    */
   initialTrip?: Trip;
   initialSiteSettings?: { tripNotice: string | null };
-}) {
-  const { locale } = useI18n();
+};
 
+/**
+ * `useSearchParams()` must sit behind a `<Suspense>` boundary for this route
+ * to be statically generated at all — without one, `next build` throws
+ * "useSearchParams() should be wrapped in a suspense boundary" and the
+ * route's static shell (and therefore ALL of its caching: generateStaticParams,
+ * revalidate, unstable_cache) never gets built in the first place. The read
+ * itself lives here, isolated to the one thing that actually needs it, so the
+ * boundary is as tight as possible; everything else in the real component
+ * renders immediately from `initialTrip` with no fallback flash in the
+ * common case (a direct visit, which is what matters — every other page on
+ * the site links here without `?departure=`).
+ */
+export default function TripDetailClient(props: TripDetailClientProps) {
+  return (
+    <Suspense fallback={<TripDetailClientInner {...props} selectedDate={undefined} />}>
+      <TripDetailClientWithSearchParams {...props} />
+    </Suspense>
+  );
+}
+
+function TripDetailClientWithSearchParams(props: TripDetailClientProps) {
   // Read client-side, not as a page-level `searchParams` prop: a server
   // component that reads `searchParams` is forced fully dynamic by Next (no
   // ISR, no CDN caching, "Cache-Control: no-store" on every response) even
@@ -217,6 +233,17 @@ export default function TripDetailClient({
   const rawDeparture = searchParams.get("departure");
   const selectedDate =
     rawDeparture && /^\d{4}-\d{2}-\d{2}$/.test(rawDeparture) ? rawDeparture : undefined;
+
+  return <TripDetailClientInner {...props} selectedDate={selectedDate} />;
+}
+
+function TripDetailClientInner({
+  slug,
+  initialTrip,
+  initialSiteSettings,
+  selectedDate,
+}: TripDetailClientProps & { selectedDate: string | undefined }) {
+  const { locale } = useI18n();
 
   const { data: trip, isLoading } = useTrip(slug, initialTrip);
   const { data: siteSettings } = useSiteSettings(initialSiteSettings);
