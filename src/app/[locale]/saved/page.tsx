@@ -16,9 +16,12 @@ export const metadata: Metadata = {
 /**
  * Without this the page is prerendered once at build time and its data is
  * frozen until the next deploy — staff edit trips daily, and the departures
- * cutoff is a `new Date()` that would freeze with it.
+ * cutoff is a `new Date()` that would freeze with it. No save hook targets
+ * this path directly (it has no admin screen of its own — it mirrors the
+ * same trip data as /trips, filtered client-side by what's in the
+ * visitor's browser), so the timer is the only thing keeping it fresh.
  */
-export const revalidate = 60;
+export const revalidate = 300;
 
 export default async function SavedPage() {
   const trips = await prisma.trip.findMany({

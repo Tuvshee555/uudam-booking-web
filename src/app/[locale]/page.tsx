@@ -13,8 +13,12 @@ import HomeClient from "./HomeClient";
  * initial HTML — every list came from a client fetch. It is the page most
  * likely to be crawled, linked and screenshotted, so it is now seeded on the
  * server like the catalogue and trip pages.
+ *
+ * Saving a trip revalidates this path immediately (see revalidateTripPages
+ * in /api/trips/[id]), so this timer is a safety net for anything that
+ * bypasses that hook, not how a staff edit actually reaches a visitor.
  */
-export const revalidate = 60;
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   alternates: { languages: localeAlternates("") },

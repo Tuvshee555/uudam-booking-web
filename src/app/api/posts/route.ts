@@ -1,9 +1,18 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/server/prisma";
 import { requireAdmin } from "@/server/auth";
 import { handler, httpError, json, publicCache, readJson, safeText } from "@/server/http";
 import { slugify } from "@/server/tripInput";
 import { uniquePostSlug } from "@/server/contentSlugs";
+
+/** The /guide list is ISR-cached on a long timer — this is the instant-refresh signal. */
+function revalidateGuidePages(slug?: string) {
+  for (const locale of ["mn", "en", "ko"]) {
+    revalidatePath(`/${locale}/guide`, "page");
+    if (slug) revalidatePath(`/${locale}/guide/${slug}`, "page");
+  }
+}
 
 /** GET /api/posts — published guides, newest first. `?all=true` adds drafts (admin). */
 export const GET = handler(async (req: Request) => {
@@ -62,6 +71,8 @@ export const POST = handler(async (req: Request) => {
       publishedAt: isPublished ? new Date() : null,
     },
   });
+
+  revalidateGuidePages(post.slug);
 
   return json(post, { status: 201 });
 });

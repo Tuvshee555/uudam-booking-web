@@ -1,9 +1,18 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/server/prisma";
 import { requireAdmin } from "@/server/auth";
 import { handler, httpError, json, publicCache, readJson, safeText } from "@/server/http";
 import { slugify } from "@/server/tripInput";
 import { uniqueKnowledgeSlug } from "@/server/contentSlugs";
+
+/** The /discover list is ISR-cached on a long timer — this is the instant-refresh signal. */
+function revalidateDiscoverPages(slug?: string) {
+  for (const locale of ["mn", "en", "ko"]) {
+    revalidatePath(`/${locale}/discover`, "page");
+    if (slug) revalidatePath(`/${locale}/discover/${slug}`, "page");
+  }
+}
 
 function toStringArray(value: unknown, max: number): string[] {
   if (!Array.isArray(value)) return [];
@@ -77,6 +86,8 @@ export const POST = handler(async (req: Request) => {
       publishedAt: isPublished ? new Date() : null,
     },
   });
+
+  revalidateDiscoverPages(article.slug);
 
   return json(article, { status: 201 });
 });

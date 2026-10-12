@@ -17,10 +17,14 @@ export const metadata: Metadata = {
 
 /**
  * Without this the page is prerendered once at build time and its data is
- * frozen until the next deploy — staff edit trips daily, and the departures
- * cutoff is a `new Date()` that would freeze with it.
+ * frozen until the next deploy — this list is edited far less often than
+ * trips, but that still beats being frozen until the next deploy.
+ *
+ * Saving a post revalidates this path immediately (see revalidateGuidePages
+ * in /api/posts), so this timer is a safety net, not the only way an edit
+ * reaches a visitor.
  */
-export const revalidate = 60;
+export const revalidate = 300;
 
 function formatDate(value: Date) {
   return value.toLocaleDateString("mn-MN", { year: "numeric", month: "long", day: "numeric" });

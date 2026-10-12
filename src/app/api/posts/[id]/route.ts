@@ -1,9 +1,18 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/server/prisma";
 import { optionalAdmin, requireAdmin } from "@/server/auth";
 import { handler, httpError, json, publicCache, readJson, safeText } from "@/server/http";
 import { slugify } from "@/server/tripInput";
 import { uniquePostSlug } from "@/server/contentSlugs";
+
+/** The /guide list is ISR-cached on a long timer — this is the instant-refresh signal. */
+function revalidateGuidePages(slug?: string) {
+  for (const locale of ["mn", "en", "ko"]) {
+    revalidatePath(`/${locale}/guide`, "page");
+    if (slug) revalidatePath(`/${locale}/guide/${slug}`, "page");
+  }
+}
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -67,6 +76,8 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
     },
   });
 
+  revalidateGuidePages(post.slug);
+
   return json(post);
 });
 
@@ -75,9 +86,10 @@ export const DELETE = handler(async (req: Request, ctx: Ctx) => {
 
   const { id } = await ctx.params;
 
-  const existing = await prisma.post.findUnique({ where: { id }, select: { id: true } });
+  const existing = await prisma.post.findUnique({ where: { id }, select: { id: true, slug: true } });
   if (!existing) throw httpError(404, "Нийтлэл олдсонгүй");
 
   await prisma.post.delete({ where: { id } });
+  revalidateGuidePages(existing.slug);
   return json({ ok: true });
 });

@@ -20,8 +20,12 @@ export const metadata: Metadata = {
 /**
  * Without this the page is prerendered once at build time and its list is
  * frozen until the next deploy.
+ *
+ * Saving an article revalidates this path immediately (see
+ * revalidateDiscoverPages in /api/knowledge), so this timer is a safety
+ * net, not the only way an edit reaches a visitor.
  */
-export const revalidate = 60;
+export const revalidate = 300;
 
 export default async function DiscoverIndexPage({
   params,

@@ -1,9 +1,18 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/server/prisma";
 import { optionalAdmin, requireAdmin } from "@/server/auth";
 import { handler, httpError, json, publicCache, readJson, safeText } from "@/server/http";
 import { slugify } from "@/server/tripInput";
 import { uniqueKnowledgeSlug } from "@/server/contentSlugs";
+
+/** The /discover list is ISR-cached on a long timer — this is the instant-refresh signal. */
+function revalidateDiscoverPages(slug?: string) {
+  for (const locale of ["mn", "en", "ko"]) {
+    revalidatePath(`/${locale}/discover`, "page");
+    if (slug) revalidatePath(`/${locale}/discover/${slug}`, "page");
+  }
+}
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -78,6 +87,8 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
     },
   });
 
+  revalidateDiscoverPages(article.slug);
+
   return json(article);
 });
 
@@ -86,9 +97,10 @@ export const DELETE = handler(async (req: Request, ctx: Ctx) => {
 
   const { id } = await ctx.params;
 
-  const existing = await prisma.knowledgeArticle.findUnique({ where: { id }, select: { id: true } });
+  const existing = await prisma.knowledgeArticle.findUnique({ where: { id }, select: { id: true, slug: true } });
   if (!existing) throw httpError(404, "Мэдээлэл олдсонгүй");
 
   await prisma.knowledgeArticle.delete({ where: { id } });
+  revalidateDiscoverPages(existing.slug);
   return json({ ok: true });
 });

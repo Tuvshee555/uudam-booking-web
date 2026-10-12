@@ -20,8 +20,12 @@ export const metadata: Metadata = {
  * Without this the page is prerendered once at build time and its data is
  * frozen until the next deploy — staff edit trips daily, and the departures
  * cutoff is a `new Date()` that would freeze with it.
+ *
+ * Saving a trip revalidates this path immediately (see revalidateTripPages
+ * in /api/trips/[id]), so this timer is a safety net, not the only way an
+ * edit reaches a visitor.
  */
-export const revalidate = 60;
+export const revalidate = 300;
 
 /**
  * Only trips that actually have a future departure. Pulling the whole

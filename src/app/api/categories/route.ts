@@ -1,10 +1,24 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/server/prisma";
 import { requireAdmin } from "@/server/auth";
 import { handler, httpError, json, publicCache, readJson, safeText } from "@/server/http";
 import { cached, invalidateCatalog } from "@/server/cache";
 import { slugify } from "@/server/tripInput";
 import { tripCountsByCategory } from "@/server/categoryCounts";
+
+/**
+ * Category pages are ISR-cached on a long timer (see category/[id]/page.tsx)
+ * since nothing else refreshes them — this is the "something actually
+ * changed" signal that makes the timer a safety net rather than the only
+ * way a saved edit ever shows up.
+ */
+function revalidateCategoryPages(id?: string) {
+  for (const locale of ["mn", "en", "ko"]) {
+    revalidatePath(`/${locale}`, "page");
+    if (id) revalidatePath(`/${locale}/category/${id}`, "page");
+  }
+}
 
 const CATEGORY_SELECT = {
   id: true,
@@ -84,7 +98,7 @@ export const POST = handler(async (req: Request) => {
     if (!parent) throw httpError(400, "Эцэг ангилал олдсонгүй");
   }
 
-  await prisma.category.create({
+  const created = await prisma.category.create({
     data: {
       categoryName,
       parentId,
@@ -95,6 +109,7 @@ export const POST = handler(async (req: Request) => {
   });
 
   invalidateCatalog();
+  revalidateCategoryPages(created.slug ?? created.id);
 
   return json(await listCategories());
 });
@@ -141,6 +156,7 @@ export const PUT = handler(async (req: Request) => {
   });
 
   invalidateCatalog();
+  revalidateCategoryPages(category.slug ?? category.id);
 
   return json({ success: true, category });
 });
@@ -181,6 +197,7 @@ export const DELETE = handler(async (req: Request) => {
   }
 
   invalidateCatalog();
+  revalidateCategoryPages();
 
   return json({ success: true, detachedTrips: tripCount });
 });

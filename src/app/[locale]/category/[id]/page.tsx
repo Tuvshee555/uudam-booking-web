@@ -12,8 +12,13 @@ type Props = { params: Promise<{ id: string }> };
 /**
  * Without this the page is prerendered once at build time and its trip list
  * is frozen until the next deploy.
+ *
+ * Saving a category or a trip revalidates this path immediately (see
+ * revalidateCategoryPages in /api/categories and revalidateTripPages in
+ * /api/trips/[id]), so this timer is a safety net, not the only way an
+ * edit reaches a visitor.
  */
-export const revalidate = 60;
+export const revalidate = 300;
 
 async function findCategory(idOrSlug: string) {
   return prisma.category.findFirst({
