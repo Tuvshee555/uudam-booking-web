@@ -709,7 +709,6 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
       }
     };
     if (!form.title.trim()) return invalid("facts", "title", "Аяллын нэрээ оруулна уу");
-    if (!form.description.trim()) return invalid("facts", "description", "Тайлбар оруулна уу");
 
     // Staff type prices on each date; the base price sits in a collapsed panel
     // and used to stay 0, so every save failed with "Үнэ оруулна уу" while the
@@ -821,11 +820,9 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
             <Textarea id="trip-summary" rows={2} value={form.summary} onChange={(e) => set("summary", e.target.value)} />
           </div>
           <div className="sm:col-span-2">
-            <Label htmlFor="trip-description">Дэлгэрэнгүй тайлбар *</Label>
-            <Textarea id="trip-description" data-field="description" aria-invalid={missingField === "description"}
-              className={cn(missingField === "description" && "border-destructive focus-visible:ring-destructive")}
-              rows={4} value={form.description} onChange={(e) => set("description", e.target.value)} />
-            <FieldError show={missingField === "description"}>Тайлбар оруулна уу</FieldError>
+            <Label htmlFor="trip-description">Дэлгэрэнгүй тайлбар</Label>
+            <Textarea id="trip-description" rows={4} value={form.description} onChange={(e) => set("description", e.target.value)} />
+            <p className="mt-1 text-xs text-muted-foreground">Хоосон үлдээвэл аяллын хуудсанд «Аяллын тухай» хэсэг харагдахгүй.</p>
           </div>
         </div>
       </Section>

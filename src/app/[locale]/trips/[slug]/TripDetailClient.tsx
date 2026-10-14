@@ -314,7 +314,7 @@ function TripDetailClientInner({
 
     return [
       trip.highlights.length > 0 && { id: "highlights", label: "Онцлох" },
-      { id: "about", label: "Тухай" },
+      trip.description.trim() && { id: "about", label: "Тухай" },
       trip.itinerary.length > 0 && { id: "itinerary", label: "Хөтөлбөр" },
       routeStops.length > 0 && { id: "route", label: "Маршрут" },
       hasWeather && { id: "weather", label: "Цаг агаар" },
@@ -500,12 +500,14 @@ function TripDetailClientInner({
             </section>
           )}
 
+          {trip.description.trim() && (
           <section id="about" className="mt-8 scroll-mt-28">
             <h2 className="text-lg font-bold">Аяллын тухай</h2>
             <p className="mt-3 whitespace-pre-line text-[15px] leading-relaxed text-muted-foreground">
               {trip.description}
             </p>
           </section>
+          )}
 
           {trip.itinerary.length > 0 && (
           <section id="itinerary" className="mt-8 scroll-mt-28">

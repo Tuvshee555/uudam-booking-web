@@ -178,7 +178,7 @@ export default async function TripDetailPage({ params }: Props) {
     "@context": "https://schema.org",
     "@type": "TouristTrip",
     name: formatTripTitle(trip.title),
-    description: trip.summary?.trim() || trip.description.slice(0, 300).trim(),
+    description: trip.summary?.trim() || trip.description.slice(0, 300).trim() || undefined,
     image: trip.image || undefined,
     url: `${SITE_URL}/trips/${slug}`,
     touristType: trip.country ? `${[trip.city, trip.country].filter(Boolean).join(", ")}` : undefined,
