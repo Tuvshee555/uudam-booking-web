@@ -3,6 +3,7 @@ import type { Departure, Trip } from "@/types/trip";
 type MarketingBadge = {
   saleEnabled: boolean;
   saleLabel: string;
+  saleEndsAt: string | null;
   seatsPercentLeft: number | null;
   seatsLeft: number | null;
   seatsTotal: number | null;
@@ -40,12 +41,16 @@ export function marketingBadgeFor(trip: Trip): MarketingBadge {
     stringOrNull(legacy.sale_label) ??
     "ХЯМДРАЛ";
 
+  const endsAt = [direct.saleEndsAt, connected.saleEndsAt, legacy.sale_ends_at]
+    .find((value): value is string => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value));
+
   return {
     saleEnabled:
       direct.saleEnabled === true ||
       connected.saleEnabled === true ||
       legacy.sale_enabled === true,
     saleLabel,
+    saleEndsAt: endsAt ?? null,
     seatsPercentLeft:
       percentOrNull(direct.seatsPercentLeft) ??
       percentOrNull(connected.seatsPercentLeft) ??
@@ -63,9 +68,15 @@ export function marketingBadgeFor(trip: Trip): MarketingBadge {
   };
 }
 
-export function saleBadgeLabel(trip: Trip): string | null {
+/** The sale's last day counts: it is over only once the Ulaanbaatar date is past it. */
+function saleHasEnded(endsAt: string | null, now: Date): boolean {
+  if (!endsAt) return false;
+  return endsAt < now.toLocaleDateString("en-CA", { timeZone: "Asia/Ulaanbaatar" });
+}
+
+export function saleBadgeLabel(trip: Trip, now: Date = new Date()): string | null {
   const badge = marketingBadgeFor(trip);
-  if (badge.saleEnabled) return badge.saleLabel;
+  if (badge.saleEnabled && !saleHasEnded(badge.saleEndsAt, now)) return badge.saleLabel;
   return typeof trip.discount === "number" && trip.discount > 0 ? `-${trip.discount}%` : null;
 }
 
