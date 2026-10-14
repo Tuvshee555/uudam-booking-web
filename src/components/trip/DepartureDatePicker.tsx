@@ -74,7 +74,12 @@ export default function DepartureDatePicker({
               aria-pressed={active}
               className={cn("relative flex h-9 flex-col items-center justify-center rounded-md border text-xs leading-tight transition-colors",
                 active ? "border-primary bg-primary font-semibold text-primary-foreground" : "border-border bg-secondary/45 hover:border-primary",
-                !seats?.selectable && "border-destructive/25 bg-destructive/5 text-destructive")}
+                // A disabled date must look unmistakably un-clickable, not just
+                // tinted red — without this it rendered at full opacity with a
+                // normal pointer cursor, so a sold-out day looked identical to
+                // an open one and a customer could not tell a click had done
+                // nothing until they tried it.
+                !seats?.selectable && "cursor-not-allowed border-destructive/25 bg-destructive/5 text-destructive opacity-60 hover:border-destructive/25")}
             >
               {seats?.tone === "tight" && (
                 <span aria-hidden className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-background" />
