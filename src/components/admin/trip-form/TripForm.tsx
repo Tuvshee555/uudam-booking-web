@@ -442,6 +442,23 @@ function numOrUndefined(value: string): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+/** Cheapest adult fare typed on any date — the "from" price the site shows. */
+function lowestDatePrice(form: FormState): number | undefined {
+  const groups = Array.isArray(form.sourceMetadata.price_groups) ? form.sourceMetadata.price_groups : [];
+  const prices = [
+    ...form.departures.map((dep) => numOrUndefined(dep.price)),
+    ...groups.map((group) => {
+      const value = object(group).adult_price;
+      return typeof value === "number" ? value : undefined;
+    }),
+  ].filter((n): n is number => n !== undefined && n > 0);
+  return prices.length ? Math.min(...prices) : undefined;
+}
+
+function FieldError({ show, children }: { show: boolean; children: React.ReactNode }) {
+  return show ? <p role="alert" className="mt-1 text-xs font-medium text-destructive">{children}</p> : null;
+}
+
 function buildPayload(form: FormState) {
   // JSON drops `undefined`.  Optional text must therefore use null when the
   // editor clears it, otherwise an old database value silently survives.
@@ -569,6 +586,7 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [baseline, setBaseline] = useState<string | null>(mode === "create" ? JSON.stringify(EMPTY_FORM) : null);
   const [activeSection, setActiveSection] = useState("facts");
+  const [missingField, setMissingField] = useState<string | null>(null);
   const originalForm = useRef<FormState | null>(null);
   const originalUpdatedAt = useRef<string | undefined>(undefined);
   const hydrated = useRef<string | undefined>(undefined);
@@ -596,11 +614,12 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+    setMissingField((current) => (current === key ? null : current));
   }
 
   const saveMutation = useMutation({
-    mutationFn: async () => {
-      const fullPayload = buildPayload(form);
+    mutationFn: async (current: FormState) => {
+      const fullPayload = buildPayload(current);
       const payload = mode === "edit" && originalForm.current
         ? { ...changedTripFields(buildPayload(originalForm.current), fullPayload), expectedUpdatedAt: originalUpdatedAt.current }
         : fullPayload;
@@ -675,13 +694,38 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
   function submit(e: React.FormEvent) {
     e.preventDefault();
 
-    const invalid = (section: string, message: string) => { setActiveSection(section); toast.error(message); };
-    if (!form.title.trim()) return invalid("facts", "Аяллын нэрээ оруулна уу");
-    if (!form.description.trim()) return invalid("facts", "Тайлбар оруулна уу");
-    if (!numOrUndefined(form.price)) return invalid("pricing", "Үнэ оруулна уу");
-    if (!form.image.trim()) return invalid("media", "Үндсэн зураг оруулна уу");
+    // The empty box turns red and comes into view, so the toast is never the
+    // only clue — it used to name a field hidden inside a collapsed panel.
+    const invalid = (section: string, field: string | null, message: string) => {
+      setActiveSection(section);
+      setMissingField(field);
+      toast.error(message);
+      if (field) {
+        requestAnimationFrame(() => {
+          const el = document.querySelector<HTMLElement>(`[data-field="${field}"]`);
+          el?.scrollIntoView({ block: "center", behavior: "smooth" });
+          el?.focus({ preventScroll: true });
+        });
+      }
+    };
+    if (!form.title.trim()) return invalid("facts", "title", "Аяллын нэрээ оруулна уу");
+    if (!form.description.trim()) return invalid("facts", "description", "Тайлбар оруулна уу");
+
+    // Staff type prices on each date; the base price sits in a collapsed panel
+    // and used to stay 0, so every save failed with "Үнэ оруулна уу" while the
+    // prices were plainly filled in. The cheapest date price is the base price.
+    let toSave = form;
+    const basePrice = numOrUndefined(form.price);
+    if (!basePrice || basePrice <= 0) {
+      const fromDates = lowestDatePrice(form);
+      if (!fromDates) return invalid("pricing", "price", "Том хүний үнэ оруулна уу");
+      toSave = { ...form, price: String(fromDates) };
+      setForm(toSave);
+    }
+
+    if (!form.image.trim()) return invalid("media", "image", "Үндсэн зураг оруулна уу");
     if (!isAllowedImageHost(form.image)) {
-      return invalid("media",
+      return invalid("media", "image",
         'Үндсэн зургийн домэйн дэмжигдэхгүй. "Байршуулах" товчоор оруулна уу.',
       );
     }
@@ -690,17 +734,18 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
       if (!dep.startDate) continue; // dropped at submit time anyway, nothing to validate
 
       if (dep.endDate && dep.endDate < dep.startDate) {
-        return invalid("pricing", `Гаралт ${index + 1}: дуусах огноо эхлэх огнооноос өмнө байна`);
+        return invalid("pricing", null, `Гаралт ${index + 1}: дуусах огноо эхлэх огнооноос өмнө байна`);
       }
 
       const total = numOrUndefined(dep.seatsTotal);
       const left = numOrUndefined(dep.seatsLeft);
       if (total !== undefined && left !== undefined && left > total) {
-        return invalid("pricing", `Гаралт ${index + 1}: үлдсэн суудал нийт суудлаас их байна`);
+        return invalid("pricing", null, `Гаралт ${index + 1}: үлдсэн суудал нийт суудлаас их байна`);
       }
     }
 
-    saveMutation.mutate();
+    setMissingField(null);
+    saveMutation.mutate(toSave);
   }
 
   function deleteTrip() {
@@ -766,7 +811,10 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <Label htmlFor="trip-title">Аяллын нэр *</Label>
-            <Input id="trip-title" value={form.title} onChange={(e) => set("title", e.target.value)} />
+            <Input id="trip-title" data-field="title" aria-invalid={missingField === "title"}
+              className={cn(missingField === "title" && "border-destructive focus-visible:ring-destructive")}
+              value={form.title} onChange={(e) => set("title", e.target.value)} />
+            <FieldError show={missingField === "title"}>Аяллын нэрээ оруулна уу</FieldError>
           </div>
           <div className="sm:col-span-2">
             <Label htmlFor="trip-summary">Товч танилцуулга</Label>
@@ -774,7 +822,10 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
           </div>
           <div className="sm:col-span-2">
             <Label htmlFor="trip-description">Дэлгэрэнгүй тайлбар *</Label>
-            <Textarea id="trip-description" rows={4} value={form.description} onChange={(e) => set("description", e.target.value)} />
+            <Textarea id="trip-description" data-field="description" aria-invalid={missingField === "description"}
+              className={cn(missingField === "description" && "border-destructive focus-visible:ring-destructive")}
+              rows={4} value={form.description} onChange={(e) => set("description", e.target.value)} />
+            <FieldError show={missingField === "description"}>Тайлбар оруулна уу</FieldError>
           </div>
         </div>
       </Section>
@@ -856,7 +907,11 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
 
       <Section title="Аяллын зургууд" hidden={activeSection !== "media"}>
         <div className="grid gap-5">
-          <ImageUploadField label="Үндсэн зураг" value={form.image} onChange={(v) => set("image", v)} required />
+          <div data-field="image" tabIndex={-1}
+            className={cn("rounded-md outline-none", missingField === "image" && "ring-2 ring-destructive ring-offset-2")}>
+            <ImageUploadField label="Үндсэн зураг" value={form.image} onChange={(v) => set("image", v)} required />
+            <FieldError show={missingField === "image"}>Үндсэн зураг оруулна уу</FieldError>
+          </div>
           <MultiImageField label="Нэмэлт зургууд" values={form.extraImages} onChange={(v) => set("extraImages", v)} />
         </div>
       </Section>
@@ -877,15 +932,20 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
           departures={form.departures}
           defaultPrice={form.price}
           defaultRows={cleanPassengerRows(form.passengerPrices)}
-          onChange={(sourceMetadata, departures) => setForm((current) => ({ ...current, sourceMetadata, departures }))}
+          adultPriceMissing={missingField === "price"}
+          onChange={(sourceMetadata, departures) => {
+            setForm((current) => ({ ...current, sourceMetadata, departures }));
+            setMissingField((current) => (current === "price" ? null : current));
+          }}
         />
         <details className="mt-6 border-t border-border pt-3">
           <summary className="cursor-pointer text-sm text-muted-foreground">Үндсэн үнэ, нас, хямдрал</summary>
           <div className="mt-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <Label htmlFor="trip-price">Том хүний үндсэн үнэ (₮) *</Label>
+            <Label htmlFor="trip-price">Том хүний үндсэн үнэ (₮)</Label>
             <Input id="trip-price" type="number" min={0} value={form.price} onChange={(e) => set("price", e.target.value)} />
+            <p className="mt-1 text-xs text-muted-foreground">Хоосон бол огноонуудын хамгийн бага үнийг авна.</p>
           </div>
           <div>
             <Label htmlFor="trip-adult-age">Том хүний нас</Label>

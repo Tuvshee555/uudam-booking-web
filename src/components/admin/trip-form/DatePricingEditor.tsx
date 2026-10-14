@@ -13,6 +13,7 @@ type Props = {
   departures: DepartureDraft[];
   defaultPrice: string;
   defaultRows: PricingGroup[];
+  adultPriceMissing?: boolean;
   onChange: (metadata: Record<string, unknown>, departures: DepartureDraft[]) => void;
 };
 
@@ -21,9 +22,12 @@ const amount = (value: unknown) => typeof value === "number" ? String(value) : "
 const fare = (value: string) => value.trim() && Number.isFinite(Number(value)) ? Number(value) : null;
 const infant = (row: PricingGroup) => /нярай|infant|сар|month|\b0\s*[-–]\s*2\b/i.test(`${row.label} ${row.age_range}`);
 
-export default function DatePricingEditor({ metadata, departures, defaultPrice, defaultRows, onChange }: Props) {
+export default function DatePricingEditor({ metadata, departures, defaultPrice, defaultRows, adultPriceMissing, onChange }: Props) {
   const [selection, setSelection] = useState("");
   const [search, setSearch] = useState("");
+  // An unset base price is stored as 0; copied onto each date it printed "0"
+  // as if the date already had a price. No adult fare is ever 0.
+  const basePrice = fare(defaultPrice) || null;
   const stored = Array.isArray(metadata.price_groups) ? metadata.price_groups.map(record) : [];
   const groups = [...stored];
   for (const dep of departures) {
@@ -33,10 +37,10 @@ export default function DatePricingEditor({ metadata, departures, defaultPrice, 
         ...(dep.childPrice !== "" ? [{ label: "Хүүхэд", age_range: ages.child || "", price: fare(dep.childPrice), currency: "MNT" }] : []),
         ...(dep.infantPrice !== "" ? [{ label: "Нярай", age_range: ages.infant || "", price: fare(dep.infantPrice), currency: "MNT" }] : []),
       ];
-      groups.push({ dates: [dep.startDate], adult_price: fare(dep.price) ?? fare(defaultPrice), passenger_prices: bands.length ? bands : stored.length ? [] : defaultRows });
+      groups.push({ dates: [dep.startDate], adult_price: fare(dep.price) || basePrice, passenger_prices: bands.length ? bands : stored.length ? [] : defaultRows });
     }
   }
-  if (!groups.length) groups.push({ dates: [], adult_price: fare(defaultPrice), passenger_prices: defaultRows });
+  if (!groups.length) groups.push({ dates: [], adult_price: basePrice, passenger_prices: defaultRows });
   const rows = pricingDateRows(groups);
   const key = (row: typeof rows[number]) => `${row.date}|${row.groupIndex}`;
   const visible = rows.filter((row) => [row.date, groups[row.groupIndex].hotel, groups[row.groupIndex].package_id, groups[row.groupIndex].note].join(" ").toLowerCase().includes(search.toLowerCase()));
@@ -118,9 +122,12 @@ export default function DatePricingEditor({ metadata, departures, defaultPrice, 
           onChange({ ...metadata, price_groups: next }, departures.filter((dep) => dep.startDate !== selected.date));
         }}><Trash2 className="h-4 w-4" /></Button>}
       </div>
-      <div className="flex items-center justify-between gap-4 border-b border-border py-3">
-        <span className="text-sm font-medium">Том хүн <span className="ml-1 text-xs font-normal text-muted-foreground">{String(record(metadata.age_rules).adult || "")}</span></span>
-        <label className="flex w-44 max-w-[55%] items-center gap-2"><Input aria-label="Сонгосон огнооны том хүний үнэ" type="number" min={0} value={amount(group.adult_price)} placeholder={defaultPrice} onChange={(e) => update({ adult_price: fare(e.target.value), adult_price_range: null })} /><span className="text-xs text-muted-foreground">{currency === "MNT" ? "₮" : currency}</span></label>
+      <div className="border-b border-border py-3">
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-sm font-medium">Том хүн <span className="ml-1 text-xs font-normal text-muted-foreground">{String(record(metadata.age_rules).adult || "")}</span></span>
+          <label className="flex w-44 max-w-[55%] items-center gap-2"><Input data-field="price" aria-invalid={adultPriceMissing} className={cn(adultPriceMissing && "border-destructive focus-visible:ring-destructive")} aria-label="Сонгосон огнооны том хүний үнэ" type="number" min={0} value={amount(group.adult_price)} placeholder={defaultPrice === "0" ? "" : defaultPrice} onChange={(e) => update({ adult_price: fare(e.target.value), adult_price_range: null })} /><span className="text-xs text-muted-foreground">{currency === "MNT" ? "₮" : currency}</span></label>
+        </div>
+        {adultPriceMissing && <p role="alert" className="mt-1 text-right text-xs font-medium text-destructive">Том хүний үнэ оруулна уу</p>}
       </div>
       {passengers.map((passenger, index) => <div key={index} className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)_32px] items-start gap-3 border-b border-border py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_32px]">
         <label className="min-w-0 text-xs text-muted-foreground">Зорчигчийн нэр<Input aria-label="Зорчигчийн ангилал" className="mt-1" value={passengerName(passenger)} placeholder="Хүүхэд, нярай" onChange={(e) => updatePassengers(passengers.map((row, i) => i === index ? { ...row, label: e.target.value } : row))} /></label>
