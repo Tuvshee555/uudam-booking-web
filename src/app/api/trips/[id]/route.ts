@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import type { Prisma } from "@prisma/client";
-import { prisma } from "@/server/prisma";
+import { prisma, withPrismaRetry } from "@/server/prisma";
 import { optionalAdmin, requireAdmin } from "@/server/auth";
 import { handler, httpError, json, publicCache, readJson, safeText } from "@/server/http";
 import { invalidateCatalog } from "@/server/cache";
@@ -84,10 +84,12 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
   const { id } = await ctx.params;
   const body = await readJson(req);
 
-  const existing = await prisma.trip.findUnique({
-    where: { id },
-    include: TRIP_INCLUDE,
-  });
+  const existing = await withPrismaRetry(() =>
+    prisma.trip.findUnique({
+      where: { id },
+      include: TRIP_INCLUDE,
+    }),
+  );
   if (!existing) throw httpError(404, "Аялал олдсонгүй");
 
   const { price, oldPrice, discount } = reconcilePricing(body);
@@ -123,7 +125,7 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
   const optionalArray = (value: unknown) =>
     value === undefined ? undefined : toStringArray(value);
 
-  const trip = await prisma.$transaction(async (tx) => {
+  const trip = await withPrismaRetry(() => prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${sourceTripId}))`;
     const current = await tx.trip.findUnique({ where: { id } });
     if (!current || current.updatedAt.getTime() !== existing.updatedAt.getTime()
@@ -224,7 +226,7 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
       include: TRIP_INCLUDE,
     });
     return queueTripSync(tx, saved, existing);
-  }, { timeout: 15_000 });
+  }, { timeout: 15_000 }));
 
   await deliverTripSync(trip.id);
   invalidateCatalog();
@@ -232,7 +234,7 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
   revalidatePath("/[locale]/departures", "page");
   revalidatePath("/[locale]/trips", "page");
 
-  return json(await prisma.trip.findUnique({ where: { id }, include: TRIP_INCLUDE }));
+  return json(await withPrismaRetry(() => prisma.trip.findUnique({ where: { id }, include: TRIP_INCLUDE })));
 });
 
 export const DELETE = handler(async (req: Request, ctx: Ctx) => {
@@ -240,15 +242,17 @@ export const DELETE = handler(async (req: Request, ctx: Ctx) => {
   assertChatbotTripSyncConfigured();
 
   const { id } = await ctx.params;
-  const source = await prisma.trip.findUnique({
-    where: { id },
-    select: { sourceTripId: true, slug: true },
-  });
+  const source = await withPrismaRetry(() =>
+    prisma.trip.findUnique({
+      where: { id },
+      select: { sourceTripId: true, slug: true },
+    }),
+  );
   if (!source) throw httpError(404, "Аялал олдсонгүй");
 
   {
     // Hide instead of deleting, even for unbooked trips, preserving all links.
-    const trip = await prisma.$transaction(async (tx) => {
+    const trip = await withPrismaRetry(() => prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${source.sourceTripId || id}))`;
       const saved = await tx.trip.update({
       where: { id },
@@ -256,7 +260,7 @@ export const DELETE = handler(async (req: Request, ctx: Ctx) => {
       include: TRIP_INCLUDE,
     });
       return queueTripSync(tx, saved, undefined, true);
-    });
+    }));
     const complete = await deliverTripSync(trip.id);
 
     invalidateCatalog();

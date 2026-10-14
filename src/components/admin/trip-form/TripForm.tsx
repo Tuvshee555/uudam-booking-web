@@ -626,7 +626,17 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
         return;
       }
       toast.success(mode === "create" ? "Аялал үүсгэлээ" : "Аялал хадгаллаа");
-      router.push(`/${locale}/admin/trips`);
+      if (mode === "create") {
+        router.push(`/${locale}/admin/trips/${saved.id}/edit`);
+        return;
+      }
+      // Editing stays on this same trip — staff fixing several draft trips in a
+      // row (adding a missing price, say) were bounced back to the list and had
+      // to re-search for the next one every single save.
+      originalForm.current = tripToForm(saved);
+      originalUpdatedAt.current = saved.updatedAt;
+      setForm(originalForm.current);
+      setBaseline(JSON.stringify(originalForm.current));
     },
     onError: (err) => toast.error(apiErrorMessage(err, "Хадгалахад алдаа гарлаа")),
   });

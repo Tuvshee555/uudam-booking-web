@@ -28,12 +28,19 @@ function isTransientPrismaError(err: unknown) {
   const message = err.message.toLowerCase();
   const name = err.name.toLowerCase();
 
+  // The Neon serverless driver (@neondatabase/serverless) reports a dropped
+  // pooled connection as `Error { kind: 'Closed', cause: ... }` inside the
+  // Prisma error message, not as any of the engine's own wording above — an
+  // admin save hitting this got zero retries and failed outright even though
+  // the very next attempt would succeed.
   return (
     name.includes("prismaclientinitializationerror") ||
     message.includes("can't reach database server") ||
     message.includes("connection timed out") ||
     message.includes("connection terminated") ||
-    message.includes("connection refused")
+    message.includes("connection refused") ||
+    message.includes("kind: closed") ||
+    message.includes("kind: 'closed'")
   );
 }
 

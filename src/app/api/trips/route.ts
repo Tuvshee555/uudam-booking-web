@@ -103,7 +103,7 @@ export const POST = handler(async (req: Request) => {
   const categoryIds = Array.isArray(body.categoryIds)
     ? body.categoryIds.filter((entry: unknown): entry is string => typeof entry === "string" && entry.length > 0)
     : (safeText(body.categoryId, 60) ? [safeText(body.categoryId, 60)!] : []);
-  const trip = await prisma.$transaction(async (tx) => {
+  const trip = await withPrismaRetry(() => prisma.$transaction(async (tx) => {
     const saved = await tx.trip.create({
     data: {
       title,
@@ -175,10 +175,10 @@ export const POST = handler(async (req: Request) => {
     include: TRIP_INCLUDE,
     });
     return queueTripSync(tx, saved);
-  });
+  }));
   await deliverTripSync(trip.id);
 
   invalidateCatalog();
 
-  return json(await prisma.trip.findUnique({ where: { id: trip.id }, include: TRIP_INCLUDE }), { status: 201 });
+  return json(await withPrismaRetry(() => prisma.trip.findUnique({ where: { id: trip.id }, include: TRIP_INCLUDE })), { status: 201 });
 });
