@@ -18,6 +18,7 @@ import {
   Mountain,
   ReceiptText,
   Star,
+  Stethoscope,
   Utensils,
   X,
 } from "lucide-react";
@@ -511,6 +512,19 @@ function TripDetailClientInner({
             <h2 className="text-lg font-bold">Өдөр тутмын хөтөлбөр</h2>
             <ItineraryAccordion days={trip.itinerary} hotelLinks={hotelProfiles.filter((hotel) => hotel.url)} />
           </section>
+          )}
+
+          {typeof trip.sourceMetadata?.health_checkup_notes === "string" &&
+            trip.sourceMetadata.health_checkup_notes.trim() && (
+            <section className="mt-8 rounded-2xl border border-primary/25 bg-primary/5 p-5">
+              <h2 className="flex items-center gap-2 text-lg font-bold">
+                <Stethoscope className="h-5 w-5 text-primary" />
+                Эрүүл мэндийн шинжилгээ
+              </h2>
+              <p className="mt-3 whitespace-pre-line text-sm leading-relaxed">
+                {trip.sourceMetadata.health_checkup_notes}
+              </p>
+            </section>
           )}
 
           {routeStops.length > 0 && (

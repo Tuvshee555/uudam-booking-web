@@ -982,6 +982,18 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
             <Label htmlFor="trip-cancellation">Цуцлалтын нөхцөл</Label>
             <Textarea id="trip-cancellation" rows={3} value={form.cancellationPolicy} onChange={(e) => set("cancellationPolicy", e.target.value)} />
           </div>
+          <div className="sm:col-span-2">
+            <Label htmlFor="trip-health-checkup">
+              Эрүүл мэндийн шинжилгээ (ховор аялалд л бөглөнө, бусад аялалд хоосон үлдээнэ үү)
+            </Label>
+            <Textarea
+              id="trip-health-checkup"
+              rows={4}
+              value={typeof form.sourceMetadata.health_checkup_notes === "string" ? form.sourceMetadata.health_checkup_notes : ""}
+              onChange={(e) => set("sourceMetadata", { ...form.sourceMetadata, health_checkup_notes: e.target.value })}
+              placeholder="Жишээ нь: энэ аялалд цусны ерөнхий шинжилгээ, зүрхний ЭКГ, B ultrasound зэрэг орно..."
+            />
+          </div>
         </div>
       </Section>
 
