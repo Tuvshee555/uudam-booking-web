@@ -15,6 +15,15 @@ export type DatePriceOption = {
   passengers: PassengerOption[];
 };
 
+export type PriceDimensionOption = {
+  id: string;
+  label: string;
+  optionKey: string;
+  adult: number | null;
+  delta: number | null;
+  isCheapest: boolean;
+};
+
 function object(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
@@ -105,4 +114,57 @@ export function formatAdultOption(option: DatePriceOption): string {
   return option.adultMax && option.adultMax > option.adult
     ? `${amount(option.adult)}–${amount(option.adultMax)}`
     : amount(option.adult);
+}
+
+/**
+ * Build one independent selector (package or hotel) from the flattened fare
+ * rows stored in price_groups. The opposite dimension is kept fixed so
+ * changing the package keeps the hotel, and changing the hotel keeps the
+ * package.
+ */
+export function priceDimensionOptions(
+  options: DatePriceOption[],
+  dimension: "package" | "hotel",
+  selected: DatePriceOption | null,
+): PriceDimensionOption[] {
+  const idOf = (option: DatePriceOption) => dimension === "package" ? option.packageId : option.hotel;
+  const oppositeOf = (option: DatePriceOption) => dimension === "package" ? option.hotel : option.packageId;
+  const selectedOpposite = selected ? oppositeOf(selected) : "";
+  const matching = options.filter((option) => idOf(option) && (!selectedOpposite || oppositeOf(option) === selectedOpposite));
+  const unique = new Map<string, DatePriceOption>();
+  for (const option of matching) {
+    const id = idOf(option);
+    const previous = unique.get(id);
+    if (!previous || (option.adult ?? Number.POSITIVE_INFINITY) < (previous.adult ?? Number.POSITIVE_INFINITY)) {
+      unique.set(id, option);
+    }
+  }
+  const values = [...unique.values()];
+  const cheapest = values.reduce<number | null>((minimum, option) => {
+    if (option.adult == null) return minimum;
+    return minimum == null ? option.adult : Math.min(minimum, option.adult);
+  }, null);
+  const result = values.map((option) => {
+    const id = idOf(option);
+    const delta = cheapest == null || option.adult == null ? null : option.adult - cheapest;
+    return {
+      id,
+      label: id,
+      optionKey: option.key,
+      adult: option.adult,
+      delta,
+      isCheapest: delta === 0,
+    };
+  });
+  if (dimension === "package") {
+    const rank = (label: string) => /хөтөлбөртэй/i.test(label) && !/гүй/i.test(label) ? 0 : /хөтөлбөргүй/i.test(label) ? 1 : 2;
+    return result.sort((a, b) => rank(a.label) - rank(b.label) || a.label.localeCompare(b.label, "mn"));
+  }
+  return result.sort((a, b) => (a.adult ?? Number.POSITIVE_INFINITY) - (b.adult ?? Number.POSITIVE_INFINITY));
+}
+
+export function formatPriceDelta(option: PriceDimensionOption): string {
+  if (option.isCheapest) return "Хамгийн хямд";
+  if (option.delta == null) return "Үнэ лавлах";
+  return `+${new Intl.NumberFormat("en-US").format(option.delta)}₮`;
 }

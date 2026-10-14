@@ -10,7 +10,7 @@ import { getVisitorId, track } from "@/lib/analytics";
 import { ageBandsFor, formatFare, formatMnt, lineTotal, resolvePrices } from "@/lib/pricing";
 import { availability, formatFullDate, formatDepartureDate, upcomingDepartures } from "@/lib/departures";
 import { saleBadgeLabel } from "@/lib/tripMarketing";
-import { datePriceOptions, formatAdultOption, hasVariablePricing } from "@/lib/tripPriceOptions";
+import { datePriceOptions, formatAdultOption, formatPriceDelta, hasVariablePricing, priceDimensionOptions } from "@/lib/tripPriceOptions";
 import { roundTemp, shortDate, weatherIcon, weatherLabel, type TripWeatherReport } from "@/lib/weather";
 import DepartureDatePicker from "./DepartureDatePicker";
 import { departureDateKey } from "@/lib/departureDate";
@@ -179,9 +179,8 @@ export default function BookingPanel({
   const choiceOptions = options.filter((option) => option.hotel || option.packageId || options.length > 1)
     .sort((a, b) => (a.adult ?? Number.POSITIVE_INFINITY) - (b.adult ?? Number.POSITIVE_INFINITY));
   const option = choiceOptions.find((item) => item.key === selectedOptionKey) ?? choiceOptions[0] ?? options[0] ?? null;
-  const hotelChoiceCount = choiceOptions.filter((item) => item.hotel).length;
-  const packageChoiceCount = choiceOptions.filter((item) => item.packageId).length;
-  const showChoicePicker = hotelChoiceCount > 1 || (hotelChoiceCount === 0 && packageChoiceCount > 1);
+  const packageChoices = priceDimensionOptions(choiceOptions, "package", option);
+  const hotelChoices = priceDimensionOptions(choiceOptions, "hotel", option);
   const quoteOnly = hasVariablePricing(trip);
   const prices = resolvePrices(trip, selected);
   const ageBands = ageBandsFor(trip.sourceMetadata);
@@ -357,28 +356,31 @@ export default function BookingPanel({
 
           {bookingWeather && <BookingWeatherSummary report={bookingWeather} />}
 
-          {showChoicePicker && <div className="mt-4 border-t border-border pt-4">
-            <h3 className="text-sm font-semibold">{choiceOptions.some((item) => item.hotel) ? "Буудал" : "Аяллын төрөл"}</h3>
-            <div className="mt-2 space-y-1.5">
-              {choiceOptions.map((item) => <button key={item.key} type="button" aria-pressed={option?.key === item.key}
-                onClick={() => { setSelectedOptionKey(item.key); setTierCounts({}); }}
-                className={`w-full rounded-md border px-3 py-2 text-left text-sm ${option?.key === item.key ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}>
-                <span className="flex items-center justify-between gap-2">
-                  <span className="min-w-0 font-semibold">{item.label || item.hotel || item.packageId || "Сонголт"}</span>
-                  <span className="shrink-0 text-xs font-bold tabular-nums">{formatAdultOption(item)}</span>
-                </span>
-                {item.packageNote && <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{item.packageNote}</span>}
+          {packageChoices.length > 1 && <div className="mt-4 border-t border-border pt-4">
+            <h3 className="text-sm font-semibold">Багц</h3>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              {packageChoices.map((item) => <button key={item.id} type="button" aria-pressed={option?.packageId === item.id}
+                onClick={() => { setSelectedOptionKey(item.optionKey); setTierCounts({}); }}
+                className={`rounded-md border px-3 py-3 text-left ${option?.packageId === item.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}>
+                <span className="block text-sm font-semibold">{item.label}</span>
+                <span className="mt-1 block text-xs text-muted-foreground">{formatPriceDelta(item)}</span>
               </button>)}
             </div>
           </div>}
 
-          {option?.packageId && (
-            <div className="mt-3 rounded-md border border-primary/30 bg-primary/5 p-3">
-              <div className="text-xs font-bold uppercase tracking-wide text-primary">Сонгосон аяллын төрөл</div>
-              <div className="mt-1 text-sm font-semibold">{option.packageId}</div>
-              {option.packageNote && <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{option.packageNote}</p>}
+          {hotelChoices.length > 1 && <div className="mt-4 border-t border-border pt-4">
+            <h3 className="text-sm font-semibold">Буудал</h3>
+            <div className="mt-2 space-y-1.5">
+              {hotelChoices.map((item) => <button key={item.id} type="button" aria-pressed={option?.hotel === item.id}
+                onClick={() => { setSelectedOptionKey(item.optionKey); setTierCounts({}); }}
+                className={`w-full rounded-md border px-3 py-2.5 text-left ${option?.hotel === item.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}>
+                <span className="flex items-center justify-between gap-2">
+                  <span className="min-w-0 text-sm font-semibold">{item.label}</span>
+                  <span className="shrink-0 text-xs font-bold tabular-nums">{formatPriceDelta(item)}</span>
+                </span>
+              </button>)}
             </div>
-          )}
+          </div>}
 
           <div className="mt-4 divide-y divide-border border-t border-border">
             <Counter label="Том хүн" hint={adultHint} value={adults} onChange={setAdults} min={1} />
