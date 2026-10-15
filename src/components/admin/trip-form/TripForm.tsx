@@ -924,6 +924,21 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
       </Section>
 
       <Section title="Үнэ, гаралт" hidden={activeSection !== "pricing"}>
+        {/* A draft trip's dates are always projected as "Одоогоор идэвхгүй":
+            opening a date here is reverted by the next sync until the trip
+            itself is published, and the publish switch sits on another tab.
+            Staff kept re-opening dates on a draft trip (2026-10-15). */}
+        {!form.isPublished && (
+          <div role="status" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+            <span className="min-w-0">
+              Энэ аялал <b>ноорог</b> байна. Ноорог аяллын бүх огноо «Одоогоор идэвхгүй» харагдана —
+              огноог нээхийн тулд аяллыг нийтлээд хадгална уу.
+            </span>
+            <Button type="button" size="sm" className="gap-2" onClick={() => set("isPublished", true)}>
+              <Eye className="h-4 w-4" />Нийтлэх
+            </Button>
+          </div>
+        )}
         <DatePricingEditor
           metadata={form.sourceMetadata}
           departures={form.departures}
