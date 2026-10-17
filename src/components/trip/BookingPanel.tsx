@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 import { api, apiErrorMessage } from "@/lib/api";
 import { getVisitorId, track } from "@/lib/analytics";
-import { ageBandsFor, formatFare, formatMnt, lineTotal, resolvePrices } from "@/lib/pricing";
+import { ageBandsFor, formatFare, formatMnt, hasKnownTripPrice, lineTotal, resolvePrices } from "@/lib/pricing";
 import { availability, formatFullDate, formatDepartureDate, upcomingDepartures } from "@/lib/departures";
 import { saleBadgeLabel } from "@/lib/tripMarketing";
 import { datePriceOptions, formatAdultOption, formatPriceDelta, hasVariablePricing, priceDimensionOptions } from "@/lib/tripPriceOptions";
@@ -31,7 +31,7 @@ function formatRange(departure: Departure) {
 }
 
 function pricedHint(age: string, price: number | null | undefined) {
-  return [age, price == null ? "Үнэ лавлах" : formatMnt(price)].filter(Boolean).join(" · ");
+  return [age, !hasKnownTripPrice(price) ? "Үнэ лавлах" : formatMnt(price)].filter(Boolean).join(" · ");
 }
 
 function BookingWeatherSummary({ report }: { report: TripWeatherReport }) {
@@ -385,7 +385,7 @@ export default function BookingPanel({
           <div className="mt-4 divide-y divide-border border-t border-border">
             <Counter label="Том хүн" hint={adultHint} value={adults} onChange={setAdults} min={1} />
             {requiresQuote && specialTiers.length > 0 ? specialTiers.map((item) =>
-              <Counter key={tierKey(item)} label={item.label} hint={`${item.ageRange} · ${item.price == null ? "Үнэ лавлах" : formatMnt(item.price)}`}
+              <Counter key={tierKey(item)} label={item.label} hint={`${item.ageRange} · ${!hasKnownTripPrice(item.price) ? "Үнэ лавлах" : formatMnt(item.price)}`}
                 value={tierCounts[tierKey(item)] || 0} onChange={(value) => setTierCounts((current) => ({ ...current, [tierKey(item)]: value }))} />
             ) : <>
               <Counter label="Хүүхэд" hint={pricedHint(ageBands.child, prices.child)} value={children} onChange={setChildren} />

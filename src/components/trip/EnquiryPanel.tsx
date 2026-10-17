@@ -27,7 +27,7 @@ import { Label } from "@/components/ui/label";
 import type { Trip } from "@/types/trip";
 
 function pricedHint(age: string, price: number | null | undefined) {
-  return [age, price == null ? "Үнэ лавлах" : formatMnt(price)].filter(Boolean).join(" · ");
+  return [age, !hasKnownTripPrice(price) ? "Үнэ лавлах" : formatMnt(price)].filter(Boolean).join(" · ");
 }
 
 function Counter({
