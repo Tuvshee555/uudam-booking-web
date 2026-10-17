@@ -6,6 +6,7 @@ import { Play } from "lucide-react";
 
 import { recordVideoPlay } from "@/lib/analytics";
 import { extractUrl, youtubeEmbed } from "@/lib/media";
+import { tripGalleryImages } from "@/lib/tripMedia";
 import type { Trip } from "@/types/trip";
 import { cn } from "@/lib/utils";
 
@@ -21,9 +22,13 @@ export default function TripMedia({ trip }: { trip: Trip }) {
     const videos = [trip.video, ...trip.videos]
       .map(extractUrl)
       .filter((src): src is string => Boolean(src));
-    const images = [trip.image, ...trip.extraImages].filter(
-      (src): src is string => typeof src === "string" && src.trim().length > 0,
-    );
+    // The itinerary editor stores each day's photo on itinerary[].image,
+    // while the old hero only read image + extraImages. That split made the
+    // two galleries drift apart: staff could add a complete day-by-day set
+    // and still see only two photos at the top of the public page. Treat the
+    // itinerary as another hero-photo source and keep first-seen order while
+    // removing duplicates (a cover photo is often reused for one day).
+    const images = tripGalleryImages(trip);
 
     return [
       ...images.map((src) => ({ kind: "image" as const, src })),
