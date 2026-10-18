@@ -33,6 +33,21 @@ export function nextBookableDeparture(trip: Trip, now = Date.now()): Departure |
   return upcomingDepartures(trip, now).find((departure) => availability(departure).selectable) ?? null;
 }
 
+/**
+ * The "-с эхлэн" price: the cheapest date a visitor can still book. The synced
+ * trip.price is the nearest date's fare, so a card read 2,390,000₮ for a
+ * departure that had left while every later date cost 2,690,000₮+ (Санья), and
+ * 5,890,000₮ where a later date sold at 5,690,000₮ (Пукет). Falls back to
+ * trip.price for trips with no priced bookable date.
+ */
+export function startingPrice(trip: Trip, now = Date.now()): number {
+  const prices = upcomingDepartures(trip, now)
+    .filter((departure) => availability(departure).selectable)
+    .map((departure) => departure.price)
+    .filter((price): price is number => typeof price === "number" && Number.isFinite(price) && price > 0);
+  return prices.length ? Math.min(...prices) : trip.price;
+}
+
 /** Sort key for "soonest departure"; trips with no date sink to the bottom. */
 export function soonestDepartureTime(trip: Trip, now = Date.now()): number {
   const next = nextDeparture(trip, now);

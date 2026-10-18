@@ -6,7 +6,7 @@ import { CalendarDays, Clock, MapPin, Play, Star } from "lucide-react";
 
 import type { Trip } from "@/types/trip";
 import { formatMnt, formatTripStartingPrice, hasKnownTripPrice } from "@/lib/pricing";
-import { formatDepartureDate, nextBookableDeparture, nextDeparture } from "@/lib/departures";
+import { formatDepartureDate, nextBookableDeparture, nextDeparture, startingPrice } from "@/lib/departures";
 import { isSoldOutDeparture, saleBadgeLabel } from "@/lib/tripMarketing";
 import SaveButton from "@/components/trip/SaveButton";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
@@ -15,6 +15,7 @@ import { formatTripTitle } from "@/lib/tripDisplay";
 export default function TripCard({ trip }: { trip: Trip }) {
   const { locale } = useI18n();
   const departure = nextBookableDeparture(trip) ?? nextDeparture(trip);
+  const price = startingPrice(trip);
   const hasVideo = Boolean(trip.video) || trip.videos.length > 0;
 
   // Seat wording is deliberately NOT on the card. "Few seats" is true of one
@@ -128,14 +129,14 @@ export default function TripCard({ trip }: { trip: Trip }) {
 
         <div className="mt-auto flex items-end justify-between pt-4">
           <div>
-            {hasKnownTripPrice(trip.price) && trip.oldPrice && trip.oldPrice > trip.price && (
+            {hasKnownTripPrice(price) && trip.oldPrice && trip.oldPrice > price && (
               <div className="text-xs text-muted-foreground line-through">
                 {formatMnt(trip.oldPrice)}
               </div>
             )}
-            <div className="text-[17px] font-bold text-primary">{formatTripStartingPrice(trip.price)}</div>
+            <div className="text-[17px] font-bold text-primary">{formatTripStartingPrice(price)}</div>
             <div className="text-[11px] text-muted-foreground">
-              {hasKnownTripPrice(trip.price) ? "хүн/-с эхлэн" : "ажилтнаас тодруулна"}
+              {hasKnownTripPrice(price) ? "хүн/-с эхлэн" : "ажилтнаас тодруулна"}
             </div>
           </div>
 
