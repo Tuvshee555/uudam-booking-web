@@ -3,11 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 import { toast } from "sonner";
 import { Archive, CalendarDays, Check, ClipboardList, ExternalLink, Eye, Images, Info, Loader2, Plus, RefreshCw, Save, Scale, Trash2, Wallet } from "lucide-react";
 
 import { api, apiErrorMessage } from "@/lib/api";
-import { changedTripFields } from "@/lib/tripEditPatch";
+import { changedTripFields, mergeTripEdit } from "@/lib/tripEditPatch";
 import { departureDateKey } from "@/lib/departureDate";
 import { ageBandsFor } from "@/lib/pricing";
 import { isAllowedImageHost } from "@/lib/imageHosts";
@@ -627,8 +628,25 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
         const { data } = await api.post("/trips", payload);
         return data as Trip;
       }
-      const { data } = await api.put(`/trips/${tripId}`, payload);
-      return data as Trip;
+      try {
+        const { data } = await api.put(`/trips/${tripId}`, payload);
+        return data as Trip;
+      } catch (error) {
+        if (!originalForm.current || !axios.isAxiosError(error) || error.response?.status !== 409) throw error;
+        // Saved elsewhere since this form opened — usually the chatbot sync, not a
+        // person. Re-apply this editor's changes onto the latest trip unless both
+        // changed the same value.
+        const latest = (await api.get(`/trips/${tripId}`)).data as Trip;
+        const theirs = buildPayload(tripToForm(latest));
+        const { merged, conflicts } = mergeTripEdit(buildPayload(originalForm.current), fullPayload, theirs);
+        if (conflicts.length) {
+          throw new Error(`Энэ аяллыг өөр газар засчээ, таны засвартай давхцаж байна (${conflicts.slice(0, 3).join(", ")}). Хуудсаа дахин ачаалаад засвараа дахин оруулна уу.`);
+        }
+        const rebased = changedTripFields(theirs, merged);
+        if (!Object.keys(rebased).length) return latest;
+        const { data } = await api.put(`/trips/${tripId}`, { ...rebased, expectedUpdatedAt: latest.updatedAt });
+        return data as Trip;
+      }
     },
     onSuccess: (saved) => {
       setBaseline(JSON.stringify(tripToForm(saved)));

@@ -43,3 +43,30 @@ test("public trip responses hide queued edits and staff review history without c
   assert.deepEqual(response.sourceMetadata, { price_groups: [{ adult_price: 1_000_000 }] });
   assert.ok(trip.sourceMetadata.connectedSource);
 });
+
+test("a 409 rebase keeps staff's date price when the sync changed other dates and metadata", async () => {
+  const { mergeTripEdit } = await import("../src/lib/tripEditPatch.ts");
+  const group = (date, child) => ({ dates: [date], hotel: "Phoenix Island + Paxton", package_id: "Хөтөлбөртэй", adult_price: 2990000, child_price: child });
+  const dep = (date, status) => ({ startDate: date, price: 2690000, status });
+  const base = { title: "Санья", sourceMetadata: { canonicalOffers: 1, price_groups: [group("2026-11-04", 2590000), group("2026-11-11", 2590000)] },
+    departures: [dep("2026-10-28", "OPEN"), dep("2026-11-04", "OPEN")] };
+  // Staff raise the 11-04 child fare (GTC raised it by 200,000₮).
+  const mine = structuredClone(base); mine.sourceMetadata.price_groups[0].child_price = 2790000;
+  // Meanwhile the sync rewrote metadata and closed 10-28.
+  const theirs = structuredClone(base); theirs.sourceMetadata.canonicalOffers = 2; theirs.departures[0].status = "SOLD_OUT";
+  const { merged, conflicts } = mergeTripEdit(base, mine, theirs);
+  assert.deepEqual(conflicts, []);
+  assert.equal(merged.sourceMetadata.price_groups[0].child_price, 2790000);
+  assert.equal(merged.sourceMetadata.price_groups[1].child_price, 2590000);
+  assert.equal(merged.sourceMetadata.canonicalOffers, 2);
+  assert.equal(merged.departures[0].status, "SOLD_OUT");
+});
+
+test("a 409 rebase stops when both sides changed the same fare", async () => {
+  const { mergeTripEdit } = await import("../src/lib/tripEditPatch.ts");
+  const base = { departures: [{ startDate: "2026-11-04", childPrice: 2390000 }] };
+  const mine = { departures: [{ startDate: "2026-11-04", childPrice: 2590000 }] };
+  const theirs = { departures: [{ startDate: "2026-11-04", childPrice: 2490000 }] };
+  const { conflicts } = mergeTripEdit(base, mine, theirs);
+  assert.deepEqual(conflicts, ["departures[departure:2026-11-04].childPrice"]);
+});
