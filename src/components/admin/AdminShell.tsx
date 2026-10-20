@@ -55,31 +55,34 @@ export default function AdminShell({ children }: { children: ReactNode }) {
     { href: `${base}/settings`, label: "Тохиргоо", icon: Settings },
   ];
   const navigation = (
-    <nav aria-label="Админ цэс" className="space-y-0.5 p-3">
+    <nav aria-label="Админ цэс" className="space-y-0.5 px-3 pb-3 pt-1">
       {nav.map(({ href, label, icon: Icon, exact }, index) => {
         const active = exact ? pathname === href : pathname === href || pathname?.startsWith(`${href}/`);
         const group = index === 0 ? "Өдөр тутам" : index === 3 ? "Аяллын сан" : index === 7 ? "Контент" : index === 10 ? "Удирдлага" : null;
-        return <div key={href}>{group && <p className="px-3 pb-1.5 pt-4 text-[11px] font-medium text-muted-foreground">{group}</p>}
-          <Link href={href} aria-current={active ? "page" : undefined} onClick={() => setMenuOpen(false)} className={cn("flex min-h-10 items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring", active ? "bg-secondary font-semibold text-primary" : "text-muted-foreground hover:bg-secondary hover:text-foreground")}><Icon className="h-4 w-4 shrink-0" /><span className="min-w-0 break-words">{label}</span></Link>
+        return <div key={href}>{group && <p className="px-3 pb-1.5 pt-5 text-[10.5px] font-bold uppercase tracking-[0.1em] text-white/40">{group}</p>}
+          <Link href={href} aria-current={active ? "page" : undefined} onClick={() => setMenuOpen(false)} className={cn("relative flex min-h-10 items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[hsl(var(--uudam-gold))]", active ? "bg-white/10 font-semibold text-white" : "text-white/60 hover:bg-white/[0.06] hover:text-white")}>{active && <span aria-hidden="true" className="absolute -left-3 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[hsl(var(--uudam-gold))]" />}<Icon className={cn("h-4 w-4 shrink-0", active && "text-[hsl(var(--uudam-gold))]")} /><span className="min-w-0 break-words">{label}</span></Link>
         </div>;
       })}
     </nav>
   );
 
   return (
-    <div className="min-h-screen bg-background lg:flex">
-      <aside className="sticky top-0 hidden h-dvh shrink-0 border-r border-border bg-background lg:flex lg:w-56 lg:flex-col">
-        <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-border px-5">
-          <Image src="/uudam-logo.jpg" alt="Uudam" width={30} height={30} className="rounded-md" />
-          <span className="text-sm font-semibold text-foreground">UUDAM · Админ</span>
+    <div className="min-h-screen bg-secondary/40 lg:flex">
+      <aside className="sticky top-0 hidden h-dvh shrink-0 bg-[hsl(var(--uudam-navy-deep))] lg:flex lg:w-60 lg:flex-col">
+        <div className="flex h-16 shrink-0 items-center gap-3 px-5">
+          <Image src="/uudam-logo.jpg" alt="Uudam" width={32} height={32} className="rounded-lg ring-1 ring-white/20" />
+          <span className="flex flex-col leading-tight">
+            <span className="text-sm font-bold tracking-wide text-white">UUDAM</span>
+            <span className="text-[11px] font-medium text-white/50">Удирдлагын самбар</span>
+          </span>
         </div>
 
         <div className="flex-1 overflow-y-auto">{navigation}</div>
 
-        <div className="shrink-0 space-y-0.5 border-t border-border p-3">
+        <div className="shrink-0 space-y-0.5 border-t border-white/10 p-3">
           <Link
             href={`/${locale}`}
-            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
+            className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-white/60 hover:bg-white/[0.06] hover:text-white"
           >
             <ExternalLink className="h-4 w-4" />
             Сайт харах
@@ -87,7 +90,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={() => setAuthToken(null)}
-            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-white/60 hover:bg-white/[0.06] hover:text-white"
           >
             <LogOut className="h-4 w-4" />
             Гарах
@@ -96,16 +99,16 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="min-w-0 flex-1">
-        <div className="border-b border-border bg-background lg:hidden">
+        <div className="bg-[hsl(var(--uudam-navy-deep))] text-white lg:hidden">
           <div className="uudam-container flex h-16 items-center gap-3">
             <Image src="/uudam-logo.jpg" alt="Uudam" width={32} height={32} className="rounded-md" />
-            <span className="text-sm font-semibold text-foreground">UUDAM · Админ</span>
+            <span className="text-sm font-bold tracking-wide text-white">UUDAM · Админ</span>
 
             <div className="ml-auto flex items-center gap-2">
               <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-                <SheetTrigger asChild><button type="button" title="Админ цэс" aria-label="Админ цэс" className="rounded-md p-2 hover:bg-secondary"><Menu className="h-5 w-5" /></button></SheetTrigger>
-                <SheetContent side="left" className="w-72 overflow-y-auto p-0">
-                  <SheetTitle className="border-b border-border px-6 py-5 text-sm">UUDAM · Админ</SheetTitle>
+                <SheetTrigger asChild><button type="button" title="Админ цэс" aria-label="Админ цэс" className="rounded-md p-2 text-white hover:bg-white/10"><Menu className="h-5 w-5" /></button></SheetTrigger>
+                <SheetContent side="left" className="w-72 overflow-y-auto border-0 bg-[hsl(var(--uudam-navy-deep))] p-0">
+                  <SheetTitle className="px-6 py-5 text-sm font-bold tracking-wide text-white">UUDAM · Админ</SheetTitle>
                   {navigation}
                 </SheetContent>
               </Sheet>
@@ -113,7 +116,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
                 href={`/${locale}`}
                 title="Сайт харах"
                 aria-label="Сайт харах"
-                className="rounded-md p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                className="rounded-md p-2 text-white/70 hover:bg-white/10 hover:text-white"
               >
                 <ExternalLink className="h-5 w-5" />
               </Link>
@@ -122,7 +125,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
                 onClick={() => setAuthToken(null)}
                 title="Гарах"
                 aria-label="Гарах"
-                className="rounded-md p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                className="rounded-md p-2 text-white/70 hover:bg-white/10 hover:text-white"
               >
                 <LogOut className="h-4 w-4" />
               </button>

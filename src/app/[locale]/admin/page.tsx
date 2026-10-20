@@ -79,6 +79,14 @@ type Stats = {
   };
 };
 
+const WEEKDAYS = ["Ням", "Даваа", "Мягмар", "Лхагва", "Пүрэв", "Баасан", "Бямба"];
+
+// Written by hand: browsers ship no Mongolian ICU data, so toLocaleDateString("mn-MN") prints English.
+function todayLabel() {
+  const now = new Date();
+  return `${now.getMonth() + 1} сарын ${now.getDate()}, ${WEEKDAYS[now.getDay()]} гараг`;
+}
+
 export default function AdminDashboard() {
   const { locale } = useI18n();
   const { setAuthToken } = useAuth();
@@ -148,7 +156,14 @@ export default function AdminDashboard() {
 
   return (
     <>
-      <h1 className="text-2xl font-bold">Хяналтын самбар</h1>
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground">
+            {todayLabel()}
+          </p>
+          <h1 className="mt-1 text-[28px] font-extrabold leading-9 tracking-tight">Хяналтын самбар</h1>
+        </div>
+      </div>
 
       {health && health.errors > 0 && (
         <Link
@@ -162,38 +177,42 @@ export default function AdminDashboard() {
         </Link>
       )}
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {cards.map(({ icon: Icon, label, value, accent }) => (
-          <div key={label} className="rounded-2xl border border-border bg-card p-5">
-            <span
+      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        {cards.map(({ icon: Icon, label, value, accent }) => {
+          const hot = accent && value > 0;
+          return (
+            <div
+              key={label}
               className={
-                accent && value > 0
-                  ? "inline-flex rounded-xl bg-gold/20 p-2.5 text-gold"
-                  : "inline-flex rounded-xl bg-primary/10 p-2.5 text-primary"
+                hot
+                  ? "rounded-xl bg-[hsl(var(--uudam-navy))] p-4 text-white shadow-sm"
+                  : "rounded-xl border border-border bg-card p-4 shadow-sm"
               }
             >
-              <Icon className="h-5 w-5" />
-            </span>
-            <div className="mt-3 text-xs text-muted-foreground">{label}</div>
-            <div className="mt-0.5 text-xl font-bold">{value}</div>
-          </div>
-        ))}
+              <div className="flex items-center justify-between gap-2">
+                <span className={hot ? "text-xs font-medium text-white/70" : "text-xs font-medium text-muted-foreground"}>{label}</span>
+                <Icon className={hot ? "h-4 w-4 text-[hsl(var(--uudam-gold))]" : "h-4 w-4 text-muted-foreground/70"} />
+              </div>
+              <div className="mt-3 text-[30px] font-extrabold leading-none tracking-tight tabular-nums">{value}</div>
+            </div>
+          );
+        })}
       </div>
 
       {data.stats.newCount > 0 && (
         <Link
           href={`/${locale}/admin/enquiries?status=NEW`}
-          className="mt-4 flex items-center justify-between rounded-2xl border border-gold bg-gold/10 p-4 text-sm transition-colors hover:bg-gold/20"
+          className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-[hsl(var(--uudam-gold))]/50 bg-[hsl(var(--uudam-gold))]/10 px-4 py-3.5 text-sm transition-colors hover:bg-[hsl(var(--uudam-gold))]/20"
         >
           <span>
             <strong>{data.stats.newCount}</strong> хүсэлт залгах хүлээж байна.
           </span>
-          <span className="font-semibold text-primary">Харах →</span>
+          <span className="shrink-0 rounded-lg bg-[hsl(var(--uudam-navy))] px-3 py-1.5 text-xs font-semibold text-white">Харах →</span>
         </Link>
       )}
 
-      <section className="mt-8 rounded-2xl border border-border bg-card p-5">
-        <h2 className="flex items-center gap-2 text-lg font-bold">
+      <section className="mt-8 rounded-xl border border-border bg-card p-5 shadow-sm">
+        <h2 className="flex items-center gap-2 text-base font-bold">
           <Users className="h-4 w-4 text-primary" />
           Сайтад орсон хүмүүс
         </h2>
@@ -208,8 +227,8 @@ export default function AdminDashboard() {
             { label: "Энэ сар", value: vs.visitors.month },
             { label: "Буцаж ирсэн (энэ сар)", value: vs.returningMonth },
           ].map(({ label, value }) => (
-            <div key={label} className="rounded-xl border border-border p-3">
-              <div className="text-xl font-bold">{value}</div>
+            <div key={label} className="rounded-lg bg-secondary/60 p-3.5">
+              <div className="text-2xl font-extrabold tabular-nums">{value}</div>
               <div className="text-xs text-muted-foreground">{label}</div>
             </div>
           ))}
@@ -243,9 +262,9 @@ export default function AdminDashboard() {
       </section>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl border border-border bg-card p-5">
+        <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <h2 className="flex items-center gap-2 text-lg font-bold">
+            <h2 className="flex items-center gap-2 text-base font-bold">
               <Inbox className="h-4 w-4 text-primary" />
               Сүүлийн хүсэлтүүд
             </h2>
@@ -260,9 +279,9 @@ export default function AdminDashboard() {
           {data.recentEnquiries.length === 0 ? (
             <p className="mt-4 text-sm text-muted-foreground">Хүсэлт хараахан алга.</p>
           ) : (
-            <ul className="mt-4 space-y-3">
+            <ul className="mt-3 divide-y divide-border">
               {data.recentEnquiries.map((enquiry) => (
-                <li key={enquiry.id} className="flex items-start gap-3">
+                <li key={enquiry.id} className="flex items-start gap-3 py-3 first:pt-1 last:pb-0">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">
@@ -288,8 +307,8 @@ export default function AdminDashboard() {
           )}
         </section>
 
-        <section className="rounded-2xl border border-border bg-card p-5">
-          <h2 className="flex items-center gap-2 text-lg font-bold">
+        <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
+          <h2 className="flex items-center gap-2 text-base font-bold">
             <CalendarDays className="h-4 w-4 text-primary" />
             Ойрын хөдөлгөөн
           </h2>
@@ -330,8 +349,8 @@ export default function AdminDashboard() {
       </div>
 
       {Object.keys(vs.engagement).length > 0 && (
-        <section className="mt-6 rounded-2xl border border-border bg-card p-5">
-          <h2 className="text-lg font-bold">Энэ сарын идэвх</h2>
+        <section className="mt-6 rounded-xl border border-border bg-card p-5 shadow-sm">
+          <h2 className="text-base font-bold">Энэ сарын идэвх</h2>
           <p className="mt-1 text-xs text-muted-foreground">
             Хүсэлт болгоогүй ч сайттай харьцсан хүмүүс. Том тоо нь хэдэн өөр хүн, жижиг тоо нь нийт хэдэн удаа дарсныг заана.
           </p>
@@ -346,9 +365,9 @@ export default function AdminDashboard() {
             ].map(({ key, label, icon: Icon }) => {
               const entry = vs.engagement[key] ?? { people: 0, times: 0 };
               return (
-                <div key={key} className="rounded-xl border border-border p-3">
+                <div key={key} className="rounded-lg bg-secondary/60 p-3.5">
                   <Icon className="h-4 w-4 text-primary" />
-                  <div className="mt-2 text-lg font-bold">{entry.people} хүн</div>
+                  <div className="mt-2 text-lg font-extrabold tabular-nums">{entry.people} хүн</div>
                   <div className="text-xs text-muted-foreground">
                     {label}
                     {entry.times > entry.people && ` · нийт ${entry.times} удаа`}
@@ -361,8 +380,8 @@ export default function AdminDashboard() {
       )}
 
       {data.topTrips.length > 0 && (
-        <section className="mt-6 rounded-2xl border border-border bg-card p-5">
-          <h2 className="flex items-center gap-2 text-lg font-bold">
+        <section className="mt-6 rounded-xl border border-border bg-card p-5 shadow-sm">
+          <h2 className="flex items-center gap-2 text-base font-bold">
             <TrendingUp className="h-4 w-4 text-primary" />
             Энэ сард хамгийн их асуусан
           </h2>
