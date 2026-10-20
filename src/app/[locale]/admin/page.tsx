@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   CalendarDays,
   Check,
   FileText,
@@ -28,6 +29,7 @@ import EnquiryStatusBadge from "@/components/admin/EnquiryStatusBadge";
 import { Button } from "@/components/ui/button";
 import { formatMnt } from "@/lib/pricing";
 import { markStaffDevice } from "@/lib/analytics";
+import { useTripHealth } from "@/hooks/useTripHealth";
 
 type Stats = {
   stats: {
@@ -89,6 +91,7 @@ export default function AdminDashboard() {
     },
     retry: false,
   });
+  const { data: health } = useTripHealth();
 
   // Staff looking at their own site are not visitors: once someone has opened
   // the admin, this browser stops adding to the visitor numbers.
@@ -146,6 +149,18 @@ export default function AdminDashboard() {
   return (
     <>
       <h1 className="text-2xl font-bold">Хяналтын самбар</h1>
+
+      {health && health.errors > 0 && (
+        <Link
+          href={`/${locale}/admin/health`}
+          className="mt-4 flex items-start gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive hover:bg-destructive/15"
+        >
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            Сайтын шалгалтаар нийтэд харагдаж буй аяллуудад <b>{health.errors} алдаа</b> илэрлээ (огноо, үнэ эсвэл синк). Харах →
+          </span>
+        </Link>
+      )}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map(({ icon: Icon, label, value, accent }) => (

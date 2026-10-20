@@ -18,6 +18,7 @@ import {
   Newspaper,
   Sparkles,
   Settings,
+  ShieldCheck,
   ShoppingBag,
   Tag,
   Users,
@@ -49,6 +50,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
     { href: `${base}/posts`, label: "Зөвлөгөө", icon: Newspaper },
     { href: `${base}/knowledge`, label: "Танин мэдэхүй", icon: Sparkles },
     { href: `${base}/analytics`, label: "Хандалт", icon: BarChart3 },
+    { href: `${base}/health`, label: "Сайтын шалгалт", icon: ShieldCheck },
     { href: `${base}/staff`, label: "Ажилтнууд", icon: Users },
     { href: `${base}/settings`, label: "Тохиргоо", icon: Settings },
   ];
