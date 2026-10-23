@@ -194,6 +194,7 @@ export default function AdminTripsPage() {
 
               <Link
                 href={`/${locale}/trips/${trip.slug}`}
+                prefetch={false}
                 target="_blank"
                 className="rounded-lg border border-border p-2 text-muted-foreground transition-colors hover:border-primary/40"
                 aria-label="Сайт дээр харах"

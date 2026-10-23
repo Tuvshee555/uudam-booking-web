@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Plus, Search, Trash2 } from "lucide-react";
-import { pricingDateRows, pricingDates, patchPricingDate, renamePricingDate, passengerPricingRows, passengerName, type PricingGroup } from "@/lib/adminDatePricing";
+import { pricingDateRows, pricingDates, patchPricingDate, renamePricingDate, passengerPricingRows, passengerName, applyFaresToSameOption, sameOptionDates, type PricingGroup } from "@/lib/adminDatePricing";
+import { formatMnt } from "@/lib/pricing";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CalendarDatePicker, ExactSeatsOverride, STATUS_OPTIONS, EMPTY_DEPARTURE, type DepartureDraft } from "./DepartureEditor";
@@ -75,6 +76,28 @@ export default function DatePricingEditor({ metadata, departures, defaultPrice, 
     update({ passenger_prices: next, child_price: child?.price ?? null, child_age: child?.age_range || "", infant_price: baby?.price ?? null, infant_age: baby?.age_range || "" });
   }
 
+  // Other dates of the same package/hotel option: what "apply to all" reaches.
+  const otherDates = sameOptionDates(groups, group).filter((date) => date !== selected.date);
+
+  function applyToAll() {
+    if (!window.confirm(`Энэ огнооны үнийг (том хүн ${formatMnt(typeof group.adult_price === "number" ? group.adult_price : null)}) бусад ${otherDates.length} огноонд хэрэглэх үү?`)) return;
+    const child = passengers.find((row) => !infant(row));
+    const baby = passengers.find(infant);
+    const nextGroups = applyFaresToSameOption(groups, group, {
+      adult_price: group.adult_price ?? null,
+      adult_price_range: null,
+      passenger_prices: passengers,
+      child_price: child?.price ?? null,
+      child_age: child?.age_range || "",
+      infant_price: baby?.price ?? null,
+      infant_age: baby?.age_range || "",
+    });
+    const touched = new Set(sameOptionDates(groups, group));
+    onChange({ ...metadata, price_groups: nextGroups }, departures.map((dep) => touched.has(dep.startDate)
+      ? { ...dep, price: amount(group.adult_price), childPrice: amount(child?.price), infantPrice: amount(baby?.price) }
+      : dep));
+  }
+
   function updateDeparture(patch: Partial<DepartureDraft>) {
     onChange(metadata, departures.map((dep, index) => index === depIndex ? { ...dep, ...patch } : dep));
   }
@@ -128,6 +151,9 @@ export default function DatePricingEditor({ metadata, departures, defaultPrice, 
           <label className="flex w-44 max-w-[55%] items-center gap-2"><Input data-field="price" aria-invalid={adultPriceMissing} className={cn(adultPriceMissing && "border-destructive focus-visible:ring-destructive")} aria-label="Сонгосон огнооны том хүний үнэ" type="number" min={0} value={amount(group.adult_price)} placeholder={defaultPrice === "0" ? "" : defaultPrice} onChange={(e) => update({ adult_price: fare(e.target.value), adult_price_range: null })} /><span className="text-xs text-muted-foreground">{currency === "MNT" ? "₮" : currency}</span></label>
         </div>
         {adultPriceMissing && <p role="alert" className="mt-1 text-right text-xs font-medium text-destructive">Том хүний үнэ оруулна уу</p>}
+        {typeof group.adult_price === "number" && group.adult_price > 0 && <p className="mt-1 text-right text-xs tabular-nums text-muted-foreground">= {formatMnt(group.adult_price)}</p>}
+        {typeof group.adult_price === "number" && group.adult_price > 0 && group.adult_price < 10000 && currency === "MNT" && <p role="status" className="mt-1 text-right text-xs font-medium text-amber-700">Үнэ маш бага байна — тэрбум/мянгатын нэгж алдсан эсэхийг шалгана уу</p>}
+        {otherDates.length > 0 && selected.date && <div className="mt-2 text-right"><Button type="button" variant="outline" size="sm" onClick={applyToAll}>Энэ үнийг бусад {otherDates.length} огноонд хэрэглэх</Button></div>}
       </div>
       {passengers.map((passenger, index) => <div key={index} className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)_32px] items-start gap-3 border-b border-border py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_32px]">
         <label className="min-w-0 text-xs text-muted-foreground">Зорчигчийн нэр<Input aria-label="Зорчигчийн ангилал" className="mt-1" value={passengerName(passenger)} placeholder="Хүүхэд, нярай" onChange={(e) => updatePassengers(passengers.map((row, i) => i === index ? { ...row, label: e.target.value } : row))} /></label>

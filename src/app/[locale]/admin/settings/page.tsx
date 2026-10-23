@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { cloneElement, useId, useState, type ReactElement } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -79,6 +79,21 @@ function Card({ title, hint, children }: { title: string; hint?: string; childre
   );
 }
 
+/**
+ * A label wired to its control. The bare <Label> beside an <Input> that this
+ * replaces was not connected to it, so clicking the label did nothing and a
+ * screen reader announced an unnamed field.
+ */
+function Field({ label, className, children }: { label: string; className?: string; children: ReactElement<{ id?: string; className?: string }> }) {
+  const id = useId();
+  return (
+    <div className={className}>
+      <Label htmlFor={id}>{label}</Label>
+      {cloneElement(children, { id })}
+    </div>
+  );
+}
+
 function TitleBodyFields({
   titleLabel,
   bodyLabel,
@@ -98,14 +113,12 @@ function TitleBodyFields({
 }) {
   return (
     <div className="space-y-4">
-      <div>
-        <Label>{titleLabel}</Label>
+      <Field label={titleLabel}>
         <Input value={title} onChange={(e) => onTitleChange(e.target.value)} className="mt-1.5" />
-      </div>
-      <div>
-        <Label>{bodyLabel}</Label>
+      </Field>
+      <Field label={bodyLabel}>
         <Textarea value={body} onChange={(e) => onBodyChange(e.target.value)} rows={bodyRows} className="mt-1.5" />
-      </div>
+      </Field>
     </div>
   );
 }
@@ -286,6 +299,7 @@ export default function AdminSettingsPage() {
         hint="Аялал бүрийн шар “Чухал тэмдэглэл” хайрцагт харагдана."
       >
         <textarea
+          aria-label="Бүх аялал дээр харагдах чухал тэмдэглэл"
           value={tripNotice}
           onChange={(event) => setTripNoticeDraft(event.target.value)}
           rows={6}
@@ -302,36 +316,29 @@ export default function AdminSettingsPage() {
 
       <Card title="Нүүр хуудасны толгой хэсэг" hint="Сайтад орсон даруйдаа хамгийн түрүүнд харагдах бичвэр.">
         <div className="space-y-4">
-          <div>
-            <Label>Жижиг бичвэр (гарчгийн дээр)</Label>
+          <Field label="Жижиг бичвэр (гарчгийн дээр)">
             <Input value={homeEyebrow} onChange={(e) => setHomeEyebrowDraft(e.target.value)} className="mt-1.5" />
-          </div>
-          <div>
-            <Label>Гарчиг (1-р мөр)</Label>
+          </Field>
+          <Field label="Гарчиг (1-р мөр)">
             <Input value={homeTitle} onChange={(e) => setHomeTitleDraft(e.target.value)} className="mt-1.5" />
-          </div>
-          <div>
-            <Label>Гарчиг (2-р мөр, шар өнгөөр)</Label>
+          </Field>
+          <Field label="Гарчиг (2-р мөр, шар өнгөөр)">
             <Input value={homeAccent} onChange={(e) => setHomeAccentDraft(e.target.value)} className="mt-1.5" />
-          </div>
-          <div>
-            <Label>Дэд гарчиг</Label>
+          </Field>
+          <Field label="Дэд гарчиг">
             <Textarea value={homeSubtitle} onChange={(e) => setHomeSubtitleDraft(e.target.value)} rows={2} className="mt-1.5" />
-          </div>
+          </Field>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <Label>Товч 1 (цагаан)</Label>
+            <Field label="Товч 1 (цагаан)">
               <Input value={homePrimaryCta} onChange={(e) => setHomePrimaryCtaDraft(e.target.value)} className="mt-1.5" />
-            </div>
-            <div>
-              <Label>Товч 2 (хүрээтэй)</Label>
+            </Field>
+            <Field label="Товч 2 (хүрээтэй)">
               <Input value={homeSecondaryCta} onChange={(e) => setHomeSecondaryCtaDraft(e.target.value)} className="mt-1.5" />
-            </div>
+            </Field>
           </div>
-          <div>
-            <Label>Баруун доод булангийн бичвэр</Label>
+          <Field label="Баруун доод булангийн бичвэр">
             <Input value={homeBadge} onChange={(e) => setHomeBadgeDraft(e.target.value)} className="mt-1.5" />
-          </div>
+          </Field>
 
           <div className="border-t border-border pt-4">
             <Label>Эргэлддэг зурагнууд</Label>
@@ -386,7 +393,7 @@ export default function AdminSettingsPage() {
                     value={fact.icon}
                     onChange={(e) => updateTrustFact(index, { icon: e.target.value })}
                     className="flex h-9 shrink-0 items-center rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                    aria-label="Icon"
+                    aria-label="Дүрс"
                   >
                     {ABOUT_ICON_OPTIONS.map((key) => (
                       <option key={key} value={key}>
@@ -399,6 +406,7 @@ export default function AdminSettingsPage() {
                     value={fact.title}
                     onChange={(e) => updateTrustFact(index, { title: e.target.value })}
                     placeholder="Гарчиг"
+                    aria-label="Гарчиг"
                     className="flex-1"
                   />
                   <button
@@ -414,6 +422,7 @@ export default function AdminSettingsPage() {
                   value={fact.text}
                   onChange={(e) => updateTrustFact(index, { text: e.target.value })}
                   placeholder="Тайлбар"
+                  aria-label="Тайлбар"
                   rows={2}
                   className="mt-2"
                 />
@@ -430,13 +439,14 @@ export default function AdminSettingsPage() {
           </button>
 
           <div className="border-t border-border pt-3">
-            <Label>3-р хайрцгийн бичвэр (утас)</Label>
-            <Textarea
-              value={trustPhoneText}
-              onChange={(e) => setTrustPhoneTextDraft(e.target.value)}
-              rows={2}
-              className="mt-1.5"
-            />
+            <Field label="3-р хайрцгийн бичвэр (утас)">
+              <Textarea
+                value={trustPhoneText}
+                onChange={(e) => setTrustPhoneTextDraft(e.target.value)}
+                rows={2}
+                className="mt-1.5"
+              />
+            </Field>
           </div>
         </div>
       </Card>
@@ -478,14 +488,12 @@ export default function AdminSettingsPage() {
 
       <Card title="Бидний тухай хуудас" hint="&ldquo;Бидний тухай&rdquo; хуудасны гарчиг болон доорх хайрцгуудыг энд засна.">
         <div className="space-y-4">
-          <div>
-            <Label>Гарчиг</Label>
+          <Field label="Гарчиг">
             <Input value={aboutTitle} onChange={(e) => setAboutTitleDraft(e.target.value)} className="mt-1.5" />
-          </div>
-          <div>
-            <Label>Дэд гарчиг</Label>
+          </Field>
+          <Field label="Дэд гарчиг">
             <Textarea value={aboutSubtitle} onChange={(e) => setAboutSubtitleDraft(e.target.value)} rows={3} className="mt-1.5" />
-          </div>
+          </Field>
 
           <div className="border-t border-border pt-4">
             <Label>Хайрцгууд</Label>
@@ -499,7 +507,7 @@ export default function AdminSettingsPage() {
                         value={value.icon}
                         onChange={(e) => updateAboutValue(index, { icon: e.target.value })}
                         className="flex h-9 shrink-0 items-center rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                        aria-label="Icon"
+                        aria-label="Дүрс"
                       >
                         {ABOUT_ICON_OPTIONS.map((key) => (
                           <option key={key} value={key}>
@@ -512,6 +520,7 @@ export default function AdminSettingsPage() {
                         value={value.title}
                         onChange={(e) => updateAboutValue(index, { title: e.target.value })}
                         placeholder="Гарчиг"
+                        aria-label="Гарчиг"
                         className="flex-1"
                       />
                       <button
@@ -527,6 +536,7 @@ export default function AdminSettingsPage() {
                       value={value.text}
                       onChange={(e) => updateAboutValue(index, { text: e.target.value })}
                       placeholder="Тайлбар"
+                      aria-label="Тайлбар"
                       rows={2}
                       className="mt-2"
                     />
@@ -555,6 +565,7 @@ export default function AdminSettingsPage() {
                   value={item.q}
                   onChange={(e) => updateFaq(index, { q: e.target.value })}
                   placeholder="Асуулт"
+                  aria-label="Асуулт"
                   className="flex-1 font-medium"
                 />
                 <button
@@ -570,6 +581,7 @@ export default function AdminSettingsPage() {
                 value={item.a}
                 onChange={(e) => updateFaq(index, { a: e.target.value })}
                 placeholder="Хариулт"
+                aria-label="Хариулт"
                 rows={2}
                 className="mt-2"
               />
@@ -595,6 +607,7 @@ export default function AdminSettingsPage() {
                   value={section.title}
                   onChange={(e) => updateTerm(index, { title: e.target.value })}
                   placeholder="Гарчиг"
+                  aria-label="Гарчиг"
                   className="flex-1 font-medium"
                 />
                 <button
@@ -610,6 +623,7 @@ export default function AdminSettingsPage() {
                 value={section.body}
                 onChange={(e) => updateTerm(index, { body: e.target.value })}
                 placeholder="Заалтын бичвэр"
+                aria-label="Заалтын бичвэр"
                 rows={4}
                 className="mt-2"
               />

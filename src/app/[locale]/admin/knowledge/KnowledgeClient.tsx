@@ -252,6 +252,7 @@ export default function KnowledgeClient() {
                 type="button"
                 onClick={() => togglePublish.mutate(article)}
                 title={article.isPublished ? "Нуух" : "Нийтлэх"}
+                aria-label={article.isPublished ? "Нуух" : "Нийтлэх"}
                 className="shrink-0 rounded-lg border border-border p-2 hover:border-primary"
               >
                 {article.isPublished ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -266,6 +267,8 @@ export default function KnowledgeClient() {
                 onClick={() => {
                   if (confirm(`"${article.title}" мэдээллийг устгах уу?`)) remove.mutate(article.id);
                 }}
+                aria-label="Устгах"
+                title="Устгах"
                 className="shrink-0 rounded-lg border border-border p-2 text-destructive hover:border-destructive"
               >
                 <Trash2 className="h-4 w-4" />

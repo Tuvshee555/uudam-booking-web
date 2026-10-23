@@ -61,3 +61,25 @@ export function renamePricingDate(groups: readonly PricingGroup[], from: string,
     return patchPricingDate([group], { groupIndex: 0, date: from }, { dates: [to], date_keys: [to], display_dates: [to] });
   });
 }
+
+// Two price groups are the same "option" when they sell the same package in the
+// same hotel under the same name; a trip with hotel or package choices prices
+// each option separately, so a bulk fare must never cross between them.
+// Imported rows are labelled with their own date ("2026-10-26"), which says nothing about the option.
+const DATE_LABEL = /\d{4}-\d{2}-\d{2}|\d{1,2}\s*(?:-р\s*)?сар/i;
+const optionName = (group: PricingGroup) => {
+  const label = String(group.label ?? "").trim();
+  return DATE_LABEL.test(label) ? "" : label;
+};
+const optionKey = (group: PricingGroup) => [group.package_id, group.hotel, optionName(group)].map((value) => String(value ?? "").trim()).join("|");
+
+export function sameOptionDates(groups: readonly PricingGroup[], source: PricingGroup): string[] {
+  return [...new Set(groups.filter((group) => optionKey(group) === optionKey(source)).flatMap(pricingDates))];
+}
+
+/** Copy `fares` onto every group that is the same option as `source`, leaving other options untouched. */
+export function applyFaresToSameOption<T extends PricingGroup>(groups: readonly T[], source: PricingGroup, fares: PricingGroup): T[] {
+  return groups.map((group) => optionKey(group) === optionKey(source)
+    ? { ...group, ...fares, passenger_prices: (Array.isArray(fares.passenger_prices) ? fares.passenger_prices : []).map((row: unknown) => ({ ...(row as PricingGroup) })) }
+    : group);
+}

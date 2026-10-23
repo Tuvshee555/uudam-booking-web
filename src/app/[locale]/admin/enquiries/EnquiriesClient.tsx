@@ -103,6 +103,7 @@ export default function EnquiriesClient() {
               setPage(1);
             }}
             placeholder="Нэр, утас эсвэл дугаараар хайх"
+            aria-label="Нэр, утас эсвэл дугаараар хайх"
             className="bg-card pl-9"
           />
         </div>
@@ -184,6 +185,7 @@ export default function EnquiriesClient() {
                 {enquiry.trip && (
                   <Link
                     href={`/${locale}/trips/${enquiry.trip.slug}`}
+                    prefetch={false}
                     target="_blank"
                     className="mt-1.5 inline-block text-sm font-medium hover:text-primary"
                   >

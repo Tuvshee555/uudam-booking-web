@@ -75,3 +75,30 @@ test("renaming a departure moves every hotel option without touching other dates
   assert.deepEqual(result.map(pricingDates), [["2026-12-13"], ["2026-12-20"], ["2026-12-13"], ["2026-12-20"]]);
   assert.equal(result[3].hotel, "Hotel B");
 });
+
+import { applyFaresToSameOption, sameOptionDates } from "../src/lib/adminDatePricing.ts";
+
+test("bulk fare reaches every date of the same option and no other option", () => {
+  const groups = [
+    { dates: ["2099-01-10"], adult_price: 100, hotel: "A", passenger_prices: [{ label: "Child", price: 50 }] },
+    { dates: ["2099-01-17", "2099-01-24"], adult_price: 100, hotel: "A", passenger_prices: [] },
+    { dates: ["2099-01-31"], adult_price: 300, hotel: "B", passenger_prices: [] },
+  ];
+  assert.deepEqual(sameOptionDates(groups, groups[0]), ["2099-01-10", "2099-01-17", "2099-01-24"]);
+  const next = applyFaresToSameOption(groups, groups[0], { adult_price: 120, passenger_prices: [{ label: "Child", price: 60 }] });
+  assert.equal(next[0].adult_price, 120);
+  assert.equal(next[1].adult_price, 120);
+  assert.deepEqual(next[1].passenger_prices, [{ label: "Child", price: 60 }]);
+  assert.equal(next[2].adult_price, 300);
+  assert.notEqual(next[0].passenger_prices[0], next[1].passenger_prices[0]);
+  assert.equal(groups[1].adult_price, 100);
+});
+
+test("a group labelled with its own date still counts as the same option", () => {
+  const groups = [
+    { dates: ["2099-02-01"], label: "2099-02-01", adult_price: 100 },
+    { dates: ["2099-02-08"], label: "2099-02-08", adult_price: 100 },
+    { dates: ["2099-02-15"], label: "Deluxe", adult_price: 200 },
+  ];
+  assert.deepEqual(sameOptionDates(groups, groups[0]), ["2099-02-01", "2099-02-08"]);
+});

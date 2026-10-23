@@ -244,6 +244,7 @@ export default function AnalyticsPage() {
                         <td className="py-3">
                           <Link
                             href={`/${locale}/trips/${trip.slug}`}
+                            prefetch={false}
                             target="_blank"
                             className="flex items-center gap-3 hover:text-primary"
                           >
