@@ -28,7 +28,8 @@ import type { Trip } from "@/types/trip";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { recordRecentlyViewed } from "@/lib/analytics";
 import { formatTripTitle } from "@/lib/tripDisplay";
-import { availability, nextBookableDeparture, nextDeparture, upcomingDepartures } from "@/lib/departures";
+import { availability, nextBookableDeparture, nextDeparture, startingPrice, upcomingDepartures } from "@/lib/departures";
+import { formatMnt, hasKnownTripPrice } from "@/lib/pricing";
 import {
   isSoldOutDeparture,
   saleBadgeLabel,
@@ -436,6 +437,15 @@ function TripDetailClientInner({
             {trip.summary && (
               <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
                 {trip.summary}
+              </p>
+            )}
+
+            {/* The booking panel (with the price) sits far below on a phone;
+                without this the first screen never says what the trip costs. */}
+            {hasKnownTripPrice(startingPrice(trip)) && !mobileCtaClosed && (
+              <p className="mt-4 text-sm text-muted-foreground lg:hidden">
+                <span className="text-2xl font-bold text-foreground">{formatMnt(startingPrice(trip))}</span>{" "}
+                -с эхлэн
               </p>
             )}
 

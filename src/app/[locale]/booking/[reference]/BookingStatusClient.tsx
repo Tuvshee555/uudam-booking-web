@@ -28,10 +28,10 @@ export type BookingStatus = {
 };
 
 const STATUS_LABEL: Record<string, { label: string; tone: string }> = {
-  HELD: { label: "Суудал түр барьсан", tone: "text-amber-600" },
-  PENDING_PAYMENT: { label: "Төлбөр хүлээгдэж байна", tone: "text-amber-600" },
+  HELD: { label: "Суудал түр барьсан", tone: "text-amber-700" },
+  PENDING_PAYMENT: { label: "Төлбөр хүлээгдэж байна", tone: "text-amber-700" },
   PARTIALLY_PAID: { label: "Урьдчилгаа төлөгдсөн", tone: "text-primary" },
-  CONFIRMED: { label: "Баталгаажсан", tone: "text-emerald-600" },
+  CONFIRMED: { label: "Баталгаажсан", tone: "text-emerald-700" },
   COMPLETED: { label: "Аялал дууссан", tone: "text-muted-foreground" },
   CANCELLED: { label: "Цуцлагдсан", tone: "text-destructive" },
   EXPIRED: { label: "Хугацаа дууссан", tone: "text-destructive" },

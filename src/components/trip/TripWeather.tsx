@@ -96,8 +96,8 @@ function DayTile({ day, placeName, placeChanged }: { day: TripWeatherDay; placeN
             className={cn(
               "mt-0.5 flex items-center justify-center gap-0.5 text-[11px]",
               (typical ? (day.rainChance ?? 0) >= 30 : (day.precipMm ?? 0) >= 1)
-                ? "text-sky-600 dark:text-sky-400"
-                : "text-muted-foreground/70",
+                ? "text-sky-700 dark:text-sky-400"
+                : "text-muted-foreground",
             )}
           >
             <Umbrella className="h-3 w-3" />
@@ -152,7 +152,7 @@ function NowRows({ report }: { report: TripWeatherReport }) {
                 Одоо · {place?.country}
               </p>
             </div>
-            <ol className="no-scrollbar -mx-1 flex flex-1 gap-1.5 overflow-x-auto px-1 sm:grid sm:grid-cols-5 sm:overflow-visible">
+            <ol tabIndex={0} aria-label="Хотын цаг агаар" className="no-scrollbar -mx-1 flex flex-1 gap-1.5 overflow-x-auto px-1 sm:grid sm:grid-cols-5 sm:overflow-visible">
               {entry.days.map((day, index) => (
                 <li
                   key={day.date}
@@ -245,6 +245,8 @@ export default function TripWeather({
       <>
       <ol
         ref={stripRef}
+        tabIndex={0}
+        aria-label="Өдөр тутмын цаг агаар"
         className="no-scrollbar -mx-1 mt-3 flex snap-x gap-2 overflow-x-auto px-1 pb-1 sm:grid sm:grid-cols-[repeat(auto-fill,minmax(112px,1fr))] sm:overflow-visible"
       >
         {days.map((day, index) => {

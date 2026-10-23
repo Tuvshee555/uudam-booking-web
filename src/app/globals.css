@@ -19,6 +19,8 @@
     --uudam-navy-soft: 207 64% 31%; /* #1c4f80 */
     --uudam-navy-deep: 207 82% 18%; /* #082f52 */
     --uudam-gold: 41 87% 62%; /* #f2bd4a */
+    /* The same gold as readable type on a light surface (5.1:1 on white; the bright gold is 1.7:1). */
+    --uudam-gold-text: 41 90% 30%;
 
     /* Surfaces — white-first, with a barely-there warm tint for sections */
     --background: 0 0% 100%;
@@ -38,7 +40,7 @@
     --secondary-foreground: 209 72% 24%;
 
     --muted: 210 40% 97%;
-    --muted-foreground: 215 16% 47%;
+    --muted-foreground: 215 16% 42%;
 
     /* Accent is the gold sun — used sparingly */
     --accent: var(--uudam-gold);
@@ -61,6 +63,7 @@
   }
 
   .dark {
+    --uudam-gold-text: 41 87% 62%;
     --background: 209 45% 8%;
     --foreground: 210 40% 98%;
 
@@ -115,9 +118,14 @@
     color: #fff;
   }
 
-  /* Small gold eyebrow label — the one place gold appears as type. */
+  /* Small gold eyebrow label — the one place gold appears as type. Darker gold
+     on light surfaces; add uudam-eyebrow-on-dark over photos or navy. */
   .uudam-eyebrow {
     @apply text-[11px] font-bold uppercase tracking-[0.2em];
+    color: hsl(var(--uudam-gold-text));
+  }
+
+  .uudam-eyebrow-on-dark {
     color: hsl(var(--uudam-gold));
   }
 

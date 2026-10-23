@@ -22,11 +22,11 @@ export default function RootNotFound() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
       <Image src="/uudam-logo.jpg" alt="Uudam Travel Agency" width={44} height={44} className="rounded-md" />
-      <p className="mt-6 text-[11px] font-bold uppercase tracking-[0.2em] text-[hsl(41,87%,45%)]">404</p>
+      <p className="mt-6 text-[11px] font-bold uppercase tracking-[0.2em] text-[hsl(41,90%,30%)]">404</p>
       <h1 className="mt-2 text-2xl font-bold tracking-tight text-[hsl(209,45%,12%)] md:text-3xl">
         Хуудас олдсонгүй
       </h1>
-      <p className="mt-3 max-w-md text-sm leading-relaxed text-[hsl(215,16%,47%)]">
+      <p className="mt-3 max-w-md text-sm leading-relaxed text-[hsl(215,16%,42%)]">
         Энэ хаяг устсан, эсвэл шилжсэн байж болзошгүй. Аяллаа доороос дахин хайж үзээрэй.
       </p>
       <Link

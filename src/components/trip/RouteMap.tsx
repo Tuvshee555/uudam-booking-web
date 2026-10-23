@@ -72,7 +72,7 @@ export default function RouteMap({ stops }: { stops: RouteStop[] }) {
     // `isolate`: Leaflet's panes use z-index 400+, which would otherwise
     // slide over the sticky site header while scrolling.
     <div className="isolate overflow-hidden rounded-2xl border border-border bg-card">
-      <div ref={container} className="z-0 h-72 w-full bg-secondary sm:h-80" role="img" aria-label="Аяллын маршрутын газрын зураг" />
+      <div ref={container} className="z-0 h-72 w-full bg-secondary sm:h-80" role="group" aria-label="Аяллын маршрутын газрын зураг" />
       <ol className="flex flex-wrap gap-x-4 gap-y-2 border-t border-border px-4 py-3 text-sm">
         {stops.map((stop, index) => (
           <li key={`${stop.lat},${stop.lon}`} className="flex items-center gap-2">

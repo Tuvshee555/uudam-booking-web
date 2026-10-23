@@ -139,7 +139,7 @@ export default function SiteHeader() {
               >
                 {category.categoryName}
                 {category.tripCount > 0 && (
-                  <span className="ml-1.5 text-xs text-muted-foreground/70">
+                  <span className="ml-1.5 text-xs text-muted-foreground">
                     {category.tripCount}
                   </span>
                 )}

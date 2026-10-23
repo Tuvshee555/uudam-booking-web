@@ -253,6 +253,7 @@ function TripsPageInner({ initialTrips }: { initialTrips?: Trip[] }) {
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
+            aria-label="Аялал хайх"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Улс, хот эсвэл аяллын нэрээр хайх"
@@ -264,6 +265,7 @@ function TripsPageInner({ initialTrips }: { initialTrips?: Trip[] }) {
           <div className="relative">
             <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <select
+              aria-label="Чиглэлээр шүүх"
               value={country ?? ""}
               onChange={(event) => setCountry(event.target.value || null)}
               className="h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm sm:w-44"
@@ -282,6 +284,7 @@ function TripsPageInner({ initialTrips }: { initialTrips?: Trip[] }) {
           <div className="relative">
             <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <select
+              aria-label="Сараар шүүх"
               value={month ?? ""}
               onChange={(event) => setMonth(event.target.value || null)}
               className="h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm sm:w-44"
@@ -299,6 +302,7 @@ function TripsPageInner({ initialTrips }: { initialTrips?: Trip[] }) {
         <div className="relative">
           <SlidersHorizontal className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <select
+            aria-label="Эрэмбэлэх"
             value={sort}
             onChange={(event) => setSort(event.target.value as SortKey)}
             className="h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm sm:w-56"

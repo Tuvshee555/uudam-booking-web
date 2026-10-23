@@ -51,7 +51,7 @@ function CategoryThumb({ src, alt }: { src: string | null | undefined; alt: stri
       alt={alt}
       fill
       sizes="(max-width: 640px) 100vw, 25vw"
-      quality={90}
+      quality={75}
       className="uudam-photo-drift object-cover transition-transform duration-700 group-hover:scale-110"
       onError={() => setFailed(true)}
     />
@@ -79,7 +79,13 @@ function HeroSlideshow({ images, badge }: { images: string[]; badge: string }) {
 
   return (
     <div className="absolute inset-0 overflow-hidden">
-      {images.map((src, index) => (
+      {images.map((src, index) => {
+        // Only the visible slide and the one about to fade in are mounted:
+        // rendering all of them downloaded every hero photo (about 2MB) before
+        // the visitor saw the first one settle.
+        const upNext = (active + 1) % images.length;
+        if (index !== active && index !== upNext) return null;
+        return (
         <Image
           key={`${src}-${index}`}
           src={src}
@@ -90,31 +96,36 @@ function HeroSlideshow({ images, badge }: { images: string[]; badge: string }) {
             "object-cover transition-opacity duration-[1600ms] " +
             (index === active ? "opacity-100 uudam-hero-kenburns" : "opacity-0")
           }
-          quality={90}
+          quality={85}
           priority={index === 0}
         />
-      ))}
+        );
+      })}
       <div className="absolute inset-0 bg-gradient-to-r from-navy-deep/80 via-navy-deep/30 to-navy-deep/5" />
       <div className="absolute inset-0 bg-gradient-to-t from-navy-deep/55 via-transparent to-black/10" />
 
       {images.length > 1 && (
         <>
-          <button
-            type="button"
-            onClick={goToPrevious}
-            className="absolute left-3 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/35 bg-black/20 text-white shadow-lg backdrop-blur transition hover:bg-white hover:text-navy-deep md:flex"
-            aria-label="Өмнөх зураг"
-          >
-            <ChevronLeft className="h-6 w-6" />
-          </button>
-          <button
-            type="button"
-            onClick={goToNext}
-            className="absolute right-3 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/35 bg-black/20 text-white shadow-lg backdrop-blur transition hover:bg-white hover:text-navy-deep md:flex"
-            aria-label="Дараагийн зураг"
-          >
-            <ChevronRight className="h-6 w-6" />
-          </button>
+          {/* Bottom-left, lined up with the page gutter: at the sides they sat
+              on top of the first letters of the headline. */}
+          <div className="absolute bottom-5 left-4 z-20 hidden gap-2 sm:left-6 md:flex lg:left-8">
+            <button
+              type="button"
+              onClick={goToPrevious}
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-white/35 bg-black/20 text-white shadow-lg backdrop-blur transition hover:bg-white hover:text-navy-deep"
+              aria-label="Өмнөх зураг"
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </button>
+            <button
+              type="button"
+              onClick={goToNext}
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-white/35 bg-black/20 text-white shadow-lg backdrop-blur transition hover:bg-white hover:text-navy-deep"
+              aria-label="Дараагийн зураг"
+            >
+              <ChevronRight className="h-6 w-6" />
+            </button>
+          </div>
         </>
       )}
 
@@ -344,7 +355,7 @@ export default function HomeClient({
 
         <div className="uudam-container relative z-10 flex min-h-[430px] items-center py-14 md:min-h-[500px] lg:min-h-[540px]">
           <div className="max-w-3xl">
-            <span className="uudam-eyebrow">{heroEyebrow || DEFAULT_HOME_HERO_EYEBROW}</span>
+            <span className="uudam-eyebrow uudam-eyebrow-on-dark">{heroEyebrow || DEFAULT_HOME_HERO_EYEBROW}</span>
             <h1 className="mt-3 max-w-2xl text-5xl font-bold leading-[0.98] tracking-tight text-white sm:text-6xl lg:text-7xl">
               {heroTitle || DEFAULT_HOME_HERO_TITLE}
               <span className="block text-gold">{heroTitleAccent || DEFAULT_HOME_HERO_TITLE_ACCENT}</span>
@@ -379,7 +390,18 @@ export default function HomeClient({
       {visibleCategories.length > 0 && (
         <section className="uudam-container py-14">
           <h2 className="text-2xl font-bold md:text-3xl">Чиглэлээр нь сонгох</h2>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Column count follows the tile count so the last row is never a
+              lone tile (five categories used to leave one orphaned). */}
+          <div
+            className={
+              "mt-6 grid gap-4 sm:grid-cols-2 " +
+              (visibleCategories.length === 5
+                ? "lg:grid-cols-5"
+                : visibleCategories.length % 3 === 0
+                  ? "lg:grid-cols-3"
+                  : "lg:grid-cols-4")
+            }
+          >
             {visibleCategories.slice(0, 8).map((category) => (
               <Link
                 key={category.id}

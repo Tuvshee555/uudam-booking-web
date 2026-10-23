@@ -24,7 +24,7 @@ export default function ThemeToggle() {
         hover:bg-black/5 dark:hover:bg-white/10
         transition
       "
-      aria-label="Toggle theme"
+      aria-label="Харагдах өнгө солих"
     >
       {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
     </button>
