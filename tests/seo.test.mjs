@@ -90,3 +90,20 @@ test("retired /en and /ko prefixes map to /mn, nothing else does", () => {
   assert.equal(withoutRetiredLocale("/english"), null);
   assert.equal(withoutRetiredLocale("/"), null);
 });
+
+import { resolveSiteUrl } from "../src/lib/siteUrl.ts";
+
+test("a localhost site address is ignored in production", () => {
+  assert.equal(resolveSiteUrl("http://localhost:3000", true), "https://uudamtravel.mn");
+  assert.equal(resolveSiteUrl("http://127.0.0.1:3500/", true), "https://uudamtravel.mn");
+});
+
+test("a localhost site address is kept while developing", () => {
+  assert.equal(resolveSiteUrl("http://localhost:3000", false), "http://localhost:3000");
+});
+
+test("a real address is kept, trailing slash trimmed; empty falls back", () => {
+  assert.equal(resolveSiteUrl("https://example.org/", true), "https://example.org");
+  assert.equal(resolveSiteUrl("", true), "https://uudamtravel.mn");
+  assert.equal(resolveSiteUrl(undefined, false), "https://uudamtravel.mn");
+});

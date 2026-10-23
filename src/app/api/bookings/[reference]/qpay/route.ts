@@ -2,10 +2,9 @@ import { prisma } from "@/server/prisma";
 import { handler, httpError, json } from "@/server/http";
 import { confirmQpayInvoicePayment } from "@/server/booking";
 import { createInvoice, qpayConfigured } from "@/server/qpay";
+import { SITE_URL } from "@/lib/siteUrl";
 
 type Ctx = { params: Promise<{ reference: string }> };
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://uudamtravel.mn";
 
 /**
  * POST /api/bookings/:reference/qpay — public. Creates (or reuses) a QPay

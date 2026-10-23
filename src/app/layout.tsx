@@ -4,6 +4,7 @@ import "./globals.css";
 import JsonLd from "@/components/content/JsonLd";
 import { CONTACT, hasLink } from "@/lib/contact";
 import { DEFAULT_SHARE_IMAGE } from "@/lib/seo";
+import { SITE_URL } from "@/lib/siteUrl";
 
 /**
  * cyrillic-ext is not optional here: Ө and Ү — which appear in ordinary
@@ -16,10 +17,8 @@ const manrope = Manrope({
   display: "swap",
 });
 
-const SITE_URL_FOR_METADATA = process.env.NEXT_PUBLIC_SITE_URL || "https://uudamtravel.mn";
-
 export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL_FOR_METADATA),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "Uudam Travel Agency — Аяллын захиалга",
     template: "%s · Uudam Travel",
@@ -43,8 +42,6 @@ export const metadata: Metadata = {
   },
   twitter: { card: "summary_large_image", images: [DEFAULT_SHARE_IMAGE.url] },
 };
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://uudamtravel.mn";
 
 /**
  * One TravelAgency entity for the whole site — trip pages layer a TouristTrip

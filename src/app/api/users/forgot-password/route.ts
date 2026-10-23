@@ -4,6 +4,7 @@ import { prisma } from "@/server/prisma";
 import { clientIp, handler, httpError, json, rateLimit, readJson, safeText } from "@/server/http";
 import { sendEmail } from "@/server/mail";
 import { passwordResetEmail } from "@/server/emailTemplates";
+import { SITE_URL } from "@/lib/siteUrl";
 
 const RESET_TTL_MS = 15 * 60 * 1000;
 
@@ -43,10 +44,7 @@ export const POST = handler(async (req: Request) => {
     data: { resetToken: tokenHash, resetTokenExpiry: new Date(Date.now() + RESET_TTL_MS) },
   });
 
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    process.env.FRONTEND_URL ||
-    new URL(req.url).origin;
+  const baseUrl = SITE_URL;
 
   await sendEmail({
     to: user.email,

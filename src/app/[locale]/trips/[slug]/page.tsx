@@ -9,6 +9,7 @@ import { TRIP_INCLUDE } from "@/server/tripInput";
 import { getSiteSettings as getSiteSettingsUncached } from "@/server/catalog";
 import { formatTripStartingPrice, hasKnownTripPrice } from "@/lib/pricing";
 import { shareMetadata } from "@/lib/seo";
+import { SITE_URL } from "@/lib/siteUrl";
 import { tripMetaDescription } from "@/lib/tripSeo";
 import { publicTrip } from "@/lib/publicTrip";
 import { formatTripTitle } from "@/lib/tripDisplay";
@@ -117,8 +118,6 @@ const getSiteSettings = unstable_cache(getSiteSettingsUncached, ["trip-detail-si
 function serializeTrip(trip: NonNullable<Awaited<ReturnType<typeof findPublishedTrip>>>): Trip {
   return JSON.parse(JSON.stringify(publicTrip(trip))) as Trip;
 }
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://uudamtravel.mn";
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;

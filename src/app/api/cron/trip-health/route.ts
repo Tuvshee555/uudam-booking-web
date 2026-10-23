@@ -1,5 +1,6 @@
 import { handler, httpError, json, rateLimit } from "@/server/http";
 import { sendEmail } from "@/server/mail";
+import { SITE_URL } from "@/lib/siteUrl";
 import { buildTripHealthReport } from "@/server/tripHealthReport";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +26,7 @@ export const GET = handler(async (req: Request) => {
   const to = process.env.ENQUIRY_NOTIFY_EMAIL || process.env.SMTP_USER;
   let emailed = false;
   if (report.errors > 0 && to) {
-    const site = (process.env.NEXT_PUBLIC_SITE_URL || "https://uudamtravel.mn").replace(/\/$/, "");
+    const site = SITE_URL;
     const rows = report.issues.filter((issue) => issue.severity === "error").map((issue) =>
       `<li><b>${escape(issue.title)}</b> — ${escape(issue.message)} <a href="${site}/mn/admin/trips/${issue.tripId}/edit">засах</a></li>`).join("");
     await sendEmail({

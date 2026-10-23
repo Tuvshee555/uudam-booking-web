@@ -2,8 +2,7 @@ import type { MetadataRoute } from "next";
 
 import { prisma } from "@/server/prisma";
 import { LOCALES } from "@/lib/locales";
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://uudamtravel.mn";
+import { SITE_URL } from "@/lib/siteUrl";
 
 // /saved is deliberately absent: the list lives in the visitor's browser, so
 // there is nothing there for a crawler to index.
