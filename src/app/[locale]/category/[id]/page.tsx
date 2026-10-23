@@ -6,7 +6,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/server/prisma";
 import { getCategoryWithTrips as getCategoryWithTripsUncached } from "@/server/catalog";
 import { tripCountsByCategory as tripCountsByCategoryUncached } from "@/server/categoryCounts";
-import { localeAlternates } from "@/lib/hreflang";
+import { shareMetadata } from "@/lib/seo";
 import CategoryPageClient from "./CategoryPageClient";
 
 type Props = { params: Promise<{ id: string }> };
@@ -90,18 +90,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     category.description?.trim() ||
     `${category.categoryName} чиглэлийн ${
       (await tripCountsByCategory()).get(category.id) ?? 0
-    } аялал.`;
+    } аялал — хөтөлбөр, үнэ, хөдлөх огноог шууд харна уу.`;
 
   return {
     title: category.categoryName,
     description,
-    openGraph: {
-      title: category.categoryName,
+    ...shareMetadata(
+      `/category/${id}`,
+      category.categoryName,
       description,
-      type: "website",
-      images: category.image ? [{ url: category.image, width: 1200, height: 630 }] : undefined,
-    },
-    alternates: { languages: localeAlternates(`/category/${id}`) },
+      category.image ? { url: category.image, width: 1200, height: 630 } : undefined,
+    ),
   };
 }
 

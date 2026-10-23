@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { prisma } from "@/server/prisma";
 import { TRIP_INCLUDE } from "@/server/tripInput";
 import { listTrip } from "@/lib/publicTrip";
+import { shareMetadata } from "@/lib/seo";
 import type { Trip } from "@/types/trip";
 import DeparturesPageClient from "./DeparturesPageClient";
 
@@ -10,11 +11,7 @@ export const metadata: Metadata = {
   title: "Аяллын хуваарь",
   description:
     "Uudam Travel-ийн ойрын хугацаанд хөдлөх бүх аялал огноогоор. Хэзээ явахаа мэдэж байгаа бол эндээс сонгоно уу.",
-  openGraph: {
-    title: "Аяллын хуваарь · Uudam Travel",
-    description: "Ойрын хугацаанд хөдлөх аяллуудыг огноогоор нь харна уу.",
-    type: "website",
-  },
+  ...shareMetadata("/departures", "Аяллын хуваарь · Uudam Travel", "Ойрын хугацаанд хөдлөх аяллуудыг огноогоор нь харна уу."),
 };
 
 /**

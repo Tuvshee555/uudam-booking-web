@@ -6,6 +6,7 @@ import { handler, httpError, json, publicCache, readJson, safeText } from "@/ser
 import { cached, invalidateCatalog } from "@/server/cache";
 import { slugify } from "@/server/tripInput";
 import { tripCountsByCategory } from "@/server/categoryCounts";
+import { LOCALES } from "@/lib/locales";
 
 /**
  * Category pages are ISR-cached on a long timer (see category/[id]/page.tsx)
@@ -14,7 +15,7 @@ import { tripCountsByCategory } from "@/server/categoryCounts";
  * way a saved edit ever shows up.
  */
 function revalidateCategoryPages(id?: string) {
-  for (const locale of ["mn", "en", "ko"]) {
+  for (const locale of LOCALES) {
     revalidatePath(`/${locale}`, "page");
     if (id) revalidatePath(`/${locale}/category/${id}`, "page");
   }

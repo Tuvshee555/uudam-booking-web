@@ -1,9 +1,9 @@
 import type { MetadataRoute } from "next";
 
 import { prisma } from "@/server/prisma";
+import { LOCALES } from "@/lib/locales";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://uudamtravel.mn";
-const LOCALES = ["mn", "en", "ko"] as const;
 
 // /saved is deliberately absent: the list lives in the visitor's browser, so
 // there is nothing there for a crawler to index.
@@ -23,7 +23,7 @@ const STATIC_PATHS = [
 ];
 
 /**
- * Every published trip and category, crossed with every locale, plus the
+ * Every published trip and category in every live locale (only Mongolian — see lib/locales.ts), plus the
  * static pages. /admin is deliberately excluded — see robots.ts.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

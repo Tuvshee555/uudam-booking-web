@@ -6,6 +6,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 
 import { prisma } from "@/server/prisma";
+import { shareMetadata } from "@/lib/seo";
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
@@ -42,12 +43,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: post.title,
     description,
-    openGraph: {
-      title: post.title,
+    ...shareMetadata(
+      `/guide/${slug}`,
+      post.title,
       description,
-      type: "article",
-      images: post.coverImage ? [{ url: post.coverImage, width: 1200, height: 630 }] : undefined,
-    },
+      post.coverImage ? { url: post.coverImage, width: 1200, height: 630 } : undefined,
+      "article",
+    ),
   };
 }
 

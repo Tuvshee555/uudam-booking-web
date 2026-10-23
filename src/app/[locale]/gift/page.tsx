@@ -3,16 +3,13 @@ import type { Metadata } from "next";
 import { getSiteSettings } from "@/server/siteSettings";
 import { DEFAULT_GIFT_BODY, DEFAULT_GIFT_TITLE } from "@/lib/siteContent";
 import LeadForm from "@/components/lead/LeadForm";
+import { shareMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Аяллын бэлгийн эрхийн бичиг",
   description:
     "Хайртай хүндээ аялал бэлэглээрэй. Тодорхой аяллаар эсвэл өөрийн сонгосон дүнгээр эрхийн бичиг захиалах боломжтой.",
-  openGraph: {
-    title: "Аяллын бэлгийн эрхийн бичиг · Uudam Travel",
-    description: "Хайртай хүндээ мартагдашгүй аялал бэлэглээрэй.",
-    type: "website",
-  },
+  ...shareMetadata("/gift", "Аяллын бэлгийн эрхийн бичиг · Uudam Travel", "Хайртай хүндээ мартагдашгүй аялал бэлэглээрэй."),
 };
 
 /**

@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { CONTACT, hasLink } from "@/lib/contact";
+import { shareMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Мэдээлэл устгах",
   description: "Хувийн мэдээллээ устгуулах заавар.",
+  ...shareMetadata("/data-deletion", "Мэдээлэл устгах · Uudam Travel", "Хувийн мэдээллээ устгуулах заавар."),
 };
 
 export default async function DataDeletion({

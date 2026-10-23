@@ -7,8 +7,7 @@ import QueryProvider from "./QueryProvider";
 import { AuthProvider } from "./provider/AuthProvider";
 import Providers from "@/components/Providers";
 import AppShellClient from "@/components/AppShellClient";
-
-const LOCALES = ["mn", "en", "ko"] as const;
+import { LOCALES } from "@/lib/locales";
 
 export function generateStaticParams() {
   return LOCALES.map((locale) => ({ locale }));

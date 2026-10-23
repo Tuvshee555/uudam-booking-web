@@ -2,9 +2,12 @@ import type { Metadata } from "next";
 
 import { getSiteSettings } from "@/server/siteSettings";
 import { DEFAULT_TERMS_SECTIONS, parseTermsSections } from "@/lib/siteContent";
+import { shareMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Үйлчилгээний нөхцөл",
+  description: "Аяллын захиалга, төлбөр, цуцлалт, хариуцлагын нөхцөл — Uudam Travel Agency-ийн үйлчилгээний нөхцөл.",
+  ...shareMetadata("/terms", "Үйлчилгээний нөхцөл · Uudam Travel", "Аяллын захиалга, төлбөр, цуцлалт, хариуцлагын нөхцөл."),
 };
 
 export default async function TermsPage() {

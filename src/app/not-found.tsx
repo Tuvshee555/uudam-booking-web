@@ -1,5 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+
+// Without this a missing page carried the home page's title, so a browser tab
+// or a search result for a dead link read "Uudam Travel Agency — Аяллын захиалга".
+export const metadata: Metadata = {
+  title: "Хуудас олдсонгүй",
+  robots: { index: false, follow: true },
+};
 
 /**
  * Root-level 404: as of Next.js 16, only `app/not-found.tsx` catches URLs

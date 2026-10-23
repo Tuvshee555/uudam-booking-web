@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { getCategoryTree, getPublishedTrips } from "@/server/catalog";
-import { localeAlternates } from "@/lib/hreflang";
+import { shareMetadata } from "@/lib/seo";
 import { parseHeroImages } from "@/lib/siteContent";
 import { getSiteSettings } from "@/server/siteSettings";
 import TrustBar from "@/components/trust/TrustBar";
@@ -21,7 +21,7 @@ import HomeClient from "./HomeClient";
 export const revalidate = 300;
 
 export const metadata: Metadata = {
-  alternates: { languages: localeAlternates("") },
+  ...shareMetadata("", "Uudam Travel Agency — Аяллын захиалга", "Гадаад, дотоодын аяллын багц. Хөтөлбөр, үнэ, хөдлөх огноог шууд харж захиална."),
 };
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {

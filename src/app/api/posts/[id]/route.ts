@@ -5,10 +5,11 @@ import { optionalAdmin, requireAdmin } from "@/server/auth";
 import { handler, httpError, json, publicCache, readJson, safeText } from "@/server/http";
 import { slugify } from "@/server/tripInput";
 import { uniquePostSlug } from "@/server/contentSlugs";
+import { LOCALES } from "@/lib/locales";
 
 /** The /guide list is ISR-cached on a long timer — this is the instant-refresh signal. */
 function revalidateGuidePages(slug?: string) {
-  for (const locale of ["mn", "en", "ko"]) {
+  for (const locale of LOCALES) {
     revalidatePath(`/${locale}/guide`, "page");
     if (slug) revalidatePath(`/${locale}/guide/${slug}`, "page");
   }

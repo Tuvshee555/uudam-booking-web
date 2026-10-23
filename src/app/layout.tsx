@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
+import JsonLd from "@/components/content/JsonLd";
 import { CONTACT, hasLink } from "@/lib/contact";
+import { DEFAULT_SHARE_IMAGE } from "@/lib/seo";
 
 /**
  * cyrillic-ext is not optional here: Ө and Ү — which appear in ordinary
@@ -29,11 +30,18 @@ export const metadata: Metadata = {
     icon: "/favicon.ico",
     apple: "/apple-icon.png",
   },
+  // Pages that set their own openGraph (all the public ones) replace this
+  // wholesale; it is the fallback for anything that doesn't, so a link to one
+  // of those still unfurls with a picture.
   openGraph: {
     title: "Uudam Travel Agency",
     description: "Гадаад, дотоодын аяллын багц. Хөтөлбөр, үнэ, огноог шууд харна.",
     type: "website",
+    siteName: "Uudam Travel Agency",
+    locale: "mn_MN",
+    images: [DEFAULT_SHARE_IMAGE],
   },
+  twitter: { card: "summary_large_image", images: [DEFAULT_SHARE_IMAGE.url] },
 };
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://uudamtravel.mn";
@@ -59,11 +67,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="mn" suppressHydrationWarning>
       <body className={`${manrope.variable} font-sans antialiased`}>
-        <Script
-          id="business-json-ld"
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(businessJsonLd) }}
-        />
+        <JsonLd id="business-json-ld" data={businessJsonLd} />
         {children}
       </body>
     </html>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { prisma } from "@/server/prisma";
-import { localeAlternates } from "@/lib/hreflang";
+import { shareMetadata } from "@/lib/seo";
 import { TRIP_INCLUDE } from "@/server/tripInput";
 import { listTrip } from "@/lib/publicTrip";
 import type { Trip } from "@/types/trip";
@@ -11,12 +11,7 @@ export const metadata: Metadata = {
   title: "Бүх аялал",
   description:
     "Uudam Travel-ийн бүх аяллын багц нэг дороос. Чиглэл, үнэ, хугацаагаар шүүж өөрт тохирох аялалаа олоорой.",
-  openGraph: {
-    title: "Бүх аялал · Uudam Travel",
-    description: "Чиглэл, үнэ, хугацаагаар шүүж өөрт тохирох аялалаа олоорой.",
-    type: "website",
-  },
-  alternates: { languages: localeAlternates("/trips") },
+  ...shareMetadata("/trips", "Бүх аялал · Uudam Travel", "Чиглэл, үнэ, хугацаагаар шүүж өөрт тохирох аялалаа олоорой."),
 };
 
 /**

@@ -29,6 +29,7 @@ import {
   toVideoUrls,
   uniqueSlug,
 } from "@/server/tripInput";
+import { LOCALES } from "@/lib/locales";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -51,7 +52,7 @@ async function findTrip(idOrSlug: string) {
 }
 
 function revalidateTripPages(slug: string) {
-  for (const locale of ["mn", "en", "ko"]) {
+  for (const locale of LOCALES) {
     revalidatePath(`/${locale}`, "page");
     revalidatePath(`/${locale}/trips`, "page");
     revalidatePath(`/${locale}/trips/${slug}`, "page");

@@ -3,16 +3,13 @@ import type { Metadata } from "next";
 import { getSiteSettings } from "@/server/siteSettings";
 import { DEFAULT_CUSTOM_TRIP_BODY, DEFAULT_CUSTOM_TRIP_TITLE } from "@/lib/siteContent";
 import LeadForm from "@/components/lead/LeadForm";
+import { shareMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Захиалгат аялал",
   description:
     "Товлосон огноо тохирохгүй байна уу? Гэр бүл, найз нөхөд, байгууллагадаа зориулж өөрийн бүрэлдэхүүнтэй аялал захиалаарай.",
-  openGraph: {
-    title: "Захиалгат аялал · Uudam Travel",
-    description: "Өөрийн огноо, өөрийн хүмүүстэй аялал зохион байгуулна.",
-    type: "website",
-  },
+  ...shareMetadata("/custom-trip", "Захиалгат аялал · Uudam Travel", "Өөрийн огноо, өөрийн хүмүүстэй аялал зохион байгуулна."),
 };
 
 /**

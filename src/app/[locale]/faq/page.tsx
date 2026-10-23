@@ -3,10 +3,13 @@ import type { Metadata } from "next";
 import { getSiteSettings } from "@/server/siteSettings";
 import { CONTACT, hasLink } from "@/lib/contact";
 import { DEFAULT_FAQS, parseFaqs } from "@/lib/siteContent";
+import { shareMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Түгээмэл асуулт",
-  description: "Uudam Travel Agency-тэй холбоотой түгээмэл асуултууд.",
+  description:
+    "Аяллын захиалга, төлбөр, цуцлалт, бэлтгэлтэй холбоотой түгээмэл асуултуудын хариулт — Uudam Travel Agency.",
+  ...shareMetadata("/faq", "Түгээмэл асуулт · Uudam Travel", "Аяллын захиалга, төлбөр, цуцлалт, бэлтгэлтэй холбоотой түгээмэл асуултуудын хариулт."),
 };
 
 export default async function FaqPage() {

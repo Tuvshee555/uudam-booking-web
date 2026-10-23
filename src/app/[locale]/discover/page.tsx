@@ -5,16 +5,13 @@ import { Sparkles } from "lucide-react";
 
 import { prisma, withPrismaRetry } from "@/server/prisma";
 import { formatFullDate } from "@/lib/departures";
+import { shareMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Танин мэдэхүй",
   description:
     "Дэлхийн сонирхолтой газрууд, тэдгээрийн тухай баримтууд — Хятадын Их хэрэм хэр урт вэ, гэх мэт.",
-  openGraph: {
-    title: "Танин мэдэхүй · Uudam Travel",
-    description: "Дэлхийн сонирхолтой газрууд, тэдгээрийн тухай баримтууд.",
-    type: "website",
-  },
+  ...shareMetadata("/discover", "Танин мэдэхүй · Uudam Travel", "Дэлхийн сонирхолтой газрууд, тэдгээрийн тухай баримтууд."),
 };
 
 /**

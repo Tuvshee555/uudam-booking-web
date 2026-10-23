@@ -2,9 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { resolveShortLink } from "@/lib/shortLink";
-
-const LOCALES = ["mn", "en", "ko"];
-const DEFAULT_LOCALE = "mn";
+import { DEFAULT_LOCALE, LOCALES, withoutRetiredLocale } from "@/lib/locales";
 
 const STATIC_PREFIXES = ["/_next/", "/favicon", "/images", "/api", "/public"];
 
@@ -23,6 +21,15 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // /en and /ko were copies of /mn (see lib/locales.ts). Anything still
+  // pointing at them — an old search result, a shared link — lands on the real page.
+  const retired = withoutRetiredLocale(pathname);
+  if (retired) {
+    const url = request.nextUrl.clone();
+    url.pathname = retired;
+    return NextResponse.redirect(url, 308);
+  }
+
   const hasLocale = LOCALES.some(
     (locale) => pathname === `/${locale}` || pathname.startsWith(`/${locale}/`),
   );
@@ -34,11 +41,11 @@ export async function proxy(request: NextRequest) {
 
     const url = request.nextUrl.clone();
     url.pathname = `/${DEFAULT_LOCALE}${pathname}`;
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(url, 308);
   }
 
-  const locale = pathname.match(/^\/(mn|en|ko)/)?.[1] ?? DEFAULT_LOCALE;
-  const pathWithoutLocale = pathname.replace(/^\/(mn|en|ko)/, "") || "/";
+  const locale = DEFAULT_LOCALE;
+  const pathWithoutLocale = pathname.slice(`/${locale}`.length) || "/";
 
   if (!pathWithoutLocale.startsWith("/admin")) {
     return NextResponse.next();

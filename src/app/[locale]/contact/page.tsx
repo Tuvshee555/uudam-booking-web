@@ -2,10 +2,13 @@ import type { Metadata } from "next";
 import { Clock, Facebook, Instagram, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 import { CONTACT, hasLink } from "@/lib/contact";
 import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
+import { shareMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Холбоо барих",
-  description: "Uudam Travel Agency-тэй холбогдох.",
+  description:
+    "Uudam Travel Agency-тэй утас, имэйл, Messenger-ээр холбогдож аяллын талаар асуух, захиалга өгөх.",
+  ...shareMetadata("/contact", "Холбоо барих · Uudam Travel", "Утас, имэйл, Messenger-ээр холбогдож аяллын талаар асууж, захиалга өгнө үү."),
 };
 
 export default function ContactPage() {

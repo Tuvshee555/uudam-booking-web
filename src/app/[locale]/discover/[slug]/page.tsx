@@ -8,6 +8,8 @@ import { Sparkles } from "lucide-react";
 
 import { prisma } from "@/server/prisma";
 import { formatFullDate } from "@/lib/departures";
+import { shareMetadata } from "@/lib/seo";
+import ArticleVideo from "@/components/content/ArticleVideo";
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
@@ -47,12 +49,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: article.title,
     description,
-    openGraph: {
-      title: article.title,
-      description,
-      type: "article",
-      images: article.coverImage ? [{ url: article.coverImage, width: 1200, height: 630 }] : undefined,
-    },
+    ...shareMetadata(
+      `/discover/${slug}`,
+      article.title,
+      description ?? article.title,
+      article.coverImage ? { url: article.coverImage, width: 1200, height: 630 } : undefined,
+      "article",
+    ),
   };
 }
 
@@ -98,11 +101,7 @@ export default async function DiscoverArticlePage({ params }: Props) {
         </p>
       )}
 
-      {article.video && (
-        <div className="relative mt-6 aspect-[16/9] overflow-hidden rounded-2xl bg-black">
-          <video src={article.video} controls playsInline className="h-full w-full" />
-        </div>
-      )}
+      {article.video && <ArticleVideo url={article.video} title={article.title} />}
 
       {article.facts.length > 0 && (
         <div className="mt-8 rounded-2xl border border-border bg-card p-5">

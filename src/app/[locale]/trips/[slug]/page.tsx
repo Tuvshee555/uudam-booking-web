@@ -2,13 +2,14 @@ import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Script from "next/script";
 
+import JsonLd from "@/components/content/JsonLd";
 import { prisma } from "@/server/prisma";
 import { TRIP_INCLUDE } from "@/server/tripInput";
 import { getSiteSettings as getSiteSettingsUncached } from "@/server/catalog";
 import { formatTripStartingPrice, hasKnownTripPrice } from "@/lib/pricing";
-import { localeAlternates } from "@/lib/hreflang";
+import { shareMetadata } from "@/lib/seo";
+import { tripMetaDescription } from "@/lib/tripSeo";
 import { publicTrip } from "@/lib/publicTrip";
 import { formatTripTitle } from "@/lib/tripDisplay";
 import type { Trip } from "@/types/trip";
@@ -127,30 +128,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return { title: "Аялал олдсонгүй" };
   }
 
-  const description =
-    trip.summary?.trim() || trip.description.slice(0, 160).trim() || undefined;
+  const description = tripMetaDescription(trip);
 
   const displayTitle = formatTripTitle(trip.title);
   const title = `${displayTitle} — ${formatTripStartingPrice(trip.price)}`;
-  const previewImages = trip.image ? [{ url: trip.image, width: 1200, height: 630, alt: displayTitle }] : undefined;
+  const photo = trip.image ? { url: trip.image, width: 1200, height: 630, alt: displayTitle } : undefined;
 
-  return {
-    title,
-    description,
-    openGraph: {
-      title,
-      description,
-      type: "website",
-      images: previewImages,
-    },
-    twitter: {
-      card: previewImages ? "summary_large_image" : "summary",
-      title,
-      description,
-      images: trip.image ? [trip.image] : undefined,
-    },
-    alternates: { languages: localeAlternates(`/trips/${slug}`) },
-  };
+  return { title, description, ...shareMetadata(`/trips/${slug}`, title, description, photo) };
 }
 
 export default async function TripDetailPage({ params }: Props) {
@@ -178,9 +162,9 @@ export default async function TripDetailPage({ params }: Props) {
     "@context": "https://schema.org",
     "@type": "TouristTrip",
     name: formatTripTitle(trip.title),
-    description: trip.summary?.trim() || trip.description.slice(0, 300).trim() || undefined,
+    description: tripMetaDescription(trip),
     image: trip.image || undefined,
-    url: `${SITE_URL}/trips/${slug}`,
+    url: `${SITE_URL}/mn/trips/${slug}`,
     touristType: trip.country ? `${[trip.city, trip.country].filter(Boolean).join(", ")}` : undefined,
     itinerary: { "@type": "ItemList", numberOfItems: trip.durationDays },
     offers: hasKnownTripPrice(trip.price)
@@ -191,7 +175,7 @@ export default async function TripDetailPage({ params }: Props) {
           availability: allUpcomingSoldOut
             ? "https://schema.org/SoldOut"
             : "https://schema.org/InStock",
-          url: `${SITE_URL}/trips/${slug}`,
+          url: `${SITE_URL}/mn/trips/${slug}`,
         }
       : undefined,
     ...(trip.reviewCount > 0
@@ -207,13 +191,7 @@ export default async function TripDetailPage({ params }: Props) {
 
   return (
     <>
-      {jsonLd && (
-        <Script
-          id={`trip-json-ld-${slug}`}
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
-      )}
+      {jsonLd && <JsonLd id={`trip-json-ld-${slug}`} data={jsonLd} />}
       <TripDetailClient
         slug={slug}
         initialTrip={serializeTrip(trip)}

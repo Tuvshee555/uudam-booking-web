@@ -8,10 +8,13 @@ import {
   DEFAULT_ABOUT_VALUES,
   parseAboutValues,
 } from "@/lib/aboutContent";
+import { shareMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Бидний тухай",
-  description: "Uudam Travel Agency — аяллын мэргэжлийн баг.",
+  description:
+    "Uudam Travel Agency — гадаад, дотоодын аяллын багц зохион байгуулдаг мэргэжлийн баг. Туршлагатай хөтөч, ил тод үнэ, шууд холбогдох боломж.",
+  ...shareMetadata("/about", "Бидний тухай · Uudam Travel", "Гадаад, дотоодын аяллын багц зохион байгуулдаг мэргэжлийн баг. Туршлагатай хөтөч, ил тод үнэ."),
 };
 
 export default async function AboutPage() {

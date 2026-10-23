@@ -3,16 +3,13 @@ import Link from "next/link";
 import Image from "next/image";
 
 import { prisma, withPrismaRetry } from "@/server/prisma";
+import { shareMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Аяллын зөвлөгөө",
   description:
     "Виз, ачаа тээш, төлбөр, бэлтгэл — аялахаас өмнө мэдэх ёстой бүхнийг Uudam Travel-ийн зөвлөгөөнөөс.",
-  openGraph: {
-    title: "Аяллын зөвлөгөө · Uudam Travel",
-    description: "Аялахаас өмнө мэдэх ёстой зөвлөгөө, мэдээлэл.",
-    type: "website",
-  },
+  ...shareMetadata("/guide", "Аяллын зөвлөгөө · Uudam Travel", "Аялахаас өмнө мэдэх ёстой зөвлөгөө, мэдээлэл."),
 };
 
 /**
