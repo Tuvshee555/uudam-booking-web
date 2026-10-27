@@ -4,7 +4,6 @@ import { prisma, withPrismaRetry } from "@/server/prisma";
 import { requireAdmin } from "@/server/auth";
 import { handler, json, publicCache, readJson, safeText } from "@/server/http";
 import { cached, invalidateCatalog } from "@/server/cache";
-import { assertChatbotTripSyncConfigured } from "@/server/chatbotTripSync";
 import { queueTripSync, deliverTripSync } from "@/server/tripSyncQueue";
 import { listTrip } from "@/lib/publicTrip";
 import {
@@ -83,7 +82,6 @@ export const GET = handler(async (req: Request) => {
 /** POST /api/trips — create a trip (admin). */
 export const POST = handler(async (req: Request) => {
   await requireAdmin(req);
-  assertChatbotTripSyncConfigured();
 
   const body = await readJson(req);
   const title = assertTitle(body.title);

@@ -5,7 +5,6 @@ import { prisma, withPrismaRetry } from "@/server/prisma";
 import { optionalAdmin, requireAdmin } from "@/server/auth";
 import { handler, httpError, json, publicCache, readJson, safeText } from "@/server/http";
 import { invalidateCatalog } from "@/server/cache";
-import { assertChatbotTripSyncConfigured } from "@/server/chatbotTripSync";
 import { queueTripSync, deliverTripSync } from "@/server/tripSyncQueue";
 import { publicTrip } from "@/lib/publicTrip";
 import { saveDepartures } from "@/server/saveDepartures";
@@ -80,7 +79,6 @@ export const GET = handler(async (req: Request, ctx: Ctx) => {
 
 export const PUT = handler(async (req: Request, ctx: Ctx) => {
   await requireAdmin(req);
-  assertChatbotTripSyncConfigured();
 
   const { id } = await ctx.params;
   const body = await readJson(req);
@@ -240,7 +238,6 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
 
 export const DELETE = handler(async (req: Request, ctx: Ctx) => {
   await requireAdmin(req);
-  assertChatbotTripSyncConfigured();
 
   const { id } = await ctx.params;
   const source = await withPrismaRetry(() =>
