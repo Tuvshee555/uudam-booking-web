@@ -393,7 +393,7 @@ export default function BookingPanel({
           <div className="mt-4 divide-y divide-border border-t border-border">
             <Counter label="Том хүн" hint={adultHint} value={adults} onChange={setAdults} min={1} />
             {requiresQuote && specialTiers.length > 0 ? specialTiers.map((item) =>
-              <Counter key={tierKey(item)} label={item.label} hint={`${item.ageRange} · ${!hasKnownTripPrice(item.price) ? "Үнэ лавлах" : formatMnt(item.price)}`}
+              <Counter key={tierKey(item)} label={item.label} hint={[item.ageRange, item.price === 0 ? "Үнэгүй" : !hasKnownTripPrice(item.price) ? "Үнэ лавлах" : formatMnt(item.price)].filter(Boolean).join(" · ")}
                 value={tierCounts[tierKey(item)] || 0} onChange={(value) => setTierCounts((current) => ({ ...current, [tierKey(item)]: value }))} />
             ) : <>
               <Counter label="Хүүхэд" hint={[ageBands.child, childFareLabel].filter(Boolean).join(" · ")} value={children} onChange={setChildren} />
