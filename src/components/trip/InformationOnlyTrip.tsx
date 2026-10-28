@@ -60,7 +60,7 @@ function FarePanel({ trip, source }: { trip: Trip; source: ReturnType<typeof arc
       </Link>
       {trip.brochurePdfUrl && (
         <a href={trip.brochurePdfUrl} target="_blank" rel="noreferrer" className="mt-3 flex items-center justify-center gap-2 text-sm font-semibold text-primary hover:underline">
-          <FileDown className="h-4 w-4" /> Эх PDF хөтөлбөрийг үзэх
+          <FileDown className="h-4 w-4" /> PDF хөтөлбөрийг үзэх
         </a>
       )}
     </div>
@@ -141,7 +141,7 @@ export default function InformationOnlyTrip({ trip, sourceMetadata }: { trip: Tr
             <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-relaxed">
               <li>Энэ нь өнгөрсөн аяллын PDF хөтөлбөр. Шинэ огноо, үнэ болон суудал баталгаажаагүй тул онлайн захиалга авахгүй.</li>
               {source.durationNote && <li>{source.durationNote}</li>}
-              {trip.hotel && <li>Зочид буудал: {trip.hotel}. Нэр, өрөөний сонголт баталгаажаагүй.</li>}
+              {trip.hotel && <li>Зочид буудал: {trip.hotel}; нэр, өрөөний сонголт баталгаажаагүй.</li>}
             </ul>
           </section>
         </div>
