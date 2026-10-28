@@ -2,6 +2,7 @@ import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 
 import JsonLd from "@/components/content/JsonLd";
 import { prisma } from "@/server/prisma";
@@ -37,7 +38,10 @@ type Props = { params: Promise<{ slug: string }> };
  * visitor ever hits an uncached render for an existing trip.
  */
 export async function generateStaticParams() {
-  const trips = await prisma.trip.findMany({ where: { isPublished: true }, select: { slug: true } });
+  const trips = await prisma.trip.findMany({
+    where: { OR: [{ isPublished: true }, { sourceMetadata: { path: ["publicInfoOnly"], equals: true } }] },
+    select: { slug: true },
+  });
   return trips.map((trip) => ({ slug: trip.slug }));
 }
 
@@ -89,7 +93,7 @@ const findPublishedTrip = cache(
   unstable_cache(
     async (slug: string) => {
       return prisma.trip.findFirst({
-        where: { slug, isPublished: true },
+        where: { slug, OR: [{ isPublished: true }, { sourceMetadata: { path: ["publicInfoOnly"], equals: true } }] },
         include: {
           ...TRIP_INCLUDE,
           testimonials: {
@@ -130,6 +134,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = tripMetaDescription(trip);
 
   const displayTitle = formatTripTitle(trip.title);
+  if (!trip.isPublished) {
+    return {
+      title: `${displayTitle} — Хөтөлбөрийн танилцуулга`,
+      description: "Аяллын хөтөлбөрийн танилцуулга. Шинэ гарах өдөр, үнэ баталгаажаагүй.",
+      robots: { index: false, follow: false },
+    };
+  }
   const title = `${displayTitle} — ${formatTripStartingPrice(trip.price)}`;
   const photo = trip.image ? { url: trip.image, width: 1200, height: 630, alt: displayTitle } : undefined;
 
@@ -144,6 +155,38 @@ export default async function TripDetailPage({ params }: Props) {
   // 404 for real (search engines, unfurl bots), not render a 200 page whose
   // content happens to say "not found" — that was a soft-404.
   if (!trip) notFound();
+  if (!trip.isPublished) {
+    return (
+      <main className="uudam-container py-8">
+        <Link href="/mn/trips" className="text-sm text-primary underline">Аялалууд руу буцах</Link>
+        <div className="mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950">
+          <p className="text-lg font-semibold">Мэдээллийн хуудас — одоогоор захиалга авахгүй</p>
+          <p className="mt-2">Шинэ гарах өдөр, үнэ болон суудлын мэдээлэл баталгаажаагүй. Доорх нь өмнөх хөтөлбөрийн танилцуулга юм.</p>
+        </div>
+        <h1 className="mt-8 text-3xl font-bold">{formatTripTitle(trip.title)}</h1>
+        {trip.brochurePdfUrl && (
+          <a href={trip.brochurePdfUrl} className="mt-4 inline-block text-primary underline">Хөтөлбөрийн PDF үзэх</a>
+        )}
+        <section className="mt-10">
+          <h2 className="text-2xl font-semibold">Өдөр бүрийн хөтөлбөр</h2>
+          <div className="mt-5 space-y-4">
+            {trip.itinerary.filter((day) => day.dayNumber > 0).sort((a, b) => a.dayNumber - b.dayNumber).map((day) => (
+              <article key={day.id} className="rounded-2xl border border-border bg-card p-5">
+                <h3 className="font-semibold">{day.dayNumber}-р өдөр · {day.title}</h3>
+                <p className="mt-2 whitespace-pre-line text-muted-foreground">{day.description}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+        {(trip.included.length > 0 || trip.excluded.length > 0) && (
+          <section className="mt-10 grid gap-6 md:grid-cols-2">
+            <div><h2 className="text-xl font-semibold">Үнэд багтсан</h2><ul className="mt-3 list-disc space-y-1 pl-5">{trip.included.map((item) => <li key={item}>{item}</li>)}</ul></div>
+            <div><h2 className="text-xl font-semibold">Үнэд багтаагүй</h2><ul className="mt-3 list-disc space-y-1 pl-5">{trip.excluded.map((item) => <li key={item}>{item}</li>)}</ul></div>
+          </section>
+        )}
+      </main>
+    );
+  }
   const visibleDepartures = trip.departures.filter(
     (departure) =>
       departure.status !== "CANCELLED" &&
