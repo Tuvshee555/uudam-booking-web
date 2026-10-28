@@ -25,6 +25,13 @@ test("unpriced infant can display a supplied non-numeric fare label", () => {
   assert.notEqual(passengerFareLabel(metadata, "infant", 500), "Insurance only");
 });
 
+test("a child fare range is visible without becoming a checkout price", () => {
+  const metadata = { child_fare_label: "500–3,000" };
+  const prices = resolvePrices({ price: 4000, childPrice: null, infantPrice: null });
+  assert.equal(passengerFareLabel(metadata, "child", prices.child), "500–3,000");
+  assert.equal(hasMissingPassengerFare({ children: 1, infants: 0 }, prices), true);
+});
+
 test("trip-specific age bands do not invent unspecified ranges", () => {
   const bands = ageBandsFor({ omit_unspecified_age_bands: true, age_rules: { infant: "0–2" } });
   assert.deepEqual(bands, { adult: "", child: "", infant: "0–2" });

@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 import { api, apiErrorMessage } from "@/lib/api";
 import { getVisitorId, track } from "@/lib/analytics";
-import { ageBandsFor, formatFare, formatMnt, hasKnownTripPrice, hasMissingPassengerFare, lineTotal, passengerFareLabel, resolvePrices } from "@/lib/pricing";
+import { ageBandsFor, formatMnt, hasKnownTripPrice, hasMissingPassengerFare, lineTotal, passengerFareLabel, resolvePrices } from "@/lib/pricing";
 import { availability, formatFullDate, formatDepartureDate, upcomingDepartures } from "@/lib/departures";
 import { saleBadgeLabel } from "@/lib/tripMarketing";
 import { datePriceOptions, formatAdultOption, formatPriceDelta, hasVariablePricing, priceDimensionOptions } from "@/lib/tripPriceOptions";
@@ -184,6 +184,7 @@ export default function BookingPanel({
   const quoteOnly = hasVariablePricing(trip);
   const prices = resolvePrices(trip, selected);
   const ageBands = ageBandsFor(trip.sourceMetadata);
+  const childFareLabel = passengerFareLabel(trip.sourceMetadata, "child", prices.child);
   const infantFareLabel = passengerFareLabel(trip.sourceMetadata, "infant", prices.infant);
   const total = lineTotal({ adults, children, infants }, prices);
   const specialTiers = option?.passengers ?? [];
@@ -337,7 +338,7 @@ export default function BookingPanel({
       {!requiresQuote && <div className="mt-4 space-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
         <div className="flex justify-between">
           <span>Хүүхэд</span>
-          <span className="font-medium text-foreground">{formatFare(prices.child)}</span>
+          <span className="font-medium text-foreground">{childFareLabel}</span>
         </div>
         <div className="flex justify-between">
           <span>Нярай</span>
@@ -395,7 +396,7 @@ export default function BookingPanel({
               <Counter key={tierKey(item)} label={item.label} hint={`${item.ageRange} · ${!hasKnownTripPrice(item.price) ? "Үнэ лавлах" : formatMnt(item.price)}`}
                 value={tierCounts[tierKey(item)] || 0} onChange={(value) => setTierCounts((current) => ({ ...current, [tierKey(item)]: value }))} />
             ) : <>
-              <Counter label="Хүүхэд" hint={pricedHint(ageBands.child, prices.child)} value={children} onChange={setChildren} />
+              <Counter label="Хүүхэд" hint={[ageBands.child, childFareLabel].filter(Boolean).join(" · ")} value={children} onChange={setChildren} />
               <Counter label="Нярай" hint={[ageBands.infant, infantFareLabel].filter(Boolean).join(" · ")} value={infants} onChange={setInfants} />
             </>}
           </div>

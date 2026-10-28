@@ -15,7 +15,7 @@ import {
 import { api, apiErrorMessage } from "@/lib/api";
 import { CONTACT, hasLink } from "@/lib/contact";
 import { getVisitorId, track } from "@/lib/analytics";
-import { ageBandsFor, formatFare, formatMnt, formatTripStartingPrice, hasKnownTripPrice, hasMissingPassengerFare, lineTotal, passengerFareLabel, resolvePrices } from "@/lib/pricing";
+import { ageBandsFor, formatMnt, formatTripStartingPrice, hasKnownTripPrice, hasMissingPassengerFare, lineTotal, passengerFareLabel, resolvePrices } from "@/lib/pricing";
 import { availability, upcomingDepartures } from "@/lib/departures";
 import { saleBadgeLabel } from "@/lib/tripMarketing";
 import { datePriceOptions, formatAdultOption } from "@/lib/tripPriceOptions";
@@ -119,6 +119,7 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
     : optionPrices.length > 1 ? `${formatMnt(Math.min(...optionPrices))}–${formatMnt(Math.max(...optionPrices))}`
     : option ? formatAdultOption(option) : "Үнэ огноо, буудлаас хамаарна";
   const ageBands = ageBandsFor(trip.sourceMetadata);
+  const childFareLabel = passengerFareLabel(trip.sourceMetadata, "child", option?.child ?? prices.child);
   const infantFareLabel = passengerFareLabel(trip.sourceMetadata, "infant", option?.infant ?? prices.infant);
   const estimate = hasMissingPassengerFare({ children, infants }, prices)
     ? null : lineTotal({ adults, children, infants }, prices);
@@ -236,7 +237,7 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
       {!variablePricing && <div className="mt-4 space-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
         <div className="flex justify-between">
           <span>Хүүхэд</span>
-          <span className="font-medium text-foreground">{formatFare(prices.child)}</span>
+          <span className="font-medium text-foreground">{childFareLabel}</span>
         </div>
         <div className="flex justify-between">
           <span>Нярай</span>
@@ -277,7 +278,7 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
 
         <div className="mt-4 divide-y divide-border border-t border-border">
           <Counter label="Том хүн" hint={adultHint} value={adults} onChange={setAdults} min={1} />
-          <Counter label="Хүүхэд" hint={pricedHint(ageBands.child, option?.child ?? prices.child)} value={children} onChange={setChildren} />
+          <Counter label="Хүүхэд" hint={[ageBands.child, childFareLabel].filter(Boolean).join(" · ")} value={children} onChange={setChildren} />
           <Counter label="Нярай" hint={[ageBands.infant, infantFareLabel].filter(Boolean).join(" · ")} value={infants} onChange={setInfants} />
         </div>
 
