@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 
 import JsonLd from "@/components/content/JsonLd";
+import TripMedia from "@/components/trip/TripMedia";
 import { prisma } from "@/server/prisma";
 import { TRIP_INCLUDE } from "@/server/tripInput";
 import { getSiteSettings as getSiteSettingsUncached } from "@/server/catalog";
@@ -156,34 +157,65 @@ export default async function TripDetailPage({ params }: Props) {
   // content happens to say "not found" — that was a soft-404.
   if (!trip) notFound();
   if (!trip.isPublished) {
+    const preview = serializeTrip(trip);
+    const days = trip.itinerary.filter((day) => day.dayNumber > 0).sort((a, b) => a.dayNumber - b.dayNumber);
     return (
-      <main className="uudam-container py-8">
-        <Link href="/mn/trips" className="text-sm text-primary underline">Аялалууд руу буцах</Link>
-        <div className="mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950">
-          <p className="text-lg font-semibold">Мэдээллийн хуудас — одоогоор захиалга авахгүй</p>
-          <p className="mt-2">Шинэ гарах өдөр, үнэ болон суудлын мэдээлэл баталгаажаагүй. Доорх нь өмнөх хөтөлбөрийн танилцуулга юм.</p>
-        </div>
-        <h1 className="mt-8 text-3xl font-bold">{formatTripTitle(trip.title)}</h1>
-        {trip.brochurePdfUrl && (
-          <a href={trip.brochurePdfUrl} className="mt-4 inline-block text-primary underline">Хөтөлбөрийн PDF үзэх</a>
-        )}
-        <section className="mt-10">
-          <h2 className="text-2xl font-semibold">Өдөр бүрийн хөтөлбөр</h2>
-          <div className="mt-5 space-y-4">
-            {trip.itinerary.filter((day) => day.dayNumber > 0).sort((a, b) => a.dayNumber - b.dayNumber).map((day) => (
-              <article key={day.id} className="rounded-2xl border border-border bg-card p-5">
-                <h3 className="font-semibold">{day.dayNumber}-р өдөр · {day.title}</h3>
-                <p className="mt-2 whitespace-pre-line text-muted-foreground">{day.description}</p>
-              </article>
-            ))}
+      <main className="uudam-container py-8 pb-16">
+        <Link href="/mn/trips" className="text-sm text-primary underline">← Аялалууд руу буцах</Link>
+        <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="min-w-0">
+            <div className="mb-5">
+              <p className="text-sm font-semibold uppercase tracking-wide text-primary">Хөтөлбөрийн танилцуулга</p>
+              <h1 className="mt-2 text-3xl font-bold leading-tight md:text-4xl">{formatTripTitle(trip.title)}</h1>
+              {trip.description && <p className="mt-3 text-lg text-muted-foreground">{trip.description}</p>}
+              <div className="mt-4 flex flex-wrap gap-2 text-sm">
+                {trip.city && <span className="rounded-full bg-secondary px-3 py-1">{trip.city}, {trip.country}</span>}
+                {days.length > 0 && <span className="rounded-full bg-secondary px-3 py-1">{days.length} өдрийн хөтөлбөр</span>}
+              </div>
+            </div>
+            <TripMedia trip={preview} />
+            <p className="mt-3 text-xs text-muted-foreground">Зургууд нь аяллын чиглэлийн жишиг дүрслэл; зочид буудлын баталгаат зураг биш.</p>
+
+            <section className="mt-10">
+              <h2 className="text-2xl font-semibold">Өдөр бүрийн хөтөлбөр</h2>
+              <div className="mt-5 space-y-4">
+                {days.map((day) => (
+                  <article key={day.id} className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                    <div className="flex items-start gap-4">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 font-bold text-primary">{day.dayNumber}</span>
+                      <div>
+                        <h3 className="text-lg font-semibold">{day.title}</h3>
+                        {day.description && <p className="mt-2 whitespace-pre-line leading-relaxed text-muted-foreground">{day.description}</p>}
+                        {day.meals.length > 0 && <p className="mt-3 text-sm text-muted-foreground">Хоол: {day.meals.join(", ")}</p>}
+                        {day.accommodation && <p className="mt-1 text-sm text-muted-foreground">Буудал: {day.accommodation}</p>}
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+            {(trip.included.length > 0 || trip.excluded.length > 0) && (
+              <section className="mt-10 grid gap-5 md:grid-cols-2">
+                {trip.included.length > 0 && <div className="rounded-2xl border border-border bg-card p-5"><h2 className="text-xl font-semibold">Үнэд багтсан</h2><ul className="mt-3 list-disc space-y-2 pl-5 text-muted-foreground">{trip.included.map((item) => <li key={item}>{item}</li>)}</ul></div>}
+                {trip.excluded.length > 0 && <div className="rounded-2xl border border-border bg-card p-5"><h2 className="text-xl font-semibold">Үнэд багтаагүй</h2><ul className="mt-3 list-disc space-y-2 pl-5 text-muted-foreground">{trip.excluded.map((item) => <li key={item}>{item}</li>)}</ul></div>}
+              </section>
+            )}
           </div>
-        </section>
-        {(trip.included.length > 0 || trip.excluded.length > 0) && (
-          <section className="mt-10 grid gap-6 md:grid-cols-2">
-            <div><h2 className="text-xl font-semibold">Үнэд багтсан</h2><ul className="mt-3 list-disc space-y-1 pl-5">{trip.included.map((item) => <li key={item}>{item}</li>)}</ul></div>
-            <div><h2 className="text-xl font-semibold">Үнэд багтаагүй</h2><ul className="mt-3 list-disc space-y-1 pl-5">{trip.excluded.map((item) => <li key={item}>{item}</li>)}</ul></div>
-          </section>
-        )}
+
+          <aside className="lg:sticky lg:top-24 lg:self-start">
+            <div className="rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950 shadow-sm">
+              <p className="text-lg font-bold">Одоогоор захиалга авахгүй</p>
+              <p className="mt-2 text-sm leading-relaxed">Шинэ гарах өдөр, үнэ, хүүхэд болон нярайн үнэ, суудлын мэдээлэл баталгаажаагүй. Доорх нь өмнөх хөтөлбөрийн танилцуулга юм.</p>
+              <Link href="/mn/contact" className="mt-5 inline-flex rounded-lg bg-primary px-4 py-2.5 font-semibold text-white hover:opacity-90">Шинэ аяллын талаар лавлах</Link>
+            </div>
+            <div className="mt-4 rounded-2xl border border-border bg-card p-5">
+              <h2 className="font-semibold">Хөтөлбөрийн мэдээлэл</h2>
+              {trip.hotel && <p className="mt-3 text-sm text-muted-foreground">Буудал: {trip.hotel}</p>}
+              <p className="mt-2 text-sm text-muted-foreground">Буудлын нэр, өрөөний ангилал болон шинэ үнийг баталгаажуулах шаардлагатай.</p>
+              {trip.brochurePdfUrl && <a href={trip.brochurePdfUrl} className="mt-4 inline-block text-sm font-semibold text-primary underline">Эх PDF хөтөлбөрийг үзэх ↗</a>}
+            </div>
+          </aside>
+        </div>
       </main>
     );
   }
