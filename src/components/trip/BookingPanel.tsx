@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 import { api, apiErrorMessage } from "@/lib/api";
 import { getVisitorId, track } from "@/lib/analytics";
-import { ageBandsFor, formatFare, formatMnt, hasKnownTripPrice, hasMissingPassengerFare, lineTotal, resolvePrices } from "@/lib/pricing";
+import { ageBandsFor, formatFare, formatMnt, hasKnownTripPrice, hasMissingPassengerFare, lineTotal, passengerFareLabel, resolvePrices } from "@/lib/pricing";
 import { availability, formatFullDate, formatDepartureDate, upcomingDepartures } from "@/lib/departures";
 import { saleBadgeLabel } from "@/lib/tripMarketing";
 import { datePriceOptions, formatAdultOption, formatPriceDelta, hasVariablePricing, priceDimensionOptions } from "@/lib/tripPriceOptions";
@@ -184,6 +184,7 @@ export default function BookingPanel({
   const quoteOnly = hasVariablePricing(trip);
   const prices = resolvePrices(trip, selected);
   const ageBands = ageBandsFor(trip.sourceMetadata);
+  const infantFareLabel = passengerFareLabel(trip.sourceMetadata, "infant", prices.infant);
   const total = lineTotal({ adults, children, infants }, prices);
   const specialTiers = option?.passengers ?? [];
   // A detailed passenger tier is an offer that needs a human quote until the
@@ -340,7 +341,7 @@ export default function BookingPanel({
         </div>
         <div className="flex justify-between">
           <span>Нярай</span>
-          <span className="font-medium text-foreground">{formatFare(prices.infant)}</span>
+          <span className="font-medium text-foreground">{infantFareLabel}</span>
         </div>
       </div>}
 
@@ -395,7 +396,7 @@ export default function BookingPanel({
                 value={tierCounts[tierKey(item)] || 0} onChange={(value) => setTierCounts((current) => ({ ...current, [tierKey(item)]: value }))} />
             ) : <>
               <Counter label="Хүүхэд" hint={pricedHint(ageBands.child, prices.child)} value={children} onChange={setChildren} />
-              <Counter label="Нярай" hint={pricedHint(ageBands.infant, prices.infant)} value={infants} onChange={setInfants} />
+              <Counter label="Нярай" hint={[ageBands.infant, infantFareLabel].filter(Boolean).join(" · ")} value={infants} onChange={setInfants} />
             </>}
           </div>
 

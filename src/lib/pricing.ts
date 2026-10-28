@@ -124,6 +124,17 @@ export function formatFare(value: number | null | undefined): string {
   return formatMnt(value);
 }
 
+/** An explicitly supplied text label may describe an unpriced passenger fare. */
+export function passengerFareLabel(
+  sourceMetadata: Record<string, unknown> | null | undefined,
+  kind: "child" | "infant",
+  price: number | null | undefined,
+): string {
+  const label = sourceMetadata?.[`${kind}_fare_label`];
+  if (price == null && typeof label === "string" && label.trim()) return label.trim();
+  return formatFare(price);
+}
+
 export type AgeBands = { infant: string; child: string; adult: string };
 
 /** Shown when a trip carries no bands of its own. */
@@ -146,7 +157,8 @@ export function ageBandsFor(sourceMetadata: Record<string, unknown> | null | und
   const bands = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const pick = (key: keyof AgeBands) => {
     const value = bands[key];
-    return typeof value === "string" && value.trim() ? value.trim() : DEFAULT_AGE_BANDS[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+    return sourceMetadata?.omit_unspecified_age_bands === true ? "" : DEFAULT_AGE_BANDS[key];
   };
   return { infant: pick("infant"), child: pick("child"), adult: pick("adult") };
 }

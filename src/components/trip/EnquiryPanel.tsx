@@ -15,7 +15,7 @@ import {
 import { api, apiErrorMessage } from "@/lib/api";
 import { CONTACT, hasLink } from "@/lib/contact";
 import { getVisitorId, track } from "@/lib/analytics";
-import { ageBandsFor, formatFare, formatMnt, formatTripStartingPrice, hasKnownTripPrice, hasMissingPassengerFare, lineTotal, resolvePrices } from "@/lib/pricing";
+import { ageBandsFor, formatFare, formatMnt, formatTripStartingPrice, hasKnownTripPrice, hasMissingPassengerFare, lineTotal, passengerFareLabel, resolvePrices } from "@/lib/pricing";
 import { availability, upcomingDepartures } from "@/lib/departures";
 import { saleBadgeLabel } from "@/lib/tripMarketing";
 import { datePriceOptions, formatAdultOption } from "@/lib/tripPriceOptions";
@@ -119,6 +119,7 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
     : optionPrices.length > 1 ? `${formatMnt(Math.min(...optionPrices))}–${formatMnt(Math.max(...optionPrices))}`
     : option ? formatAdultOption(option) : "Үнэ огноо, буудлаас хамаарна";
   const ageBands = ageBandsFor(trip.sourceMetadata);
+  const infantFareLabel = passengerFareLabel(trip.sourceMetadata, "infant", option?.infant ?? prices.infant);
   const estimate = hasMissingPassengerFare({ children, infants }, prices)
     ? null : lineTotal({ adults, children, infants }, prices);
   const hasPrice = hasKnownTripPrice(prices.adult);
@@ -239,7 +240,7 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
         </div>
         <div className="flex justify-between">
           <span>Нярай</span>
-          <span className="font-medium text-foreground">{formatFare(prices.infant)}</span>
+          <span className="font-medium text-foreground">{infantFareLabel}</span>
         </div>
         {typeof trip.singleSupplement === "number" && trip.singleSupplement > 0 && (
           <div className="flex justify-between">
@@ -277,7 +278,7 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
         <div className="mt-4 divide-y divide-border border-t border-border">
           <Counter label="Том хүн" hint={adultHint} value={adults} onChange={setAdults} min={1} />
           <Counter label="Хүүхэд" hint={pricedHint(ageBands.child, option?.child ?? prices.child)} value={children} onChange={setChildren} />
-          <Counter label="Нярай" hint={pricedHint(ageBands.infant, option?.infant ?? prices.infant)} value={infants} onChange={setInfants} />
+          <Counter label="Нярай" hint={[ageBands.infant, infantFareLabel].filter(Boolean).join(" · ")} value={infants} onChange={setInfants} />
         </div>
 
         {!variablePricing && <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
