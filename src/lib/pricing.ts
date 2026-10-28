@@ -36,6 +36,15 @@ export type ResolvedPrices = {
   infant: number | null;
 };
 
+/** Missing minor fares require a staff quote; they must never inherit the adult fare at checkout. */
+export function hasMissingPassengerFare(
+  counts: Pick<PassengerCounts, "children" | "infants">,
+  prices: ResolvedPrices,
+): boolean {
+  return (counts.children > 0 && prices.child === null)
+    || (counts.infants > 0 && prices.infant === null);
+}
+
 /**
  * A departure may override any of the trip's fares. An override of `null`
  * means "inherit from the trip", not "free".

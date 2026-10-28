@@ -286,6 +286,7 @@ function TripDetailClientInner({
     () => noticeLines(siteSettings?.tripNotice),
     [siteSettings?.tripNotice],
   );
+  const showBrochure = trip?.sourceMetadata?.hide_brochure_on_website !== true;
   // One source of truth: the weather, calendar, price, and enquiry all use
   // this same departure. Keeping it here prevents sibling panels drifting.
   const [chosenDepartureDate, setChosenDepartureDate] = useState<string | undefined>(selectedDate);
@@ -328,7 +329,7 @@ function TripDetailClientInner({
         trip.extraFees.length > 0 ||
         trip.roomPrices.length > 0 ||
         trip.childPriceNotes.length > 0 ||
-        trip.brochurePdfUrl) && { id: "important", label: "Чухал" },
+        (showBrochure && trip.brochurePdfUrl)) && { id: "important", label: "Чухал" },
       (trip.transport.length > 0 ||
         trip.languages.length > 0 ||
         trip.meetingPoint ||
@@ -339,7 +340,7 @@ function TripDetailClientInner({
       travelerMedia.length > 0 && { id: "traveler-media", label: "Аялагчид" },
       trip.testimonials && trip.testimonials.length > 0 && { id: "reviews", label: "Сэтгэгдэл" },
     ].filter((entry): entry is { id: string; label: string } => Boolean(entry));
-  }, [trip, siteNoticeLines, hotelProfiles, travelerMedia, hasWeather, routeStops]);
+  }, [trip, siteNoticeLines, hotelProfiles, travelerMedia, hasWeather, routeStops, showBrochure]);
 
   useEffect(() => {
     if (trip) recordRecentlyViewed(trip.slug);
@@ -431,7 +432,7 @@ function TripDetailClientInner({
               <div className="flex flex-wrap items-center gap-2 sm:mt-1 sm:shrink-0" data-print="hide">
                 <SaveButton slug={trip.slug} variant="button" />
                 <ShareButton title={formatTripTitle(trip.title)} tripId={trip.id} />
-                <DownloadTripButton />
+                {showBrochure && <DownloadTripButton />}
               </div>
             </div>
             {trip.summary && (
@@ -463,7 +464,7 @@ function TripDetailClientInner({
             </a>
           </header>
 
-          {(trip.brochurePdfUrl || chatbotPosterPdfUrl(trip.sourceTripId)) && (
+          {showBrochure && (trip.brochurePdfUrl || chatbotPosterPdfUrl(trip.sourceTripId)) && (
             <a
               href={trip.brochurePdfUrl || chatbotPosterPdfUrl(trip.sourceTripId)!}
               target="_blank"
@@ -608,7 +609,7 @@ function TripDetailClientInner({
             trip.extraFees.length > 0 ||
             trip.roomPrices.length > 0 ||
             trip.childPriceNotes.length > 0 ||
-            trip.brochurePdfUrl) && (
+            (showBrochure && trip.brochurePdfUrl)) && (
             <section id="important" className="mt-8 scroll-mt-28 space-y-5">
               {(siteNoticeLines.length > 0 || trip.importantNotes.length > 0) && (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-950">
@@ -644,7 +645,7 @@ function TripDetailClientInner({
                 </div>
               )}
 
-              {trip.brochurePdfUrl && (
+              {showBrochure && trip.brochurePdfUrl && (
                 <Button asChild variant="outline" className="gap-2">
                   <a href={trip.brochurePdfUrl} target="_blank" rel="noreferrer">
                     <FileText className="h-4 w-4" />

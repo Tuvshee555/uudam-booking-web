@@ -15,7 +15,7 @@ import {
 import { api, apiErrorMessage } from "@/lib/api";
 import { CONTACT, hasLink } from "@/lib/contact";
 import { getVisitorId, track } from "@/lib/analytics";
-import { ageBandsFor, formatFare, formatMnt, formatTripStartingPrice, hasKnownTripPrice, lineTotal, resolvePrices } from "@/lib/pricing";
+import { ageBandsFor, formatFare, formatMnt, formatTripStartingPrice, hasKnownTripPrice, hasMissingPassengerFare, lineTotal, resolvePrices } from "@/lib/pricing";
 import { availability, upcomingDepartures } from "@/lib/departures";
 import { saleBadgeLabel } from "@/lib/tripMarketing";
 import { datePriceOptions, formatAdultOption } from "@/lib/tripPriceOptions";
@@ -119,7 +119,8 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
     : optionPrices.length > 1 ? `${formatMnt(Math.min(...optionPrices))}–${formatMnt(Math.max(...optionPrices))}`
     : option ? formatAdultOption(option) : "Үнэ огноо, буудлаас хамаарна";
   const ageBands = ageBandsFor(trip.sourceMetadata);
-  const estimate = lineTotal({ adults, children, infants }, prices);
+  const estimate = hasMissingPassengerFare({ children, infants }, prices)
+    ? null : lineTotal({ adults, children, infants }, prices);
   const hasPrice = hasKnownTripPrice(prices.adult);
   const saleLabel = saleBadgeLabel(trip);
   const adultHint = option?.adultMax != null && option.adultMax > (option.adult ?? 0)
@@ -281,7 +282,7 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
 
         {!variablePricing && <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
           <span className="text-sm text-muted-foreground">Ойролцоо дүн</span>
-          <span className="text-xl font-bold text-primary">{hasPrice ? formatMnt(estimate) : "Үнэ лавлах"}</span>
+          <span className="text-xl font-bold text-primary">{hasPrice && estimate !== null ? formatMnt(estimate) : "Үнэ лавлах"}</span>
         </div>}
         <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
           Урьдчилсан тооцоо. Эцсийн үнийг ажилтан тодруулж хэлнэ.

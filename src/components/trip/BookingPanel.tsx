@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 import { api, apiErrorMessage } from "@/lib/api";
 import { getVisitorId, track } from "@/lib/analytics";
-import { ageBandsFor, formatFare, formatMnt, hasKnownTripPrice, lineTotal, resolvePrices } from "@/lib/pricing";
+import { ageBandsFor, formatFare, formatMnt, hasKnownTripPrice, hasMissingPassengerFare, lineTotal, resolvePrices } from "@/lib/pricing";
 import { availability, formatFullDate, formatDepartureDate, upcomingDepartures } from "@/lib/departures";
 import { saleBadgeLabel } from "@/lib/tripMarketing";
 import { datePriceOptions, formatAdultOption, formatPriceDelta, hasVariablePricing, priceDimensionOptions } from "@/lib/tripPriceOptions";
@@ -189,11 +189,12 @@ export default function BookingPanel({
   // A detailed passenger tier is an offer that needs a human quote until the
   // booking API accepts each individual age band. Never collapse it into the
   // old generic child/infant counters: that hides valid prices such as 2-5.
-  const requiresQuote = quoteOnly || specialTiers.length > 0;
+  const missingMinorFare = hasMissingPassengerFare({ children, infants }, prices);
+  const requiresQuote = quoteOnly || specialTiers.length > 0 || missingMinorFare;
   const tierKey = (item: typeof specialTiers[number]) => `${item.label}|${item.ageRange}`;
   const tierTotal = specialTiers.reduce((sum, item) => sum + (tierCounts[tierKey(item)] || 0) * (item.price || 0), 0);
   const missingTierPrice = specialTiers.some((item) => (tierCounts[tierKey(item)] || 0) > 0 && item.price == null);
-  const quoteMin = missingTierPrice ? null : adults * (option?.adult ?? prices.adult) + tierTotal;
+  const quoteMin = missingTierPrice || missingMinorFare ? null : adults * (option?.adult ?? prices.adult) + tierTotal;
   const quoteMax = option?.adultMax != null ? adults * option.adultMax + tierTotal : quoteMin;
   const saleLabel = saleBadgeLabel(trip);
   const adultHint = option?.adultMax != null && option.adultMax > (option.adult ?? 0)
@@ -415,11 +416,12 @@ export default function BookingPanel({
               if (requiresQuote && selected) {
                 const counts = specialTiers.map((item) => `${item.label}: ${tierCounts[tierKey(item)] || 0}`).join(", ");
                 onAsk({ departureId: selected.id, adults,
-                  children: specialTiers.filter((item) => !/нярай|infant/i.test(item.label)).reduce((sum, item) => sum + (tierCounts[tierKey(item)] || 0), 0),
-                  infants: specialTiers.filter((item) => /нярай|infant/i.test(item.label)).reduce((sum, item) => sum + (tierCounts[tierKey(item)] || 0), 0),
+                  children: specialTiers.length > 0 ? specialTiers.filter((item) => !/нярай|infant/i.test(item.label)).reduce((sum, item) => sum + (tierCounts[tierKey(item)] || 0), 0) : children,
+                  infants: specialTiers.length > 0 ? specialTiers.filter((item) => /нярай|infant/i.test(item.label)).reduce((sum, item) => sum + (tierCounts[tierKey(item)] || 0), 0) : infants,
                   message: [
                     option?.hotel ? `Буудал: ${option.hotel}` : "",
                     option?.packageId ? `Аяллын төрөл: ${option.packageId}` : "",
+                    missingMinorFare ? "Хүүхэд/нярайн үнийг ажилтнаас тодруулна" : "",
                     counts,
                   ].filter(Boolean).join("; ") });
               } else {

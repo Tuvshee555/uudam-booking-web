@@ -2,7 +2,7 @@ import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/server/prisma";
 import { checkInvoice } from "@/server/qpay";
-import { lineTotal, resolvePrices, totalHeadcount } from "@/lib/pricing";
+import { hasMissingPassengerFare, lineTotal, resolvePrices, totalHeadcount } from "@/lib/pricing";
 import { hasVariablePricing } from "@/lib/tripPriceOptions";
 
 /**
@@ -150,6 +150,11 @@ export async function createBooking(input: CreateBookingInput) {
       throw new BookingError("Энэ аяллын үнэ буудал, огнооноос хамаарна. Үнийн санал авах хүсэлт илгээнэ үү", 409);
     }
 
+    const prices = resolvePrices(trip, departure);
+    if (hasMissingPassengerFare(input, prices)) {
+      throw new BookingError("Хүүхэд эсвэл нярайн үнэ баталгаажаагүй байна. Ажилтнаас үнийн санал авна уу", 409);
+    }
+
     const sellableStatus =
       departure.status !== "CANCELLED" &&
       departure.status !== "DEPARTED" &&
@@ -186,7 +191,6 @@ export async function createBooking(input: CreateBookingInput) {
       });
     }
 
-    const prices = resolvePrices(trip, departure);
     const totalPrice = lineTotal(
       { adults: input.adults, children: input.children, infants: input.infants },
       prices,
