@@ -12,6 +12,7 @@ export type DatePriceOption = {
   adultMax: number | null;
   child: number | null;
   infant: number | null;
+  singleSupplement: number | null;
   passengers: PassengerOption[];
 };
 
@@ -37,7 +38,7 @@ function text(value: unknown): string {
 }
 
 function defaultPackageNote(packageId: string): string {
-  if (/чөлөөт/i.test(packageId)) return "Хөтөлбөргүй, илүү чөлөөтэй багц. Нислэг, буудал болон үндсэн үйлчилгээтэй.";
+  if (/чөлөөт|хөтөлбөргүй/i.test(packageId)) return "Хөтөлбөргүй, илүү чөлөөтэй багц. Нислэг, буудал болон үндсэн үйлчилгээтэй.";
   if (/хөтөлбөр/i.test(packageId)) return "Өдөр тутмын хөтөлбөр, үзвэр үйлчилгээтэй багц.";
   return "";
 }
@@ -53,6 +54,9 @@ export function datePriceOptions(trip: Pick<Trip, "sourceMetadata">, departure: 
   const day = departureDateKey(departure.startDate);
   return groups.flatMap((value) => {
     const group = object(value);
+    const availability = object(group.availability);
+    if (["sold_out", "cancelled", "paused", "departed", "unavailable"].includes(text(availability.status).toLowerCase())
+      || availability.seatsLeft === 0) return [];
     const keys = Array.isArray(group.date_keys) ? group.date_keys : Array.isArray(group.dates) ? group.dates : [];
     if (keys.length > 0 && !keys.includes(day)) return [];
     const range = object(group.adult_price_range);
@@ -94,6 +98,7 @@ export function datePriceOptions(trip: Pick<Trip, "sourceMetadata">, departure: 
       adultMax: price(range.max),
       child: childPrice,
       infant: infantPrice,
+      singleSupplement: price(group.single_price),
       passengers: passengerOptions,
     }];
   });

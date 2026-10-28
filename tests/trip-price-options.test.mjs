@@ -3,6 +3,21 @@ import test from "node:test";
 
 import { datePriceOptions, formatPriceDelta, hasVariablePricing, priceDimensionOptions } from "../src/lib/tripPriceOptions.ts";
 
+test("partner hotel availability and date-specific supplements reach the picker", () => {
+  const trip = { sourceMetadata: { price_groups: [
+    { hotel: "Example Bay", dates: ["2099-06-12"], adult_price: 2100000, single_price: 520000, availability: { status: "sold_out" } },
+    { hotel: "Example Garden", package_id: "Хөтөлбөргүй", dates: ["2099-06-12"], adult_price: 2600000, single_price: 620000, availability: { status: "open", seatsLeft: 12 } },
+    { hotel: "Example Grove", dates: ["2099-06-12"], adult_price: 2300000, availability: { status: "open", seatsLeft: 0 } },
+    { hotel: "Example Garden", dates: ["2099-06-19"], adult_price: 2700000, single_price: 720000, availability: { status: "open" } },
+  ] } };
+  const options = datePriceOptions(trip, { startDate: "2099-06-12T00:00:00.000Z" });
+  assert.equal(options.length, 1);
+  assert.equal(options[0].hotel, "Example Garden");
+  assert.equal(options[0].singleSupplement, 620000);
+  assert.match(options[0].packageNote, /^Хөтөлбөргүй/);
+  assert.equal(datePriceOptions(trip, { startDate: "2099-06-19T00:00:00.000Z" })[0].singleSupplement, 720000);
+});
+
 test("hotel fares match only their departure and preserve age tiers", () => {
   const trip = { sourceMetadata: { price_groups: [
     { hotel: "Phoenix", date_keys: ["2026-10-01"], adult_price: 3290000,

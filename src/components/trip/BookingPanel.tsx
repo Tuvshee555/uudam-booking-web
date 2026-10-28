@@ -343,6 +343,11 @@ export default function BookingPanel({
         </div>
       </div>}
 
+      {option?.singleSupplement != null && <div className="mt-3 flex justify-between gap-3 text-xs text-muted-foreground">
+        <span>Ганц хүний өрөөний нэмэгдэл</span>
+        <span className="font-medium text-foreground">{formatMnt(option.singleSupplement)}</span>
+      </div>}
+
       {step === "select" && (
         <div className="mt-5">
           <DepartureDatePicker key={selectedDepartureId ?? "no-departure"} departures={openDepartures} selectedId={selectedDepartureId} basePrice={trip.price}

@@ -247,6 +247,10 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
           </div>
         )}
       </div>}
+      {variablePricing && option?.singleSupplement != null && <div className="mt-3 flex justify-between gap-3 text-xs text-muted-foreground">
+        <span>Ганц хүний өрөөний нэмэгдэл</span>
+        <span className="font-medium text-foreground">{formatMnt(option.singleSupplement)}</span>
+      </div>}
       {trip.excluded.length > 0 && (
         <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
           Дээрх үнэнд юу ороогүйг доорх &ldquo;Багцад ороогүй&rdquo; жагсаалтаас нягтална уу — виз, хувийн зардал зэрэг зарим зүйл ихэвчлэн үнэд ороогүй байдаг.
