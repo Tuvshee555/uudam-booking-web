@@ -1,11 +1,14 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, CheckCircle2, Loader2, RefreshCw, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, Pencil, RefreshCw, ShieldCheck, XCircle } from "lucide-react";
 
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { Button } from "@/components/ui/button";
+import { EmptyState, ErrorState, FilterChips, PageHeader, Panel, StatCard, StatusBadge } from "@/components/admin/ui";
 import { useTripHealth } from "@/hooks/useTripHealth";
+import { formatDateTime, formatNumber, formatRelative } from "@/lib/adminFormat";
 import type { HealthIssue } from "@/lib/tripHealth";
 
 /**
@@ -17,68 +20,144 @@ import type { HealthIssue } from "@/lib/tripHealth";
 export default function AdminHealthPage() {
   const { locale } = useI18n();
   const { data, isPending, isFetching, refetch, error } = useTripHealth();
+  const [filter, setFilter] = useState<"all" | "errors" | "warnings">("all");
 
-  const byTrip = new Map<string, HealthIssue[]>();
-  for (const issue of data?.issues ?? []) byTrip.set(issue.tripId, [...(byTrip.get(issue.tripId) ?? []), issue]);
+  const groups = useMemo(() => {
+    const byTrip = new Map<string, HealthIssue[]>();
+    for (const issue of data?.issues ?? []) byTrip.set(issue.tripId, [...(byTrip.get(issue.tripId) ?? []), issue]);
+    return [...byTrip.values()]
+      .map((issues) => ({
+        issues: [...issues].sort((a, b) => (a.severity === b.severity ? 0 : a.severity === "error" ? -1 : 1)),
+        errors: issues.filter((issue) => issue.severity === "error").length,
+        warnings: issues.filter((issue) => issue.severity === "warning").length,
+      }))
+      .sort((a, b) => b.errors - a.errors || b.warnings - a.warnings);
+  }, [data]);
+
+  const visible = groups.filter((group) => (filter === "errors" ? group.errors > 0 : filter === "warnings" ? group.warnings > 0 : true));
+  const tripsWithErrors = groups.filter((group) => group.errors > 0).length;
+  const tripsWithWarnings = groups.filter((group) => group.warnings > 0).length;
 
   return (
-    <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">Сайтын шалгалт</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Нийтэд харагдаж буй аялал бүрийн огноо, үнэ, синкийг автоматаар шалгана. Өдөр бүр 08:00-д давтагдаж, алдаа байвал имэйлээр мэдэгдэнэ.
-          </p>
-        </div>
-        <Button variant="outline" className="gap-1.5" onClick={() => refetch()} disabled={isFetching}>
-          {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-          Дахин шалгах
-        </Button>
-      </div>
+    <>
+      <PageHeader
+        title="Сайтын шалгалт"
+        description="Сайтад харагдаж буй аялал бүрийн огноо, үнэ, зураг, chatbot-той ижил эсэхийг автоматаар шалгана. Өдөр бүр өглөө 8 цагт дахин шалгаж, алдаа гарвал и-мэйлээр мэдэгдэнэ."
+        actions={
+          <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
+            {isFetching ? <Loader2 className="animate-spin" /> : <RefreshCw />}
+            {isFetching ? "Шалгаж байна…" : "Одоо дахин шалгах"}
+          </Button>
+        }
+      />
 
-      {isPending && <p className="mt-6 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Шалгаж байна…</p>}
-      {error && <p className="mt-6 text-sm text-destructive">Шалгалт ажилласангүй. Дахин оролдоно уу.</p>}
-
-      {data && (
-        <>
-          <div className="mt-5 flex flex-wrap gap-3 text-sm">
-            <span className="rounded-lg border border-border px-3 py-2">{data.publishedTrips} нийтлэгдсэн аялал</span>
-            <span className={`rounded-lg border px-3 py-2 ${data.errors ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-border"}`}>{data.errors} алдаа</span>
-            <span className={`rounded-lg border px-3 py-2 ${data.warnings ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400" : "border-border"}`}>{data.warnings} анхааруулга</span>
-            <span className="px-1 py-2 text-muted-foreground">{new Date(data.generatedAt).toLocaleString("mn-MN")}</span>
+      {isPending ? (
+        <Panel>
+          <div role="status" className="flex flex-col items-center justify-center gap-3 py-14 text-center text-sm text-muted-foreground">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            Аялал бүрийг шалгаж байна… Хамтрагч байгууллагуудын үнийг давхар тулгадаг тул хагас минут хүртэл үргэлжилж магадгүй.
+          </div>
+        </Panel>
+      ) : error || !data ? (
+        <Panel>
+          <ErrorState error={error} title="Шалгалт ажилласангүй" onRetry={() => refetch()} />
+        </Panel>
+      ) : (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <StatCard label="Шалгасан аялал" value={formatNumber(data.publishedTrips)} hint="Сайтад харагдаж буй бүх аялал" icon={ShieldCheck} />
+            <StatCard
+              label="Алдаа"
+              value={formatNumber(data.errors)}
+              hint={data.errors ? `${tripsWithErrors} аялалд — үйлчлүүлэгч буруу мэдээлэл харж байна, түрүүлж засна` : "Алдаа алга"}
+              icon={XCircle}
+              tone={data.errors ? "danger" : "success"}
+            />
+            <StatCard
+              label="Анхааруулга"
+              value={formatNumber(data.warnings)}
+              hint={data.warnings ? `${tripsWithWarnings} аялалд — нэг харж шалгах зүйл` : "Анхааруулга алга"}
+              icon={AlertTriangle}
+              tone={data.warnings ? "warning" : "success"}
+            />
           </div>
 
-          {byTrip.size === 0 ? (
-            <p className="mt-8 flex items-center gap-2 text-sm"><CheckCircle2 className="h-5 w-5 text-emerald-600" /> Асуудал илэрсэнгүй.</p>
+          <p className="text-xs text-muted-foreground" title={formatDateTime(data.generatedAt)}>
+            Сүүлд шалгасан: {formatRelative(data.generatedAt)}. Аяллыг засаж хадгалсны дараа «Одоо дахин шалгах» дарж засагдсаныг шалгана.
+          </p>
+
+          {groups.length === 0 ? (
+            <Panel>
+              <EmptyState
+                icon={CheckCircle2}
+                title="Бүх зүйл хэвийн байна"
+                description="Сайтад харагдаж буй аяллуудаас асуудал илэрсэнгүй."
+              />
+            </Panel>
           ) : (
-            <ul className="mt-6 space-y-3">
-              {[...byTrip.values()].map((issues) => (
-                <li key={issues[0].tripId} className="rounded-xl border border-border bg-card p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <p className="min-w-0 break-words font-medium">{issues[0].title}</p>
-                    {issues[0].slug && (
-                      <div className="flex shrink-0 gap-2 text-sm">
-                        <Link className="text-primary hover:underline" href={`/${locale}/admin/trips/${issues[0].tripId}/edit`}>Засах</Link>
-                        <Link className="text-muted-foreground hover:underline" href={`/${locale}/trips/${issues[0].slug}`} target="_blank">Сайтад харах</Link>
-                      </div>
-                    )}
-                  </div>
-                  <ul className="mt-2 space-y-1.5">
-                    {issues.map((issue) => (
-                      <li key={`${issue.code}:${issue.message}`} className="flex gap-2 text-sm">
-                        {issue.severity === "error"
-                          ? <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-                          : <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />}
-                        <span className="min-w-0 break-words">{issue.message}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-              ))}
-            </ul>
+            <>
+              <FilterChips
+                label="Асуудлыг шүүх"
+                value={filter}
+                onChange={setFilter}
+                options={[
+                  { value: "all", label: "Бүх асуудалтай аялал", count: groups.length },
+                  { value: "errors", label: "Алдаатай", count: tripsWithErrors },
+                  { value: "warnings", label: "Анхааруулгатай", count: tripsWithWarnings },
+                ]}
+              />
+              <ul className="space-y-3">
+                {visible.map(({ issues, errors, warnings }) => {
+                  const first = issues[0];
+                  return (
+                    <li key={first.tripId}>
+                      <Panel bodyClassName="p-4 sm:p-5">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <p className="break-words font-semibold">{first.title}</p>
+                            <div className="mt-1 flex flex-wrap gap-1.5">
+                              {errors > 0 && <StatusBadge tone="danger">{errors} алдаа</StatusBadge>}
+                              {warnings > 0 && <StatusBadge tone="warning">{warnings} анхааруулга</StatusBadge>}
+                            </div>
+                          </div>
+                          <div className="flex shrink-0 flex-wrap gap-2">
+                            <Button asChild size="sm">
+                              <Link href={`/${locale}/admin/trips/${first.tripId}/edit`}>
+                                <Pencil />
+                                Аяллыг засах
+                              </Link>
+                            </Button>
+                            {first.slug && (
+                              <Button asChild size="sm" variant="outline">
+                                <a href={`/${locale}/trips/${first.slug}`} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLink />
+                                  Сайт дээр харах
+                                </a>
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                        <ul className="mt-3 space-y-2 border-t border-border pt-3">
+                          {issues.map((issue) => (
+                            <li key={`${issue.code}:${issue.message}`} className="flex gap-2.5 text-sm">
+                              {issue.severity === "error" ? (
+                                <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" aria-label="Алдаа" />
+                              ) : (
+                                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-label="Анхааруулга" />
+                              )}
+                              <span className="min-w-0 break-words leading-relaxed">{issue.message}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </Panel>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
           )}
-        </>
+        </div>
       )}
-    </div>
+    </>
   );
 }

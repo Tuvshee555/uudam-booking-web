@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { toast } from "sonner";
-import { Archive, CalendarDays, Check, ClipboardList, ExternalLink, Eye, Images, Info, Loader2, Plus, RefreshCw, Save, Scale, Trash2, Wallet } from "lucide-react";
+import { AlertTriangle, Archive, CalendarDays, Check, ClipboardList, ExternalLink, Eye, Images, Info, Loader2, Plus, RefreshCw, Save, Scale, Trash2, Wallet } from "lucide-react";
 
 import { api, apiErrorMessage } from "@/lib/api";
 import { changedTripFields, mergeTripEdit } from "@/lib/tripEditPatch";
@@ -13,7 +13,10 @@ import { departureDateKey } from "@/lib/departureDate";
 import { ageBandsFor } from "@/lib/pricing";
 import { isAllowedImageHost } from "@/lib/imageHosts";
 import { useCategoryTree, useTags, useTrip } from "@/hooks/useTrips";
+import { useTripHealth } from "@/hooks/useTripHealth";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
+import { Notice, StatusBadge, SwitchField, useConfirm } from "@/components/admin/ui";
+import { formatRelative } from "@/lib/adminFormat";
 import { cn } from "@/lib/utils";
 import { passengerName } from "@/lib/adminDatePricing";
 import { Button } from "@/components/ui/button";
@@ -581,13 +584,21 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
   const queryClient = useQueryClient();
 
   const { data: existingTrip, isPending: loadingTrip } = useTrip(mode === "edit" ? tripId : undefined);
-  const { data: categoryTree } = useCategoryTree();
-  const { data: tags } = useTags();
+  const { data: categoryTree } = useCategoryTree(undefined, { admin: true });
+  const { data: tags } = useTags({ admin: true });
+
+  const confirm = useConfirm();
+  // Problems the automatic site check found on this trip, shown above the
+  // form so they get fixed where they are edited.
+  const { data: health, refetch: recheckHealth, isFetching: checkingHealth } = useTripHealth({ enabled: mode === "edit" });
+  const tripIssues = (health?.issues ?? []).filter((issue) => issue.tripId === tripId);
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [baseline, setBaseline] = useState<string | null>(mode === "create" ? JSON.stringify(EMPTY_FORM) : null);
   const [activeSection, setActiveSection] = useState("facts");
   const [missingField, setMissingField] = useState<string | null>(null);
+  // Which tab holds the field a failed save pointed at, so that tab shows a red dot.
+  const [invalidSection, setInvalidSection] = useState<string | null>(null);
   const originalForm = useRef<FormState | null>(null);
   const originalUpdatedAt = useRef<string | undefined>(undefined);
   const hydrated = useRef<string | undefined>(undefined);
@@ -615,7 +626,27 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
-    setMissingField((current) => (current === key ? null : current));
+    if (missingField === key) {
+      setMissingField(null);
+      setInvalidSection(null);
+    }
+  }
+
+  /**
+   * Nights follow days (5 өдөр → 4 шөнө) until someone types a different
+   * number of nights themselves — the usual case should not need typing twice.
+   */
+  function setDays(value: string) {
+    setForm((f) => {
+      const previousDays = Number(f.durationDays);
+      const nightsFollowDays = f.durationNights === "" || Number(f.durationNights) === Math.max(0, previousDays - 1);
+      const days = Number(value);
+      return {
+        ...f,
+        durationDays: value,
+        durationNights: nightsFollowDays && Number.isFinite(days) && days >= 1 ? String(days - 1) : f.durationNights,
+      };
+    });
   }
 
   const saveMutation = useMutation({
@@ -654,7 +685,7 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
       queryClient.invalidateQueries({ queryKey: ["trips"] });
       queryClient.invalidateQueries({ queryKey: ["trip", tripId] });
       if (saved.sourceMetadata?.websiteSyncPending) {
-        toast.warning("Аялал хадгалагдсан. Chatbot sync хүлээгдэж байна.");
+        toast.warning("Аялал хадгалагдлаа. Chatbot руу хараахан илгээгдээгүй — дээд талын «Дахин илгээх» товчийг дарж болно.");
         originalForm.current = tripToForm(saved);
         originalUpdatedAt.current = saved.updatedAt;
         setForm(originalForm.current);
@@ -681,7 +712,7 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
   const retrySync = useMutation({
     mutationFn: async () => (await api.post("/admin/trip-sync", { id: tripId })).data as { complete: boolean; trip: Trip },
     onSuccess: ({ complete, trip }) => {
-      if (!complete) { toast.warning("Синк хүлээгдэж байна. Хадгалсан мэдээлэл бүрэн үлдсэн."); return; }
+      if (!complete) { toast.warning("Chatbot руу хараахан илгээгдсэнгүй. Таны хадгалсан мэдээлэл сайт дээр бүрэн хадгалагдсан — дараа дахин оролдоно уу."); return; }
       if (originalForm.current && JSON.stringify(form) === JSON.stringify(originalForm.current)) {
         originalForm.current = tripToForm(trip);
         originalUpdatedAt.current = trip.updatedAt;
@@ -689,9 +720,9 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
         setBaseline(JSON.stringify(originalForm.current));
       }
       queryClient.invalidateQueries({ queryKey: ["trip", tripId] });
-      toast.success("Chatbot sync дууслаа");
+      toast.success("Chatbot руу амжилттай илгээлээ");
     },
-    onError: (err) => toast.error(apiErrorMessage(err, "Синк хийхэд алдаа гарлаа")),
+    onError: (err) => toast.error(apiErrorMessage(err, "Chatbot руу илгээхэд алдаа гарлаа")),
   });
 
   const deleteMutation = useMutation({
@@ -717,6 +748,7 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
     const invalid = (section: string, field: string | null, message: string) => {
       setActiveSection(section);
       setMissingField(field);
+      setInvalidSection(section);
       toast.error(message);
       if (field) {
         requestAnimationFrame(() => {
@@ -762,19 +794,36 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
     }
 
     setMissingField(null);
+    setInvalidSection(null);
     saveMutation.mutate(toSave);
   }
 
-  function deleteTrip() {
+  async function deleteTrip() {
     if (mode !== "edit" || !tripId || deleteMutation.isPending) return;
 
-    const name = existingTrip?.title ? `"${existingTrip.title}"` : "энэ аяллыг";
-    const confirmed = window.confirm(
-      `${name} нийтээс нууж архивлах уу?\n\nАялал, хөтөлбөр, захиалга болон төлбөрийн түүх хадгалагдана.`,
-    );
+    const confirmed = await confirm({
+      title: "Энэ аяллыг архивлах уу?",
+      description: `${existingTrip?.title ? `«${existingTrip.title}» ` : ""}сайтаас нуугдаж, онцлохоос хасагдана. Аялал, хөтөлбөр, захиалга, төлбөрийн түүх бүгд хадгалагдана — дараа нь «Сайтад харагдана»-г асааж буцааж нийтэлж болно.`,
+      confirmLabel: "Архивлах",
+      tone: "danger",
+    });
 
     if (!confirmed) return;
     deleteMutation.mutate();
+  }
+
+  async function leave() {
+    if (isDirty) {
+      const discard = await confirm({
+        title: "Хадгалаагүй өөрчлөлт байна",
+        description: "Энэ хуудаснаас гарвал хадгалаагүй өөрчлөлт устна. Гарахын өмнө «Хадгалах» дарна уу.",
+        confirmLabel: "Хадгалахгүй гарах",
+        cancelLabel: "Үлдэх",
+        tone: "danger",
+      });
+      if (!discard) return;
+    }
+    router.push(`/${locale}/admin/trips`);
   }
 
   if (mode === "edit" && loadingTrip) {
@@ -788,24 +837,89 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
   }
 
   return (
-    <form onSubmit={submit} className="min-w-0 space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3 text-sm">
-        <span className="inline-flex items-center gap-2 font-medium"><Eye className="h-4 w-4" />{form.isPublished ? "Нийтэд харагдана" : "Ноорог"}</span>
-        {existingTrip?.sourceMetadata?.websiteSyncPending ? (
-          <Button type="button" variant="outline" size="sm" disabled={retrySync.isPending || saveMutation.isPending} onClick={() => retrySync.mutate()} className="gap-2">
-            <RefreshCw className={cn("h-4 w-4", retrySync.isPending && "animate-spin")} />Синк дахин хийх
-          </Button>
-        ) : <span role="status" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">{!isDirty && <Check className="h-3.5 w-3.5" />}{mode === "create" ? "Шинэ аялал" : isDirty ? "Хадгалаагүй өөрчлөлт" : "Хадгалагдсан"}</span>}
+    <form onSubmit={submit} className="min-w-0 space-y-4">
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm shadow-sm">
+        <StatusBadge tone={form.isPublished ? "success" : "neutral"}>
+          {form.isPublished ? "Сайтад харагдана" : "Ноорог — сайтад харагдахгүй"}
+        </StatusBadge>
+        {form.isFeatured && <StatusBadge tone="brand">Онцлох</StatusBadge>}
+        {mode === "edit" && form.slug && existingTrip?.isPublished && (
+          <a
+            href={`/${locale}/trips/${encodeURIComponent(form.slug)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+          >
+            Сайт дээр харах
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        )}
+        <span className="ml-auto inline-flex flex-wrap items-center gap-2">
+          {existingTrip?.sourceMetadata?.websiteSyncPending ? (
+            <>
+              <StatusBadge tone="warning" title="Энэ аяллын сүүлийн өөрчлөлт chatbot руу хараахан очоогүй байна">
+                Chatbot руу илгээгдээгүй
+              </StatusBadge>
+              <Button type="button" variant="outline" size="sm" disabled={retrySync.isPending || saveMutation.isPending} onClick={() => retrySync.mutate()} className="gap-2">
+                <RefreshCw className={cn("h-4 w-4", retrySync.isPending && "animate-spin")} />
+                Дахин илгээх
+              </Button>
+            </>
+          ) : (
+            <span
+              role="status"
+              className={cn(
+                "inline-flex items-center gap-1.5 text-xs",
+                isDirty ? "font-medium text-amber-800 dark:text-amber-300" : "text-muted-foreground",
+              )}
+            >
+              {isDirty ? <span aria-hidden="true" className="h-2 w-2 rounded-full bg-amber-500" /> : <Check className="h-3.5 w-3.5" />}
+              {mode === "create"
+                ? isDirty
+                  ? "Хадгалаагүй шинэ аялал"
+                  : "Шинэ аялал"
+                : isDirty
+                  ? "Хадгалаагүй өөрчлөлт байна"
+                  : "Бүх өөрчлөлт хадгалагдсан"}
+            </span>
+          )}
+        </span>
       </div>
-      <div role="tablist" aria-label="Аяллын мэдээлэл" className="sticky top-0 z-20 flex gap-1 overflow-x-auto border-b border-border bg-background py-2">
+
+      {tripIssues.length > 0 && (
+        <Notice
+          tone={tripIssues.some((issue) => issue.severity === "error") ? "danger" : "warning"}
+          icon={AlertTriangle}
+          title={`Сайтын шалгалтаар энэ аялалд ${tripIssues.length} асуудал илэрсэн`}
+          action={
+            <Button type="button" size="sm" variant="outline" onClick={() => recheckHealth()} disabled={checkingHealth}>
+              {checkingHealth ? <Loader2 className="animate-spin" /> : <RefreshCw />}
+              Дахин шалгах
+            </Button>
+          }
+        >
+          <ul className="mt-1 list-disc space-y-0.5 pl-4">
+            {tripIssues.map((issue) => (
+              <li key={`${issue.code}:${issue.message}`}>{issue.message}</li>
+            ))}
+          </ul>
+          {health && (
+            <p className="mt-1.5 text-xs opacity-80">
+              Сүүлд шалгасан: {formatRelative(health.generatedAt)}. Засаад хадгалсны дараа «Дахин шалгах» дарна уу.
+            </p>
+          )}
+        </Notice>
+      )}
+
+      <div role="tablist" aria-label="Аяллын мэдээлэл" className="sticky top-14 z-20 flex gap-1 overflow-x-auto rounded-xl border border-border bg-card px-2 shadow-sm no-scrollbar lg:top-2">
         {[
-          { id: "facts", label: "Үндсэн", icon: Info },
-          { id: "pricing", label: "Үнэ, гаралт", icon: Wallet },
+          { id: "facts", label: "Үндсэн мэдээлэл", icon: Info },
+          { id: "pricing", label: "Үнэ, огноо", icon: Wallet },
           { id: "itinerary", label: "Хөтөлбөр", icon: CalendarDays },
           { id: "media", label: "Зураг, бичлэг", icon: Images },
-          { id: "terms", label: "Нөхцөл", icon: ClipboardList },
+          { id: "terms", label: "Нөхцөл, багц", icon: ClipboardList },
           { id: "publishing", label: "Нийтлэх", icon: Eye },
-          { id: "review", label: "Харьцуулах", icon: Scale },
+          ...(mode === "edit" ? [{ id: "review", label: "Chatbot-той харьцуулах", icon: Scale }] : []),
         ].map(({ id, label, icon: Icon }) => (
           <button key={id} type="button" role="tab" id={`trip-tab-${id}`} tabIndex={activeSection === id ? 0 : -1} aria-selected={activeSection === id} aria-controls="trip-editor-panel" onClick={() => setActiveSection(id)}
             onKeyDown={(event) => {
@@ -818,12 +932,13 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
               buttons[next].focus();
               buttons[next].scrollIntoView({ block: "nearest", inline: "nearest" });
             }}
-            className={cn("inline-flex shrink-0 items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring", activeSection === id ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground")}>
+            className={cn("inline-flex shrink-0 items-center gap-2 border-b-2 px-3 py-3 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring", activeSection === id ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground")}>
             <Icon className="h-4 w-4" />{label}
+            {invalidSection === id && <span aria-label="энд засах зүйл байна" className="h-2 w-2 rounded-full bg-destructive" />}
           </button>
         ))}
       </div>
-      <div role="tabpanel" id="trip-editor-panel" aria-labelledby={`trip-tab-${activeSection}`} className="min-w-0 space-y-8">
+      <div role="tabpanel" id="trip-editor-panel" aria-labelledby={`trip-tab-${activeSection}`} className="flex min-w-0 flex-col gap-8 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
       <Section title="Үндсэн мэдээлэл" hidden={activeSection !== "facts"}>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
@@ -866,12 +981,13 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
             <StringListField label="Очих газрууд" values={form.destinations} onChange={(v) => set("destinations", v)} placeholder="ж: Токио" />
           </div>
           <div>
-            <Label htmlFor="trip-days">Хоног</Label>
-            <Input id="trip-days" type="number" min={1} value={form.durationDays} onChange={(e) => set("durationDays", e.target.value)} />
+            <Label htmlFor="trip-days">Хэдэн өдөр</Label>
+            <Input id="trip-days" type="number" min={1} value={form.durationDays} onChange={(e) => setDays(e.target.value)} />
           </div>
           <div>
-            <Label htmlFor="trip-nights">Шөнө</Label>
+            <Label htmlFor="trip-nights">Хэдэн шөнө</Label>
             <Input id="trip-nights" type="number" min={0} value={form.durationNights} onChange={(e) => set("durationNights", e.target.value)} />
+            <p className="mt-1 text-xs text-muted-foreground">Өдрөөс нэгээр бага байхаар өөрөө бөглөгдөнө. Өөр бол засна уу.</p>
           </div>
         </div>
       </Section>
@@ -965,7 +1081,10 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
           adultPriceMissing={missingField === "price"}
           onChange={(sourceMetadata, departures) => {
             setForm((current) => ({ ...current, sourceMetadata, departures }));
-            setMissingField((current) => (current === "price" ? null : current));
+            if (missingField === "price") {
+              setMissingField(null);
+              setInvalidSection(null);
+            }
           }}
         />
         <details className="mt-6 border-t border-border pt-3">
@@ -1109,16 +1228,21 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
       )}
 
       <Section title="Нийтлэх" hidden={activeSection !== "publishing"}>
-        <div className="grid divide-y divide-border">
-          <label className="flex items-center justify-between gap-4 py-4 text-sm font-medium">
-            Онцлох аялал
-            <input type="checkbox" checked={form.isFeatured} onChange={(e) => set("isFeatured", e.target.checked)} className="h-4 w-4 rounded border-input" />
-          </label>
-          <label className="flex items-center justify-between gap-4 py-4 text-sm font-medium">
-            Нийтэд харагдана
-            <input type="checkbox" checked={form.isPublished} onChange={(e) => set("isPublished", e.target.checked)} className="h-4 w-4 rounded border-input" />
-          </label>
+        <div className="grid max-w-2xl divide-y divide-border">
+          <SwitchField
+            label="Сайтад харагдана"
+            description="Асаалттай үед аялал сайт дээр гарч, хүсэлт, захиалга авна. Унтраавал ноорог болж зөвхөн энд харагдана."
+            checked={form.isPublished}
+            onCheckedChange={(checked) => set("isPublished", checked)}
+          />
+          <SwitchField
+            label="Онцлох аялал"
+            description="Нүүр хуудасны онцлох аяллын хэсэгт гарна."
+            checked={form.isFeatured}
+            onCheckedChange={(checked) => set("isFeatured", checked)}
+          />
         </div>
+        <p className="mt-3 text-xs text-muted-foreground">Өөрчлөлт доорх «Хадгалах» товчийг дарсны дараа сайтад гарна.</p>
       </Section>
       <Section title="Аяллын холбоос" hidden={activeSection !== "publishing"}>
         {form.slug && <a href={`/${locale}/trips/${encodeURIComponent(form.slug)}`} target="_blank" rel="noopener noreferrer" className="inline-flex max-w-full items-start gap-2 text-sm text-primary hover:underline">
@@ -1139,39 +1263,45 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
         {form.sourceTripId && <details className="mt-5 border-t border-border pt-3"><summary className="cursor-pointer text-sm text-muted-foreground">Техникийн мэдээлэл</summary><p className="mt-3 break-all font-mono text-xs text-muted-foreground">Chatbot ID: {form.sourceTripId}</p></details>}
       </Section>
       </div>
-      <div className="sticky bottom-0 z-30 flex items-center justify-between gap-2 border-t border-border bg-background py-3">
-        <div>
+      <div className="sticky bottom-0 z-30 -mx-4 flex flex-wrap items-center justify-between gap-2 border-t border-border bg-card/95 px-4 py-3 shadow-[0_-4px_12px_-8px_rgba(0,0,0,0.15)] backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <div className="flex items-center gap-3">
           {mode === "edit" && (
             <Button
               type="button"
               variant="ghost"
               onClick={deleteTrip}
               disabled={deleteMutation.isPending || saveMutation.isPending}
-              aria-label="Аяллыг архивлах"
-              title="Аяллыг архивлах"
-              className="gap-1.5 px-2 text-muted-foreground hover:text-destructive"
+              title="Сайтаас нууж архивлах (түүх нь хадгалагдана)"
+              className="gap-1.5 px-2.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
             >
               {deleteMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Archive className="h-4 w-4" />
               )}
-              <span className="hidden sm:inline">Архивлах</span>
+              Архивлах
             </Button>
           )}
+          {isDirty && (
+            <span className="hidden items-center gap-1.5 text-sm font-medium text-amber-800 dark:text-amber-300 md:inline-flex">
+              <span aria-hidden="true" className="h-2 w-2 rounded-full bg-amber-500" />
+              Хадгалаагүй өөрчлөлт байна
+            </span>
+          )}
         </div>
-        <div className="flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => { if (!isDirty || window.confirm("Хадгалаагүй өөрчлөлтөө орхих уу?")) router.push(`/${locale}/admin/trips`); }}
-            disabled={deleteMutation.isPending}
-          >
-            Цуцлах
+        <div className="ml-auto flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={leave} disabled={deleteMutation.isPending}>
+            <span className="sm:hidden">Буцах</span>
+            <span className="hidden sm:inline">{isDirty ? "Хадгалахгүй гарах" : "Жагсаалт руу буцах"}</span>
           </Button>
-          <Button type="submit" disabled={saveMutation.isPending || deleteMutation.isPending || !isDirty} className="gap-1.5">
+          <Button
+            type="submit"
+            disabled={saveMutation.isPending || deleteMutation.isPending || !isDirty}
+            title={!isDirty ? "Өөрчлөлт хийгээгүй байна" : undefined}
+            className="gap-1.5"
+          >
             {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {mode === "create" ? "Аялал үүсгэх" : "Хадгалах"}
+            {saveMutation.isPending ? "Хадгалж байна…" : mode === "create" ? "Аялал үүсгэх" : "Хадгалах"}
           </Button>
         </div>
       </div>
@@ -1280,8 +1410,8 @@ function PassengerPriceEditor({
 
 function Section({ title, children, hidden }: { title: string; children: React.ReactNode; hidden?: boolean }) {
   return (
-    <section hidden={hidden} className="min-w-0 border-t border-border pt-5 first:border-t-0 first:pt-0">
-      <h2 className="mb-4 text-base font-semibold">{title}</h2>
+    <section hidden={hidden} className="min-w-0">
+      <h2 className="mb-4 border-b border-border pb-2 text-base font-semibold">{title}</h2>
       {children}
     </section>
   );

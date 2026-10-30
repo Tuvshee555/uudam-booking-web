@@ -6,6 +6,23 @@ type Ctx = { params: Promise<{ id: string }> };
 
 const STATUSES = new Set(["NEW", "CONTACTED", "CONFIRMED", "COMPLETED", "CANCELLED"]);
 
+const DETAIL_INCLUDE = {
+  trip: { select: { id: true, slug: true, title: true, image: true } },
+  departure: { select: { id: true, startDate: true, label: true } },
+  handledBy: { select: { id: true, firstName: true, lastName: true, email: true } },
+} as const;
+
+/** GET /api/enquiries/:id — one lead in full, for a link straight to it. */
+export const GET = handler(async (req: Request, ctx: Ctx) => {
+  await requireAdmin(req);
+  const { id } = await ctx.params;
+
+  const enquiry = await prisma.enquiry.findUnique({ where: { id }, include: DETAIL_INCLUDE });
+  if (!enquiry) throw httpError(404, "Хүсэлт олдсонгүй");
+
+  return json(enquiry);
+});
+
 /** PATCH /api/enquiries/:id — staff move it through the queue. */
 export const PATCH = handler(async (req: Request, ctx: Ctx) => {
   const admin = await requireAdmin(req);
@@ -42,11 +59,7 @@ export const PATCH = handler(async (req: Request, ctx: Ctx) => {
         ? { handledById: admin.id }
         : {}),
     },
-    include: {
-      trip: { select: { id: true, slug: true, title: true, image: true } },
-      departure: { select: { id: true, startDate: true, label: true } },
-      handledBy: { select: { id: true, firstName: true, email: true } },
-    },
+    include: DETAIL_INCLUDE,
   });
 
   return json(enquiry);

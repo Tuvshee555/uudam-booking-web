@@ -51,23 +51,24 @@ export default function ImageUploadField({
         {required && <span className="text-destructive"> *</span>}
       </Label>
 
-      <div className="flex gap-2">
+      <div className="mt-1.5 flex gap-2">
         <Input
           aria-label={`${label} холбоос`}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="https://…"
+          placeholder="Холбоос буулгах (https://…) эсвэл файл сонгоно уу"
           className={badHost ? "border-destructive" : undefined}
         />
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
-          title="Байршуулах"
-          aria-label={`${label} байршуулах`}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-input text-sm font-medium hover:bg-secondary disabled:opacity-50"
+          title={resourceType === "video" ? "Компьютер эсвэл утаснаасаа бичлэг сонгох" : "Компьютер эсвэл утаснаасаа зураг сонгох"}
+          aria-label={`${label}: файл сонгож байршуулах`}
+          className="flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-secondary disabled:opacity-50"
         >
           {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+          <span className="hidden sm:inline">{uploading ? "Байршуулж байна…" : "Файл сонгох"}</span>
         </button>
         <input
           ref={fileRef}
@@ -104,7 +105,8 @@ export default function ImageUploadField({
             type="button"
             onClick={() => onChange("")}
             className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
-            aria-label="Устгах"
+            aria-label="Зургийг хасах"
+            title="Зургийг хасах"
           >
             <X className="h-3 w-3" />
           </button>
@@ -116,8 +118,8 @@ export default function ImageUploadField({
           {/* #t=0.1 forces a frame to paint as a poster — otherwise this is
               a black box that reads as "no preview", not a video. */}
           <video src={`${value}#t=0.1`} preload="metadata" className="h-16 w-28 rounded-lg border border-border object-cover" muted />
-          <button type="button" onClick={() => onChange("")} className="hover:text-destructive">
-            Устгах
+          <button type="button" onClick={() => onChange("")} className="rounded px-1.5 py-1 font-medium hover:bg-destructive/10 hover:text-destructive">
+            Бичлэгийг хасах
           </button>
         </div>
       )}

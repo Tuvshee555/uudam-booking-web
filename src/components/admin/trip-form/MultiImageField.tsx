@@ -60,12 +60,13 @@ export default function MultiImageField({
   return (
     <div>
       <Label>{label}</Label>
+      {values.length > 0 && <span className="ml-2 text-xs text-muted-foreground">{values.length} ширхэг</span>}
 
-      <div className="flex gap-2">
+      <div className="mt-1.5 flex gap-2">
         <Input
           aria-label={`${label} холбоос`}
           value={draft}
-          placeholder="https://…"
+          placeholder="Холбоос буулгах (https://…)"
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -77,22 +78,24 @@ export default function MultiImageField({
         <button
           type="button"
           onClick={addUrl}
-          aria-label={`${label} нэмэх`}
-          title="Нэмэх"
+          aria-label={`${label}: холбоос нэмэх`}
+          title="Буулгасан холбоосыг нэмэх"
           disabled={!draft.trim()}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-input hover:bg-secondary disabled:opacity-40"
+          className="flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-secondary disabled:opacity-40"
         >
           <Plus className="h-4 w-4" />
+          <span className="hidden sm:inline">Нэмэх</span>
         </button>
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
-          aria-label={`${label} байршуулах`}
-          title="Байршуулах"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-input hover:bg-secondary disabled:opacity-50"
+          aria-label={`${label}: файл сонгож байршуулах`}
+          title="Компьютер эсвэл утаснаасаа файл сонгох (олныг зэрэг сонгож болно)"
+          className="flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-secondary disabled:opacity-50"
         >
           {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+          <span className="hidden sm:inline">{uploading ? "Байршуулж байна…" : "Файл сонгох"}</span>
         </button>
         <input
           ref={fileRef}
@@ -124,7 +127,8 @@ export default function MultiImageField({
                 type="button"
                 onClick={() => onChange(values.filter((_, i) => i !== index))}
                 className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
-                aria-label="Устгах"
+                aria-label="Хасах"
+                title="Хасах"
               >
                 <X className="h-3 w-3" />
               </button>

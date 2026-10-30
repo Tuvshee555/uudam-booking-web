@@ -1,15 +1,5 @@
-.content :global(h1) {
-  font-size: 1.625rem;
-  line-height: 2rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-}
-
-.content :global(.rounded-2xl),
-.content :global(.rounded-xl) {
-  border-radius: 8px;
-}
-
+/* Long Mongolian words and pasted links must wrap inside admin forms instead
+   of pushing the page wider than the screen. */
 .content :global(input),
 .content :global(textarea),
 .content :global(select) {
@@ -18,4 +8,8 @@
 
 .content :global(label) {
   overflow-wrap: anywhere;
+}
+
+.content:focus {
+  outline: none;
 }

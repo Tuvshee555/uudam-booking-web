@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
+import { useConfirm } from "@/components/admin/ui";
 import ImageUploadField from "./ImageUploadField";
 
 export type ItineraryDraft = {
@@ -59,6 +60,7 @@ export default function ItineraryEditor({
   // is nothing to survey yet and the alternative is an empty-looking editor.
   const [openIndex, setOpenIndex] = useState<number | null>(0);
   const reduceMotion = useReducedMotion();
+  const confirm = useConfirm();
 
   function update(index: number, patch: Partial<ItineraryDraft>) {
     onChange(days.map((day, i) => (i === index ? { ...day, ...patch } : day)));
@@ -176,9 +178,15 @@ export default function ItineraryEditor({
                 </button>
                 <button
                   type="button"
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.stopPropagation();
-                    if (window.confirm(`${index + 1} дэх өдрийг устгах уу?`)) remove(index);
+                    const ok = await confirm({
+                      title: `${index + 1} дэх өдрийг хасах уу?`,
+                      description: `${day.title ? `«${day.title}» — ` : ""}энэ өдрийн хөтөлбөр жагсаалтаас хасагдана. «Хадгалах» дарах хүртэл сайтад өөрчлөгдөхгүй.`,
+                      confirmLabel: "Хасах",
+                      tone: "danger",
+                    });
+                    if (ok) remove(index);
                   }}
                   title="Устгах"
                   aria-label="Өдөр устгах"

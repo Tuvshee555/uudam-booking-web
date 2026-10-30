@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CalendarDatePicker, ExactSeatsOverride, STATUS_OPTIONS, EMPTY_DEPARTURE, type DepartureDraft } from "./DepartureEditor";
 import { cn } from "@/lib/utils";
+import { useConfirm } from "@/components/admin/ui";
 
 type Props = {
   metadata: Record<string, unknown>;
@@ -26,6 +27,7 @@ const infant = (row: PricingGroup) => /нярай|infant|сар|month|\b0\s*[-�
 export default function DatePricingEditor({ metadata, departures, defaultPrice, defaultRows, adultPriceMissing, onChange }: Props) {
   const [selection, setSelection] = useState("");
   const [search, setSearch] = useState("");
+  const confirm = useConfirm();
   // An unset base price is stored as 0; copied onto each date it printed "0"
   // as if the date already had a price. No adult fare is ever 0.
   const basePrice = fare(defaultPrice) || null;
@@ -79,8 +81,13 @@ export default function DatePricingEditor({ metadata, departures, defaultPrice, 
   // Other dates of the same package/hotel option: what "apply to all" reaches.
   const otherDates = sameOptionDates(groups, group).filter((date) => date !== selected.date);
 
-  function applyToAll() {
-    if (!window.confirm(`Энэ огнооны үнийг (том хүн ${formatMnt(typeof group.adult_price === "number" ? group.adult_price : null)}) бусад ${otherDates.length} огноонд хэрэглэх үү?`)) return;
+  async function applyToAll() {
+    const ok = await confirm({
+      title: `Энэ үнийг бусад ${otherDates.length} огноонд хэрэглэх үү?`,
+      description: `Том хүн ${formatMnt(typeof group.adult_price === "number" ? group.adult_price : null)}, мөн хүүхэд, нярайн үнэ ижил багц/буудлын бусад огноонд хуулагдана. Тэдгээр огнооны одоогийн үнэ солигдоно.`,
+      confirmLabel: "Хэрэглэх",
+    });
+    if (!ok) return;
     const child = passengers.find((row) => !infant(row));
     const baby = passengers.find(infant);
     const nextGroups = applyFaresToSameOption(groups, group, {
@@ -133,8 +140,14 @@ export default function DatePricingEditor({ metadata, departures, defaultPrice, 
     <div className="min-w-0" aria-label="Сонгосон гаралтын үнэ">
       <div className="mb-4 flex items-center justify-between gap-3 border-b border-border pb-3">
         <div><h3 className="text-base font-semibold">{selected.date || "Үндсэн үнэ"}</h3><p className="text-xs text-muted-foreground">{String(group.package_id || group.note || "")}{group.hotel ? ` · ${group.hotel}` : ""}</p></div>
-        {selected.date && <Button type="button" variant="ghost" size="icon" title="Гаралт хасах" aria-label="Сонгосон гаралт хасах" onClick={() => {
-          if (!window.confirm(`${selected.date} гаралтыг хасах уу?`)) return;
+        {selected.date && <Button type="button" variant="ghost" size="sm" title="Энэ огноог хасах" aria-label="Сонгосон гаралт хасах" className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={async () => {
+          const ok = await confirm({
+            title: `${selected.date} огноог хасах уу?`,
+            description: "Энэ гарах огноо, түүний үнэ жагсаалтаас хасагдана. «Хадгалах» дарах хүртэл сайтад өөрчлөгдөхгүй.",
+            confirmLabel: "Огноог хасах",
+            tone: "danger",
+          });
+          if (!ok) return;
           const next = groups.flatMap((value) => {
             const dates = pricingDates(value);
             if (!dates.includes(selected.date)) return [value];
@@ -143,7 +156,7 @@ export default function DatePricingEditor({ metadata, departures, defaultPrice, 
           });
           setSelection("");
           onChange({ ...metadata, price_groups: next }, departures.filter((dep) => dep.startDate !== selected.date));
-        }}><Trash2 className="h-4 w-4" /></Button>}
+        }}><Trash2 className="h-4 w-4" />Хасах</Button>}
       </div>
       <div className="border-b border-border py-3">
         <div className="flex items-center justify-between gap-4">

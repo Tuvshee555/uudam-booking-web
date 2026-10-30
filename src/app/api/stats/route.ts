@@ -48,6 +48,8 @@ export const GET = handler(async (req: Request) => {
         lastName: true,
         phone: true,
         status: true,
+        kind: true,
+        destination: true,
         adults: true,
         children: true,
         infants: true,
@@ -67,7 +69,7 @@ export const GET = handler(async (req: Request) => {
         seatsLeft: true,
         seatsTotal: true,
         status: true,
-        trip: { select: { id: true, title: true, image: true } },
+        trip: { select: { id: true, title: true, image: true, isPublished: true } },
       },
     }),
 

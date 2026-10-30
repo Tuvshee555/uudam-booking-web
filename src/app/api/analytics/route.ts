@@ -1,6 +1,7 @@
 import { prisma } from "@/server/prisma";
 import { requireAdmin } from "@/server/auth";
 import { handler, json, parsePositiveInt } from "@/server/http";
+import { departureDateKey } from "@/lib/departureDate";
 
 /**
  * GET /api/analytics?days=30 — traffic and conversion.
@@ -182,7 +183,9 @@ export const GET = handler(async (req: Request) => {
 
   const dailyMap = new Map<string, { views: number; visitors: Set<string> }>();
   for (const row of dailyRows) {
-    const key = new Date(row.createdAt).toISOString().slice(0, 10);
+    // Ulaanbaatar calendar day, not UTC: a 07:00 visit belongs to that morning,
+    // not to the evening before.
+    const key = departureDateKey(row.createdAt);
     const entry = dailyMap.get(key) ?? { views: 0, visitors: new Set<string>() };
     entry.views += 1;
     entry.visitors.add(row.visitorId);

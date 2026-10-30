@@ -1,5 +1,5 @@
 import { after } from "next/server";
-import { Prisma } from "@prisma/client";
+import { Prisma, type BookingStatus } from "@prisma/client";
 
 import { prisma } from "@/server/prisma";
 import { requireAdmin } from "@/server/auth";
@@ -32,6 +32,16 @@ function count(value: unknown, fallback = 0) {
   return Math.min(parsed, 99);
 }
 
+const BOOKING_STATUSES = new Set<string>([
+  "HELD",
+  "PENDING_PAYMENT",
+  "PARTIALLY_PAID",
+  "CONFIRMED",
+  "COMPLETED",
+  "CANCELLED",
+  "EXPIRED",
+]);
+
 /** GET /api/bookings — staff list. */
 export const GET = handler(async (req: Request) => {
   await requireAdmin(req);
@@ -40,10 +50,34 @@ export const GET = handler(async (req: Request) => {
   // out is relabelled before staff see it.
   await expireStaleHolds();
 
-  const status = new URL(req.url).searchParams.get("status");
+  const url = new URL(req.url);
+  // One status, or several comma-separated ("HELD,PENDING_PAYMENT,PARTIALLY_PAID"
+  // is the admin's "waiting for payment" view). Unknown names are ignored rather
+  // than handed to Prisma, which would fail the whole request.
+  const statuses = (url.searchParams.get("status") ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value): value is BookingStatus => BOOKING_STATUSES.has(value));
+  // Staff match a bank transfer by the reference the customer wrote on it, or
+  // look someone up by the phone number they are calling from.
+  const search = safeText(url.searchParams.get("search"), 80);
+  const phoneDigits = search && /^[\d\s+()-]+$/.test(search) ? search.replace(/[^\d+]/g, "") : "";
 
   const bookings = await prisma.booking.findMany({
-    where: status ? { status: status as never } : {},
+    where: {
+      ...(statuses.length ? { status: { in: statuses } } : {}),
+      ...(search
+        ? {
+            OR: [
+              { reference: { contains: search, mode: "insensitive" as const } },
+              ...(phoneDigits.length >= 3 ? [{ phone: { contains: phoneDigits } }] : []),
+              { firstName: { contains: search, mode: "insensitive" as const } },
+              { lastName: { contains: search, mode: "insensitive" as const } },
+              { email: { contains: search, mode: "insensitive" as const } },
+            ],
+          }
+        : {}),
+    },
     orderBy: { createdAt: "desc" },
     take: 200,
     include: {
@@ -51,6 +85,7 @@ export const GET = handler(async (req: Request) => {
       departure: { select: { id: true, startDate: true, endDate: true } },
       payments: { orderBy: { createdAt: "asc" } },
       travelers: true,
+      handledBy: { select: { id: true, firstName: true, lastName: true, email: true } },
     },
   });
 

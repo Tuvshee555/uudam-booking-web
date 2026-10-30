@@ -32,12 +32,13 @@ export default function StringListField({
   return (
     <div>
       <Label>{label}</Label>
+      {values.length > 0 && <span className="ml-2 text-xs text-muted-foreground">{values.length} мөр</span>}
       {hint && <p className="mb-1.5 mt-1 text-xs text-muted-foreground">{hint}</p>}
-      <div className="flex gap-2">
+      <div className="mt-1.5 flex gap-2">
         <Input
           aria-label={label}
           value={draft}
-          placeholder={placeholder}
+          placeholder={placeholder ?? "Бичээд Enter дарна уу"}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -50,11 +51,12 @@ export default function StringListField({
           type="button"
           onClick={add}
           disabled={!draft.trim()}
-          title="Нэмэх"
-          aria-label={`${label} нэмэх`}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-input hover:bg-secondary disabled:opacity-40"
+          title="Жагсаалтад нэмэх (Enter)"
+          aria-label={`${label}: нэмэх`}
+          className="flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-secondary disabled:opacity-40"
         >
           <Plus className="h-4 w-4" />
+          <span className="hidden sm:inline">Нэмэх</span>
         </button>
       </div>
 

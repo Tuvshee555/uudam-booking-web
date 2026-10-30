@@ -200,22 +200,35 @@ export const GET = handler(async (req: Request) => {
   const page = parsePositiveInt(url.searchParams.get("page"), 1, 100_000);
   const limit = parsePositiveInt(url.searchParams.get("limit"), 25, 100);
   const status = url.searchParams.get("status");
+  const kind = url.searchParams.get("kind");
   const search = (url.searchParams.get("search") ?? "").trim();
+  // Oldest first answers "who has waited longest for a call"; newest first is the default.
+  const order = url.searchParams.get("order") === "asc" ? "asc" : "desc";
 
   const VALID_STATUSES = new Set(["NEW", "CONTACTED", "CONFIRMED", "COMPLETED", "CANCELLED"]);
   if (status && status !== "ALL" && !VALID_STATUSES.has(status)) {
     throw httpError(400, "Статус буруу байна");
   }
 
+  const VALID_KINDS = new Set(["TRIP", "CUSTOM", "GIFT"]);
+  if (kind && kind !== "ALL" && !VALID_KINDS.has(kind)) {
+    throw httpError(400, "Хүсэлтийн төрөл буруу байна");
+  }
+
   const where: Prisma.EnquiryWhereInput = {
     ...(status && status !== "ALL"
       ? { status: status as Prisma.EnumEnquiryStatusFilter["equals"] }
       : {}),
+    ...(kind && kind !== "ALL" ? { kind: kind as EnquiryKind } : {}),
     ...(search
       ? {
           OR: [
             { reference: { contains: search, mode: "insensitive" } },
             { phone: { contains: search } },
+            // Phones are stored without spaces or dashes; "9911 2233" should still find "99112233".
+            ...(/^[\d\s+()-]+$/.test(search) && search.replace(/[^\d+]/g, "").length >= 3
+              ? [{ phone: { contains: search.replace(/[^\d+]/g, "") } }]
+              : []),
             { firstName: { contains: search, mode: "insensitive" } },
             { lastName: { contains: search, mode: "insensitive" } },
           ],
@@ -227,12 +240,13 @@ export const GET = handler(async (req: Request) => {
     prisma.enquiry.count({ where }),
     prisma.enquiry.findMany({
       where,
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: order },
       skip: (page - 1) * limit,
       take: limit,
       include: {
         trip: { select: { id: true, slug: true, title: true, image: true } },
         departure: { select: { id: true, startDate: true, label: true } },
+        handledBy: { select: { id: true, firstName: true, lastName: true, email: true } },
       },
     }),
     prisma.enquiry.count({ where: { status: "NEW" } }),

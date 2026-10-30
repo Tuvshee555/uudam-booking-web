@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Loader2, Lock } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Loader2, Lock } from "lucide-react";
 
 import { api, apiErrorMessage } from "@/lib/api";
 import { useAuth } from "@/app/[locale]/provider/AuthProvider";
@@ -28,14 +28,17 @@ export default function AdminLoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
 
     if (!email.trim() || !password) {
-      toast.error("И-мэйл болон нууц үгээ оруулна уу");
+      setError("И-мэйл болон нууц үгээ оруулна уу");
       return;
     }
+    setError(null);
 
     setBusy(true);
     try {
@@ -56,7 +59,9 @@ export default function AdminLoginForm() {
 
       router.replace(target);
     } catch (err) {
-      toast.error(apiErrorMessage(err, "Нэвтрэх боломжгүй"));
+      const message = apiErrorMessage(err, "Нэвтрэх боломжгүй");
+      setError(message);
+      toast.error(message);
     } finally {
       setBusy(false);
     }
@@ -74,14 +79,15 @@ export default function AdminLoginForm() {
             className="rounded-xl"
             priority
           />
-          <h1 className="mt-4 text-xl font-bold">Админ хэсэг</h1>
+          <h1 className="mt-4 text-xl font-bold">Удирдлагын хэсэгт нэвтрэх</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Зөвхөн ажилтны эрхээр нэвтэрнэ
+            Зөвхөн Uudam-ын ажилтнуудад зориулсан
           </p>
         </div>
 
         <form
           onSubmit={submit}
+          noValidate
           className="space-y-4 rounded-2xl border border-border bg-card p-6 shadow-sm"
         >
           <div>
@@ -105,14 +111,32 @@ export default function AdminLoginForm() {
                 Мартсан уу?
               </Link>
             </div>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((value) => !value)}
+                aria-label={showPassword ? "Нууц үгийг нуух" : "Нууц үгийг харуулах"}
+                title={showPassword ? "Нууц үгийг нуух" : "Нууц үгийг харуулах"}
+                className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
+
+          {error && (
+            <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </p>
+          )}
 
           <Button type="submit" disabled={busy} className="w-full">
             {busy ? (
@@ -123,6 +147,14 @@ export default function AdminLoginForm() {
             Нэвтрэх
           </Button>
         </form>
+
+        <Link
+          href={`/${locale}`}
+          className="mx-auto mt-5 flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Сайт руу буцах
+        </Link>
       </div>
     </div>
   );
