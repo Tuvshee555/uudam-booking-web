@@ -840,7 +840,13 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
     <form onSubmit={submit} className="min-w-0 space-y-4">
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm shadow-sm">
         <StatusBadge tone={form.isPublished ? "success" : "neutral"}>
-          {form.isPublished ? "Сайтад харагдана" : "Ноорог — сайтад харагдахгүй"}
+          {mode === "create"
+            ? form.isPublished
+              ? "Үнэ, зурагтай бол хадгалмагц сайтад гарна"
+              : "Ноорог болж хадгалагдана"
+            : form.isPublished
+              ? "Сайтад харагдана"
+              : "Ноорог — сайтад харагдахгүй"}
         </StatusBadge>
         {form.isFeatured && <StatusBadge tone="brand">Онцлох</StatusBadge>}
         {mode === "edit" && form.slug && existingTrip?.isPublished && (
