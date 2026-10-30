@@ -79,19 +79,26 @@ export function useCategories(parentId?: string) {
   });
 }
 
+/**
+ * `admin: true` reads past the server and browser caches (the API checks the
+ * caller is staff), so admin screens see their own edits at once.
+ */
 export function useCategoryTree(
   initialData?: CategoryNode[],
-  options?: { refetchOnMount?: boolean | "always" },
+  options?: { refetchOnMount?: boolean | "always"; admin?: boolean },
 ) {
+  const { admin, ...queryOptions } = options ?? {};
   return useQuery<CategoryNode[]>({
-    queryKey: ["categories", "tree"],
+    queryKey: admin ? ["categories", "tree", "admin"] : ["categories", "tree"],
     queryFn: async () => {
-      const { data } = await api.get<CategoryNode[]>("/categories/tree");
+      const { data } = await api.get<CategoryNode[]>("/categories/tree", {
+        params: admin ? { all: "true" } : undefined,
+      });
       return data;
     },
     initialData,
-    staleTime: 5 * 60_000,
-    ...options,
+    staleTime: admin ? 0 : 5 * 60_000,
+    ...queryOptions,
   });
 }
 
@@ -147,14 +154,16 @@ export function useSiteSettings(initialData?: {
 export type FlatTag = { id: string; name: string; slug: string; tripCount: number };
 
 /** Free-form trip labels staff create themselves. Starts empty. */
-export function useTags() {
+export function useTags(options?: { admin?: boolean }) {
+  const admin = options?.admin ?? false;
   return useQuery<FlatTag[]>({
-    queryKey: ["tags"],
+    queryKey: admin ? ["tags", "admin"] : ["tags"],
     queryFn: async () => {
-      const { data } = await api.get<FlatTag[]>("/tags");
+      const { data } = await api.get<FlatTag[]>("/tags", { params: admin ? { all: "true" } : undefined });
       return data;
     },
-    staleTime: 5 * 60_000,
+    staleTime: admin ? 0 : 5 * 60_000,
+    ...(admin ? { refetchOnMount: true } : {}),
   });
 }
 
@@ -167,13 +176,15 @@ export type PriceBand = {
 };
 
 /** Admin-authored price ranges, e.g. "0–1 сая". */
-export function usePriceBands() {
+export function usePriceBands(options?: { admin?: boolean }) {
+  const admin = options?.admin ?? false;
   return useQuery<PriceBand[]>({
-    queryKey: ["priceBands"],
+    queryKey: admin ? ["priceBands", "admin"] : ["priceBands"],
     queryFn: async () => {
-      const { data } = await api.get<PriceBand[]>("/price-bands");
+      const { data } = await api.get<PriceBand[]>("/price-bands", { params: admin ? { all: "true" } : undefined });
       return data;
     },
-    staleTime: 5 * 60_000,
+    staleTime: admin ? 0 : 5 * 60_000,
+    ...(admin ? { refetchOnMount: true } : {}),
   });
 }

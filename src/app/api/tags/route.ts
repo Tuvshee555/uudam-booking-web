@@ -37,7 +37,13 @@ async function uniqueTagSlug(base: string) {
   }
 }
 
-export const GET = handler(async () => {
+/** `?all=true`: the admin's uncached read, so an edit shows up immediately. */
+export const GET = handler(async (req: Request) => {
+  if (new URL(req.url).searchParams.get("all") === "true") {
+    await requireAdmin(req);
+    return json(await listTags());
+  }
+
   const result = await cached("tags:list", 30_000, listTags);
   return publicCache(NextResponse.json(result));
 });

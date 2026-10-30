@@ -27,7 +27,13 @@ async function listBands() {
   return bands.map(toDto);
 }
 
-export const GET = handler(async () => {
+/** `?all=true`: the admin's uncached read, so an edit shows up immediately. */
+export const GET = handler(async (req: Request) => {
+  if (new URL(req.url).searchParams.get("all") === "true") {
+    await requireAdmin(req);
+    return json(await listBands());
+  }
+
   const result = await cached("priceBands:list", 30_000, listBands);
   return publicCache(NextResponse.json(result));
 });
