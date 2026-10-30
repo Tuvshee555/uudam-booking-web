@@ -83,7 +83,7 @@ export const PUT = handler(async (req: Request) => {
     body.trustFacts === undefined ? undefined : (parseTrustFacts(body.trustFacts) ?? Prisma.JsonNull);
   const trustPhoneText = safeText(body.trustPhoneText, 300);
 
-  const data = {
+  const fields = {
     tripNotice,
     bankDetails,
     aboutHeroTitle,
@@ -108,6 +108,14 @@ export const PUT = handler(async (req: Request) => {
     trustFacts,
     trustPhoneText,
   };
+
+  // Only what the request actually sent is written. A field the caller left
+  // out used to be saved as null — the settings page never sent bankDetails,
+  // so every save there erased the bank transfer instructions customers see
+  // after booking. An explicit null or empty string still clears a field.
+  const data = Object.fromEntries(
+    Object.entries(fields).filter(([key]) => (body as Record<string, unknown>)[key] !== undefined),
+  ) as Partial<typeof fields>;
 
   const row = await prisma.siteSettings.upsert({
     where: { id: "default" },

@@ -68,8 +68,10 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
       ...(title ? { title } : {}),
       ...(text ? { body: text } : {}),
       ...(slug ? { slug } : {}),
-      excerpt: safeText(body.excerpt, 500),
-      coverImage: safeText(body.coverImage, 500),
+      // Absent means "leave as is": the list's publish switch sends only
+      // isPublished, and used to wipe the excerpt and cover image every time.
+      ...(body.excerpt === undefined ? {} : { excerpt: safeText(body.excerpt, 500) }),
+      ...(body.coverImage === undefined ? {} : { coverImage: safeText(body.coverImage, 500) }),
       ...(isPublished === undefined ? {} : { isPublished }),
       // Stamp publishedAt the first time it goes live and never move it after,
       // so editing a published article doesn't jump it back to the top.

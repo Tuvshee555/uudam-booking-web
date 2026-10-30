@@ -75,12 +75,14 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
     where: { id },
     data: {
       ...(title ? { title } : {}),
-      body: text,
+      // Absent means "leave as is": the list's publish switch sends only
+      // isPublished, and used to wipe the text, excerpt, cover and video.
+      ...(body.body === undefined ? {} : { body: text }),
       ...(facts === undefined ? {} : { facts }),
       ...(slug ? { slug } : {}),
-      excerpt: safeText(body.excerpt, 500),
-      coverImage: safeText(body.coverImage, 500),
-      video: safeText(body.video, 500),
+      ...(body.excerpt === undefined ? {} : { excerpt: safeText(body.excerpt, 500) }),
+      ...(body.coverImage === undefined ? {} : { coverImage: safeText(body.coverImage, 500) }),
+      ...(body.video === undefined ? {} : { video: safeText(body.video, 500) }),
       ...(isPublished === undefined ? {} : { isPublished }),
       // Stamp publishedAt the first time it goes live and never move it after,
       // so editing a published piece doesn't jump it back to the top.
