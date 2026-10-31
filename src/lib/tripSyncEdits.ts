@@ -11,12 +11,40 @@
 type Row = Record<string, unknown>;
 const record = (value: unknown): Row => value && typeof value === "object" && !Array.isArray(value) ? value as Row : {};
 
-/** JSON copy of a trip without its own queue entry. */
+/** sourceMetadata keys the chatbot's bridge reads (websiteTripBridge.ts there). */
+const BRIDGE_METADATA = ["price_groups", "age_rules", "hotel_profiles", "hotel_links", "canonicalExtraPatch"];
+/** Fields of the chatbot's own source snapshot the bridge uses as a baseline. */
+const SOURCE_FIELDS = ["id", "operator_name", "route_name", "duration_text", "adult_price", "child_price", "infant_price", "currency", "departure_dates", "has_food", "status", "notes", "hotel", "photo_urls"];
+const SOURCE_EXTRA = ["website_summary", "included_items", "excluded_items", "important_notes", "departure_rule", "itinerary_days", "customer_visible", "price_groups", "age_rules", "hotel_profiles", "hotel_links",
+  "aliases", "booking_terms", "discounts", "extra_fees", "room_prices", "answer_hints", "review_reasons", "needs_human_review", "transport_type", "destinations"];
+
+/**
+ * Only what the chatbot reads. A full copy carried the chatbot's own derived
+ * data back to it (canonicalOffers, conflicts, the whole poster): 726 KB per
+ * snapshot on the Санья trip, sent twice, so every delivery was refused as
+ * too large (HTTP 413) and the 2026-10-26 edit never arrived.
+ */
+export function bridgeMetadata(value: unknown): Row {
+  const metadata = record(value);
+  const slim: Row = {};
+  for (const key of BRIDGE_METADATA) if (key in metadata) slim[key] = metadata[key];
+  const source = record(metadata.connectedSource);
+  if (Object.keys(source).length) {
+    const extra = record(source.extra);
+    const subtitle = record(source.poster).subtitle;
+    slim.connectedSource = {
+      ...Object.fromEntries(SOURCE_FIELDS.filter((key) => key in source).map((key) => [key, source[key]])),
+      extra: Object.fromEntries(SOURCE_EXTRA.filter((key) => key in extra).map((key) => [key, extra[key]])),
+      ...(subtitle !== undefined ? { poster: { subtitle } } : {}),
+    };
+  }
+  return slim;
+}
+
+/** JSON copy of a trip, as the chatbot needs it, without its own queue entry. */
 export function syncSnapshot(value: unknown): Row {
   const trip = JSON.parse(JSON.stringify(value)) as Row;
-  const metadata = { ...record(trip.sourceMetadata) };
-  delete metadata.websiteSyncPending;
-  trip.sourceMetadata = metadata;
+  trip.sourceMetadata = bridgeMetadata(trip.sourceMetadata);
   return trip;
 }
 
@@ -76,7 +104,8 @@ export function foldSave(pending: Row, previous: Row, next: Row): Record<string,
 
 /** What goes over the wire: the trip, its per-field baseline and the edited field names. */
 export function deliveryPayload(pending: Row): { trip: Row; previousTrip: Row | null; changedFields?: string[] } {
-  const trip = record(pending.trip);
+  // Queue entries written before 2026-10-31 hold the full metadata.
+  const trip = { ...record(pending.trip), sourceMetadata: bridgeMetadata(record(pending.trip).sourceMetadata) };
   if (pending.created === true || (!pending.edits && !pending.previousTrip)) return { trip, previousTrip: null };
   const edits = pendingEdits(pending);
   const previousMetadata: Row = { ...record(trip.sourceMetadata) };

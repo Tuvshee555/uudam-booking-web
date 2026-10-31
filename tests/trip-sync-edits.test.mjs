@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { deliveryPayload, foldSave, pendingEdits, retryDelayMinutes, syncSnapshot } from "../src/lib/tripSyncEdits.ts";
+import { bridgeMetadata, deliveryPayload, foldSave, pendingEdits, retryDelayMinutes, syncSnapshot } from "../src/lib/tripSyncEdits.ts";
 
 const trip = (fields) => ({ id: "t1", sourceTripId: "src-1", updatedAt: "2026-10-16T06:40:00.000Z", sourceMetadata: {}, ...fields });
 
@@ -50,7 +50,22 @@ test("retries back off and stop after ten failures", () => {
   assert.deepEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(retryDelayMinutes), [1, 2, 5, 10, 30, 60, 120, 240, 480, null]);
 });
 
-test("the snapshot drops the trip's own queue entry", () => {
-  const snapshot = syncSnapshot(trip({ sourceMetadata: { websiteSyncPending: { id: "x" }, price_groups: [] } }));
-  assert.deepEqual(snapshot.sourceMetadata, { price_groups: [] });
+test("the snapshot keeps only what the chatbot reads (B1: 1.45 MB deliveries were refused with HTTP 413)", () => {
+  const big = "x".repeat(200_000);
+  const metadata = {
+    websiteSyncPending: { id: "x" }, canonicalOffers: [big], shared_conflicts: [big], contentSnapshot: { big },
+    price_groups: [{ adult_price: 1 }], age_rules: { adult: "12+" },
+    connectedSource: { id: "src-1", route_name: "Санья", notes: "", adult_price: 1, photos: [big], poster: { subtitle: "Далай", days: [big] },
+      extra: { price_groups: [{ adult_price: 1 }], included_items: ["Нислэг"], shared_conflicts: [big], canonicalOffers: [big] } },
+  };
+  const snapshot = syncSnapshot(trip({ sourceMetadata: metadata }));
+  assert.deepEqual(snapshot.sourceMetadata, {
+    price_groups: [{ adult_price: 1 }], age_rules: { adult: "12+" },
+    connectedSource: { id: "src-1", route_name: "Санья", notes: "", adult_price: 1, extra: { price_groups: [{ adult_price: 1 }], included_items: ["Нислэг"] }, poster: { subtitle: "Далай" } },
+  });
+  assert.ok(JSON.stringify(snapshot).length < 2_000);
+  // An old queue entry with the full metadata is slimmed when it is delivered.
+  const payload = deliveryPayload({ trip: trip({ sourceMetadata: metadata }), previousTrip: trip({ sourceMetadata: metadata, title: "Хуучин" }) });
+  assert.ok(JSON.stringify(payload).length < 4_000);
+  assert.deepEqual(payload.trip.sourceMetadata, bridgeMetadata(metadata));
 });
