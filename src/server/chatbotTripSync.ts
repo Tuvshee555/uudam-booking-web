@@ -86,3 +86,19 @@ export async function resolveChatbotConflict(sourceTripId: string, conflict: unk
   if (!response.ok) throw failure(response, data, "conflict resolution");
   return { open: typeof data.open === "number" ? data.open : null };
 }
+
+/**
+ * Asks the chatbot to deliver its own queued trip changes to the website now
+ * (it answers at once and works in the background). A failure only means the
+ * chatbot's next save or daily cron does it.
+ */
+export async function requestChatbotFlush() {
+  if (!endpoint() || !process.env.CHATBOT_SYNC_SECRET) return;
+  await fetch(endpoint(), {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-trip-sync-secret": process.env.CHATBOT_SYNC_SECRET },
+    body: JSON.stringify({ action: "flush" }),
+    signal: AbortSignal.timeout(5_000),
+    cache: "no-store",
+  }).catch(() => undefined);
+}
