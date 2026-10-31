@@ -433,9 +433,9 @@ function TripsPageInner({ initialTrips }: { initialTrips?: Trip[] }) {
 
       <div className="mt-6">
         {isLoading ? (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
             {Array.from({ length: 8 }).map((_, index) => (
-              <div key={index} className="h-[380px] animate-pulse rounded-2xl bg-secondary" />
+              <div key={index} className="h-[260px] animate-pulse rounded-2xl bg-secondary sm:h-[380px]" />
             ))}
           </div>
         ) : visible.length === 0 ? (
@@ -448,9 +448,9 @@ function TripsPageInner({ initialTrips }: { initialTrips?: Trip[] }) {
         ) : (
           <>
             <p className="mb-4 text-sm text-muted-foreground">{visible.length} аялал олдлоо</p>
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {visible.map((trip) => (
-                <TripCard key={trip.id} trip={trip} />
+            <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
+              {visible.map((trip, index) => (
+                <TripCard key={trip.id} trip={trip} eager={index < 4} />
               ))}
             </div>
           </>

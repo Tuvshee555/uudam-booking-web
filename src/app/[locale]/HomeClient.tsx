@@ -162,9 +162,9 @@ function TripGrid({ featured, initialTrips }: { featured?: boolean; initialTrips
 
   if (isLoading) {
     return (
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="h-[380px] animate-pulse rounded-2xl bg-secondary" />
+          <div key={index} className="h-[260px] animate-pulse rounded-2xl bg-secondary sm:h-[380px]" />
         ))}
       </div>
     );
@@ -179,9 +179,9 @@ function TripGrid({ featured, initialTrips }: { featured?: boolean; initialTrips
   }
 
   return (
-    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-      {data.slice(0, 8).map((trip) => (
-        <TripCard key={trip.id} trip={trip} />
+    <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
+      {data.slice(0, 8).map((trip, index) => (
+        <TripCard key={trip.id} trip={trip} eager={index < 4} />
       ))}
     </div>
   );
@@ -394,7 +394,7 @@ export default function HomeClient({
               lone tile (five categories used to leave one orphaned). */}
           <div
             className={
-              "mt-6 grid gap-4 sm:grid-cols-2 " +
+              "mt-6 grid grid-cols-2 gap-3 sm:gap-4 " +
               (visibleCategories.length === 5
                 ? "lg:grid-cols-5"
                 : visibleCategories.length % 3 === 0

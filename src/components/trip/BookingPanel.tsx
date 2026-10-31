@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { api, apiErrorMessage } from "@/lib/api";
 import { getVisitorId, track } from "@/lib/analytics";
 import { ageBandsFor, formatMnt, hasKnownTripPrice, hasMissingPassengerFare, lineTotal, passengerFareLabel, resolvePrices } from "@/lib/pricing";
-import { availability, formatFullDate, formatDepartureDate, upcomingDepartures } from "@/lib/departures";
+import { availability, formatFullDate, formatDepartureDate, startingPrice, upcomingDepartures } from "@/lib/departures";
 import { saleBadgeLabel } from "@/lib/tripMarketing";
 import { datePriceOptions, formatAdultOption, formatPriceDelta, hasVariablePricing, priceDimensionOptions } from "@/lib/tripPriceOptions";
 import { roundTemp, shortDate, weatherIcon, weatherLabel, type TripWeatherReport } from "@/lib/weather";
@@ -320,8 +320,13 @@ export default function BookingPanel({
               {option.packageId}
             </div>
           )}
-          <div className="text-xl font-bold text-primary">{requiresQuote && option ? formatAdultOption(option) : formatMnt(prices.adult)}</div>
-          <div className="text-xs text-muted-foreground">{requiresQuote ? "нэг том хүний үнэ" : "нэг том хүн"}</div>
+          {/* Without a chosen date this is the cheapest bookable fare, said so
+              out loud: quoting the base fare showed 4,590,000₮ on a trip whose
+              every open date cost 4,790,000₮. */}
+          <div className="text-xl font-bold text-primary">{requiresQuote && option ? formatAdultOption(option) : formatMnt(selected ? prices.adult : startingPrice(trip))}</div>
+          <div className="text-xs text-muted-foreground">
+            {requiresQuote ? "нэг том хүний үнэ" : selected ? `нэг том хүн · ${formatDepartureDate(selected.startDate)}-ний үнэ` : startingPrice(trip) !== trip.price || new Set(upcomingDepartures(trip).filter((d) => availability(d).selectable).map((d) => d.price ?? trip.price)).size > 1 ? "нэг том хүн · эхлэх үнэ" : "нэг том хүн"}
+          </div>
         </div>
         <div className="flex flex-col items-end gap-1.5">
           {saleLabel && (

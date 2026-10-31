@@ -12,7 +12,13 @@ import SaveButton from "@/components/trip/SaveButton";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { formatTripTitle } from "@/lib/tripDisplay";
 
-export default function TripCard({ trip }: { trip: Trip }) {
+/**
+ * `eager` marks a card visible without scrolling (the first grid row), so its
+ * photo loads with the page instead of popping in as a gray tile. Below `sm`
+ * the card renders compact — two to a row — keeping the phone catalog to a
+ * few screens instead of one card per screen.
+ */
+export default function TripCard({ trip, eager = false }: { trip: Trip; eager?: boolean }) {
   const { locale } = useI18n();
   const departure = nextBookableDeparture(trip) ?? nextDeparture(trip);
   const price = startingPrice(trip);
@@ -36,8 +42,9 @@ export default function TripCard({ trip }: { trip: Trip }) {
             src={trip.image}
             alt={trip.title}
             fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
             quality={90}
+            priority={eager}
             className="uudam-photo-drift object-cover transition-transform duration-700 group-hover:scale-110"
           />
         ) : (
@@ -46,7 +53,7 @@ export default function TripCard({ trip }: { trip: Trip }) {
           </div>
         )}
 
-        <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+        <div className="absolute left-2 top-2 flex flex-wrap gap-1.5 sm:left-3 sm:top-3">
           {trip.isFeatured && (
             <span className="rounded-full bg-gold px-2.5 py-1 text-[11px] font-bold text-navy-deep">
               Онцлох
@@ -64,7 +71,7 @@ export default function TripCard({ trip }: { trip: Trip }) {
           )}
         </div>
 
-        <div className="absolute right-3 top-3 flex items-center gap-1.5">
+        <div className="absolute right-2 top-2 flex items-center gap-1.5 sm:right-3 sm:top-3">
           {hasVideo && (
             <span className="flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
               <Play className="h-3 w-3 fill-current" />
@@ -75,16 +82,16 @@ export default function TripCard({ trip }: { trip: Trip }) {
         </div>
 
         {trip.country && (
-          <span className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
+          <span className="absolute bottom-2 left-2 flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm sm:bottom-3 sm:left-3">
             <MapPin className="h-3 w-3" />
             {trip.country}
           </span>
         )}
       </div>
 
-      <div className="flex flex-1 flex-col p-4">
+      <div className="flex flex-1 flex-col p-3 sm:p-4">
         <div className="flex items-start justify-between gap-3">
-          <h3 className="line-clamp-2 flex-1 text-[15px] font-semibold leading-snug">
+          <h3 className="line-clamp-2 flex-1 text-sm font-semibold leading-snug sm:text-[15px]">
             {formatTripTitle(trip.title)}
           </h3>
           {trip.reviewCount > 0 && (
@@ -96,13 +103,13 @@ export default function TripCard({ trip }: { trip: Trip }) {
         </div>
 
         {trip.summary && (
-          <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">
+          <p className="mt-1.5 hidden text-[13px] leading-relaxed text-muted-foreground sm:line-clamp-2">
             {trip.summary}
           </p>
         )}
 
         {trip.tags.length > 0 && (
-          <div className="mt-1.5 flex flex-wrap gap-1">
+          <div className="mt-1.5 hidden flex-wrap gap-1 sm:flex">
             {trip.tags.slice(0, 2).map((tag) => (
               <span
                 key={tag.id}
@@ -114,7 +121,7 @@ export default function TripCard({ trip }: { trip: Trip }) {
           </div>
         )}
 
-        <div className="mt-3 flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-xs text-muted-foreground">
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground sm:mt-3 sm:gap-x-3.5">
           <span className="flex items-center gap-1">
             <Clock className="h-3.5 w-3.5" />
             {trip.durationDays} хоног
@@ -127,20 +134,20 @@ export default function TripCard({ trip }: { trip: Trip }) {
           )}
         </div>
 
-        <div className="mt-auto flex items-end justify-between pt-4">
+        <div className="mt-auto flex items-end justify-between pt-3 sm:pt-4">
           <div>
             {hasKnownTripPrice(price) && trip.oldPrice && trip.oldPrice > price && (
               <div className="text-xs text-muted-foreground line-through">
                 {formatMnt(trip.oldPrice)}
               </div>
             )}
-            <div className="text-[17px] font-bold text-primary">{formatTripStartingPrice(price)}</div>
+            <div className="text-[15px] font-bold text-primary sm:text-[17px]">{formatTripStartingPrice(price)}</div>
             <div className="text-[11px] text-muted-foreground">
               {hasKnownTripPrice(price) ? "хүн/-с эхлэн" : "ажилтнаас тодруулна"}
             </div>
           </div>
 
-          <span className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold transition-colors group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground">
+          <span className="hidden rounded-lg border border-border px-3 py-1.5 text-xs font-semibold transition-colors group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground sm:inline-block">
             Дэлгэрэнгүй
           </span>
         </div>
