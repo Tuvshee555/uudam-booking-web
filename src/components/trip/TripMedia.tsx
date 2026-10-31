@@ -7,6 +7,7 @@ import { Play } from "lucide-react";
 import { recordVideoPlay } from "@/lib/analytics";
 import { extractUrl, youtubeEmbed } from "@/lib/media";
 import { tripGalleryImages } from "@/lib/tripMedia";
+import { photoAlt } from "@/lib/photoCredits";
 import type { Trip } from "@/types/trip";
 import { cn } from "@/lib/utils";
 
@@ -67,7 +68,7 @@ export default function TripMedia({ trip }: { trip: Trip }) {
         {current.kind === "image" ? (
           <Image
             src={current.src}
-            alt={trip.title}
+            alt={photoAlt(trip, current.src, trip.title)}
             fill
             sizes="(max-width: 1024px) 100vw, 66vw"
             quality={90}

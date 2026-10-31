@@ -36,6 +36,8 @@ import {
 } from "@/lib/tripMarketing";
 import { parseMediaItems } from "@/lib/media";
 import TripMedia from "@/components/trip/TripMedia";
+import PhotoCredits from "@/components/trip/PhotoCredits";
+import { photoAlt } from "@/lib/photoCredits";
 import MediaGallery from "@/components/trip/MediaGallery";
 import TripWeather, { useTripWeather } from "@/components/trip/TripWeather";
 import RouteMap, { type RouteStop } from "@/components/trip/RouteMap";
@@ -87,7 +89,7 @@ const MEAL_SLOTS = [
   { match: /орой/i, label: "Оройн хоол" },
 ] as const;
 
-function ItineraryAccordion({ days, hotelLinks }: { days: Trip["itinerary"]; hotelLinks: HotelLink[] }) {
+function ItineraryAccordion({ days, hotelLinks, photoSource }: { days: Trip["itinerary"]; hotelLinks: HotelLink[]; photoSource: Pick<Trip, "sourceMetadata"> }) {
   const [openDayId, setOpenDayId] = useState<string | null>(() => days[0]?.id ?? null);
   // A trip whose days carry no meal data at all says nothing about meals; once any
   // day has them, every day shows all three so a missing meal reads as "not included".
@@ -121,7 +123,7 @@ function ItineraryAccordion({ days, hotelLinks }: { days: Trip["itinerary"]; hot
                 {day.description && <p className="whitespace-pre-line text-[15px] leading-7 text-foreground/80">{day.description}</p>}
                 {day.image && (
                   <div className="relative mt-3 aspect-[16/9] w-full max-w-xl overflow-hidden rounded-lg bg-secondary">
-                    <Image src={day.image} alt={day.title} fill sizes="(max-width: 640px) 100vw, 576px" className="uudam-photo-drift object-cover" />
+                    <Image src={day.image} alt={photoAlt(photoSource, day.image, day.title)} fill sizes="(max-width: 640px) 100vw, 576px" className="uudam-photo-drift object-cover" />
                   </div>
                 )}
                 {day.video && <video src={day.video} controls preload="metadata" playsInline className="mt-3 aspect-video w-full max-w-xl rounded-lg bg-black print:hidden" />}
@@ -523,7 +525,7 @@ function TripDetailClientInner({
           {trip.itinerary.length > 0 && (
           <section id="itinerary" className="mt-8 scroll-mt-28">
             <h2 className="text-lg font-bold">Өдөр тутмын хөтөлбөр</h2>
-            <ItineraryAccordion days={trip.itinerary} hotelLinks={hotelProfiles.filter((hotel) => hotel.url)} />
+            <ItineraryAccordion days={trip.itinerary} hotelLinks={hotelProfiles.filter((hotel) => hotel.url)} photoSource={trip} />
           </section>
           )}
 
@@ -830,10 +832,12 @@ function TripDetailClientInner({
         </div>
       </div>
 
+      <PhotoCredits trip={trip} />
+
       {related.length > 0 && (
         <section className="mt-12" data-print="hide">
           <h2 className="text-lg font-bold">Санал болгох аялалууд</h2>
-          <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
             {related.map((candidate) => (
               <TripCard key={candidate.id} trip={candidate} />
             ))}
