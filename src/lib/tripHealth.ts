@@ -116,11 +116,23 @@ export function checkTrip(trip: HealthTrip, today: string, now = Date.now()): He
     }
   }
 
-  // A website edit that never reached the chatbot and poster.
-  const pending = record(record(trip.sourceMetadata).websiteSyncPending);
+  // A website edit that never reached the chatbot and poster. The queue
+  // retries it with backoff (tripSyncQueue.ts) and stops after ten failures.
+  const metadata = record(trip.sourceMetadata);
+  const pending = record(metadata.websiteSyncPending);
   if (typeof pending.queuedAt === "string" && now - Date.parse(pending.queuedAt) > 15 * 60_000) {
-    add("error", "sync_stuck", "Сайтын засвар chatbot/poster руу очоогүй байна (15 минутаас удсан). Аяллыг нээж дахин синк хийнэ үү.");
+    const attempts = typeof pending.attempts === "number" ? pending.attempts : 0;
+    const code = typeof record(pending.lastError).code === "string" ? `, алдаа: ${record(pending.lastError).code}` : "";
+    add("error", "sync_stuck", pending.failedAt
+      ? `Сайтын засвар chatbot руу очоогүй: ${attempts} удаа оролдоод автомат оролдлого зогссон${code}. Аяллыг нээж шалтгааныг шалгаад дахин илгээнэ үү.`
+      : `Сайтын засвар chatbot/poster руу очоогүй байна (15 минутаас удсан${attempts ? `, ${attempts} удаа оролдсон${code}` : ""}). Автоматаар дахин оролдоно; яаралтай бол аяллыг нээж дахин илгээнэ үү.`);
   }
+  // Both sides changed the same field: neither value wins until someone decides.
+  const conflicts = Array.isArray(metadata.shared_conflicts) ? metadata.shared_conflicts.length : 0;
+  if (conflicts) add("warning", "sync_conflict", `Вебсайт ба chatbot-ын хооронд ${conflicts} зөрүү шийдэгдээгүй. Аяллыг нээж «Chatbot-той харьцуулах» таб дээр аль утга зөвийг сонгоно уу.`);
+  // Edited on the website, delivered, but not taken by the chatbot.
+  const ignored = record(metadata.websiteSyncReport).ignored;
+  if (Array.isArray(ignored) && ignored.length) add("warning", "sync_field_ignored", `Сүүлийн засварын ${ignored.length} талбарыг chatbot аваагүй тул bot хуучин утгаар хариулж байна. Аяллыг нээж шалгана уу.`);
   return issues;
 }
 

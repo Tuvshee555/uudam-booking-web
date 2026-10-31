@@ -2,6 +2,7 @@ import { handler, httpError, json, rateLimit } from "@/server/http";
 import { sendEmail } from "@/server/mail";
 import { SITE_URL } from "@/lib/siteUrl";
 import { buildTripHealthReport } from "@/server/tripHealthReport";
+import { retryDueTripSyncs } from "@/server/tripSyncQueue";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,8 @@ export const GET = handler(async (req: Request) => {
   }
   rateLimit("cron:trip-health", { windowMs: 3_600_000, max: 1 });
 
+  // Queued website edits are retried before the report, so it lists only real problems.
+  const sync = await retryDueTripSyncs(10).catch((error) => { console.error("Trip sync retry failed", error); return null; });
   const report = await buildTripHealthReport();
   const to = process.env.ENQUIRY_NOTIFY_EMAIL || process.env.SMTP_USER;
   let emailed = false;
@@ -35,5 +38,5 @@ export const GET = handler(async (req: Request) => {
       html: `<p>Өнөөдрийн автомат шалгалтаар нийтэд харагдаж буй аяллуудад ${report.errors} алдаа, ${report.warnings} анхааруулга илэрлээ.</p><ul>${rows}</ul><p><a href="${site}/mn/admin/health">Бүгдийг харах</a></p>`,
     }).then(() => { emailed = true; }).catch((error) => console.error("Trip health email failed", error));
   }
-  return json({ errors: report.errors, warnings: report.warnings, fingerprint: report.fingerprint, emailed });
+  return json({ errors: report.errors, warnings: report.warnings, fingerprint: report.fingerprint, emailed, sync });
 });

@@ -1,6 +1,7 @@
 import { prisma } from "@/server/prisma";
 import { requireAdmin } from "@/server/auth";
 import { handler, json } from "@/server/http";
+import { sweepTripSyncSoon } from "@/server/tripSyncSweep";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,7 @@ export const dynamic = "force-dynamic";
  */
 export const GET = handler(async (req: Request) => {
   await requireAdmin(req);
+  sweepTripSyncSoon();
   const now = new Date();
 
   const [enquiryGroups, enquiryKinds, bookingGroups, staleHolds, awaiting, published, drafts] = await Promise.all([

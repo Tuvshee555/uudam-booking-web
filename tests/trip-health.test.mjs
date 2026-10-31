@@ -45,6 +45,17 @@ test("a website edit stuck on its way to the chatbot is an error after 15 minute
   assert.deepEqual(codes(checkTrip(pending(30), TODAY, NOW)), ["sync_stuck"]);
 });
 
+test("a retried, stopped, conflicting or partly ignored sync is visible with its reason", () => {
+  const meta = (sourceMetadata) => checkTrip(trip({ sourceMetadata }), TODAY, NOW);
+  const queuedAt = new Date(NOW - 60 * 60_000).toISOString();
+  const retrying = meta({ websiteSyncPending: { queuedAt, attempts: 3, lastError: { code: "timeout" } } });
+  assert.match(retrying[0].message, /3 удаа оролдсон, алдаа: timeout/);
+  const stopped = meta({ websiteSyncPending: { queuedAt, attempts: 10, failedAt: queuedAt, lastError: { code: "invalid_trip_sync_payload" } } });
+  assert.match(stopped[0].message, /автомат оролдлого зогссон/);
+  assert.deepEqual(codes(meta({ shared_conflicts: [{ field: "route_name" }, { field: "notes" }] })), ["sync_conflict"]);
+  assert.deepEqual(codes(meta({ websiteSyncReport: { ignored: [{ field: "title", reason: "not_applied" }] } })), ["sync_field_ignored"]);
+});
+
 test("sold-out-only and duplicate published trips are warnings", () => {
   const issues = checkCatalog([trip({ departures: [dep("2026-11-04", { status: "SOLD_OUT" })] }), trip({ id: "t2", slug: "sanya-2" })], TODAY, NOW);
   assert.deepEqual(codes(issues), ["duplicate_title", "duplicate_title", "no_bookable_date"]);

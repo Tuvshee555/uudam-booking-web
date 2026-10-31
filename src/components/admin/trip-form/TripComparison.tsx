@@ -1,8 +1,11 @@
 "use client";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { AlertCircle, Check, RefreshCw } from "lucide-react";
 import { api, apiErrorMessage } from "@/lib/api";
+import { formatDateTime } from "@/lib/adminFormat";
+import { syncFieldText } from "@/lib/tripSyncStatus";
 import type { Trip } from "@/types/trip";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -65,13 +68,63 @@ export default function TripComparison({ trip, patch, onExtraChange }: { trip: T
     <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={differencesOnly} onChange={(event) => setDifferencesOnly(event.target.checked)} className="h-4 w-4 accent-primary" />Зөвхөн ялгаатай мэдээлэл</label>
     {(differencesOnly ? differences : rows).map((row) => <details key={row.label} open={!equal(row)} className="border-t border-border"><summary className="cursor-pointer py-3 text-sm font-medium">{row.label}<span className={`ml-3 text-xs ${equal(row) ? "text-muted-foreground" : "text-amber-700"}`}>{equal(row) ? "Ижил" : "Ялгаатай"}</span></summary><div className="grid min-w-0 gap-4 pb-4 text-sm sm:grid-cols-2"><div className="min-w-0"><p className="mb-1 text-xs font-medium text-muted-foreground">Вебсайт</p>{row.label === "Үнийн хувилбарууд" ? <PriceGroups value={row.website} /> : <Value value={row.website} />}</div><div className="min-w-0"><p className="mb-1 text-xs font-medium text-muted-foreground">Chatbot</p>{row.label === "Үнийн хувилбарууд" ? <PriceGroups value={row.chatbot} /> : <Value value={row.chatbot} />}</div></div></details>)}
     {differencesOnly && !differences.length && <p className="text-sm text-muted-foreground">Ялгаатай мэдээлэл байхгүй.</p>}
-    {[...(Array.isArray(extra.shared_conflicts) ? extra.shared_conflicts : []), ...(Array.isArray(website.sourceMetadata?.contentConflicts) ? website.sourceMetadata.contentConflicts : [])].map((entry, index) => {
-      const conflict = object(entry);
-      return <section key={`conflict-${index}`} className="border-t border-border pt-3 text-sm"><h3 className="mb-2 font-medium text-amber-700">{String(conflict.field || "Шалгах зөрүү")}</h3><div className="grid min-w-0 gap-4 sm:grid-cols-2"><div className="min-w-0"><p className="mb-1 text-xs text-muted-foreground">Вебсайт</p><Value value={conflict.website} /></div><div className="min-w-0"><p className="mb-1 text-xs text-muted-foreground">Chatbot</p><Value value={conflict.chatbot} /></div></div></section>;
-    })}
+    <ConflictList tripId={trip.id} conflicts={extra.shared_conflicts} projectionConflicts={website.sourceMetadata?.contentConflicts} onResolved={() => query.refetch()} />
     <h3 className="border-t border-border pt-5 text-sm font-semibold">Chatbot нэмэлт мэдээлэл</h3>
     <StringListField label="Өөр нэршил" values={Array.isArray(edits.aliases ?? extra.aliases) ? (edits.aliases ?? extra.aliases) as string[] : []} onChange={(aliases) => onExtraChange(extra, { ...edits, aliases })} />
     <section className="border-t border-border pt-4"><h4 className="mb-3 text-sm font-semibold">Захиалгын нөхцөл</h4><div className="grid gap-3 sm:grid-cols-2">{["deposit", "payment", "documents", "visa", "cancellation"].map((key) => <label key={key} className="text-sm"><span className="mb-1 block font-medium">{labels[key]}</span><Textarea value={typeof editableTerms[key] === "string" ? editableTerms[key] as string : ""} rows={2} onChange={(event) => onExtraChange(extra, { ...edits, booking_terms: { ...editableTerms, [key]: event.target.value } })} /></label>)}</div></section>
     {Object.entries(labels).filter(([key]) => key in extra && !["aliases", "booking_terms"].includes(key)).map(([key, label]) => <section key={key} className="border-t border-border pt-3 text-sm"><h4 className="mb-2 font-medium">{label}</h4><Value value={extra[key]} /></section>)}
   </div>;
+}
+
+/**
+ * Disagreements recorded when both systems changed the same field. Each one
+ * shows both values, the common earlier value and when it was recorded; a
+ * decision updates the other side and is kept in the chatbot's
+ * resolved_conflicts with who made it.
+ */
+function ConflictList({ tripId, conflicts, projectionConflicts, onResolved }: { tripId: string; conflicts: unknown; projectionConflicts: unknown; onResolved: () => void }) {
+  const queryClient = useQueryClient();
+  const resolve = useMutation({
+    mutationFn: async ({ conflict, resolution }: { conflict: Row; resolution: "website" | "chatbot" }) =>
+      (await api.post("/admin/trip-conflicts", { tripId, conflict, resolution })).data,
+    onSuccess: (_data, { resolution }) => {
+      toast.success(resolution === "website" ? "Вебсайтын утгыг chatbot-д хэрэглэлээ" : "Chatbot-ын утгыг үлдээлээ");
+      onResolved();
+      queryClient.invalidateQueries({ queryKey: ["trip", tripId] });
+    },
+    onError: (err) => toast.error(apiErrorMessage(err, "Зөрүүг шийдэж чадсангүй")),
+  });
+  const open = (Array.isArray(conflicts) ? conflicts : []).map(object);
+  const projection = (Array.isArray(projectionConflicts) ? projectionConflicts : []).map(object);
+  if (!open.length && !projection.length) return null;
+  return <section className="space-y-3 border-t border-border pt-4" aria-labelledby="trip-conflicts-heading">
+    <h3 id="trip-conflicts-heading" className="text-sm font-semibold">Шийдээгүй зөрүү ({open.length + projection.length})</h3>
+    <p className="text-xs text-muted-foreground">Нэг талбарыг вебсайт ба chatbot дээр өөр өөрөөр засах үед бүртгэгдэнэ. Аль утга зөвийг сонгоход нөгөө тал шинэчлэгдэнэ.</p>
+    {open.map((conflict, index) => {
+      const busy = resolve.isPending && resolve.variables?.conflict === conflict;
+      return <article key={index} className="min-w-0 rounded-md border border-amber-300/70 p-3 text-sm">
+        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <h4 className="font-medium">{syncFieldText(String(conflict.field || ""))}</h4>
+          <span className="text-xs text-muted-foreground">{typeof conflict.at === "string" ? `Бүртгэсэн ${formatDateTime(conflict.at)}` : "2026-10-31-ээс өмнө бүртгэгдсэн"} · Шийдээгүй</span>
+        </div>
+        <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+          <div className="min-w-0"><p className="mb-1 text-xs font-medium text-muted-foreground">Вебсайтын утга</p><Value value={conflict.website} /></div>
+          <div className="min-w-0"><p className="mb-1 text-xs font-medium text-muted-foreground">Chatbot-ын утга</p><Value value={conflict.chatbot} /></div>
+        </div>
+        <details className="mt-2 text-xs"><summary className="cursor-pointer text-muted-foreground">Хоёулаа засахаас өмнөх утга</summary><div className="pt-1"><Value value={conflict.base} /></div></details>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button type="button" size="sm" variant="outline" disabled={resolve.isPending} onClick={() => resolve.mutate({ conflict, resolution: "website" })}>{busy && resolve.variables?.resolution === "website" ? "Хэрэглэж байна…" : "Вебсайтын утгыг авах"}</Button>
+          <Button type="button" size="sm" variant="outline" disabled={resolve.isPending} onClick={() => resolve.mutate({ conflict, resolution: "chatbot" })}>{busy && resolve.variables?.resolution === "chatbot" ? "Хадгалж байна…" : "Chatbot-ын утгыг үлдээх"}</Button>
+        </div>
+      </article>;
+    })}
+    {projection.map((conflict, index) => <article key={`projection-${index}`} className="min-w-0 rounded-md border border-border p-3 text-sm">
+      <h4 className="mb-2 font-medium">{syncFieldText(String(conflict.field || ""))}</h4>
+      <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+        <div className="min-w-0"><p className="mb-1 text-xs font-medium text-muted-foreground">Вебсайтын утга</p><Value value={conflict.website ?? conflict.current} /></div>
+        <div className="min-w-0"><p className="mb-1 text-xs font-medium text-muted-foreground">Chatbot-ын утга</p><Value value={conflict.chatbot ?? conflict.incoming} /></div>
+      </div>
+      <p className="mt-2 text-xs text-muted-foreground">Дараагийн синкээр дахин шалгагдана. Аль нэг талд нь засаж ижилсгэнэ үү.</p>
+    </article>)}
+  </section>;
 }

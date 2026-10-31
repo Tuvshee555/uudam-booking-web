@@ -37,6 +37,7 @@ import ItineraryEditor, { type ItineraryDraft } from "./ItineraryEditor";
 import { type DepartureDraft } from "./DepartureEditor";
 import DatePricingEditor from "./DatePricingEditor";
 import TripComparison from "./TripComparison";
+import TripSyncStatus from "./TripSyncStatus";
 import SelectionField from "./SelectionField";
 
 function flattenCategories(nodes: CategoryNode[], depth = 0): { id: string; label: string }[] {
@@ -583,7 +584,7 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
   const { locale } = useI18n();
   const queryClient = useQueryClient();
 
-  const { data: existingTrip, isPending: loadingTrip } = useTrip(mode === "edit" ? tripId : undefined);
+  const { data: existingTrip, isPending: tripPending, isFetchedAfterMount } = useTrip(mode === "edit" ? tripId : undefined, undefined, { admin: true });
   const { data: categoryTree } = useCategoryTree(undefined, { admin: true });
   const { data: tags } = useTags({ admin: true });
 
@@ -603,19 +604,25 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
   const originalUpdatedAt = useRef<string | undefined>(undefined);
   const hydrated = useRef<string | undefined>(undefined);
 
-  useEffect(() => {
-    if (mode === "edit" && existingTrip && existingTrip.id === tripId && hydrated.current !== tripId) {
-      const initial = tripToForm(existingTrip);
-      originalForm.current = initial;
-      originalUpdatedAt.current = existingTrip.updatedAt;
-      setForm(initial);
-      setBaseline(JSON.stringify(initial));
-      hydrated.current = tripId;
-    }
-  }, [mode, existingTrip, tripId]);
-
   const categoryOptions = flattenCategories(categoryTree ?? []);
   const isDirty = baseline !== null && JSON.stringify(form) !== baseline;
+  const loadingTrip = tripPending || (mode === "edit" && baseline === null);
+
+  // Fill the form only from data fetched after this editor opened, never from a
+  // cached copy. A newer version (usually the chatbot sync) replaces the form
+  // while staff have nothing unsaved; with unsaved edits the save re-applies
+  // them onto the newer version instead.
+  useEffect(() => {
+    if (mode !== "edit" || !existingTrip || existingTrip.id !== tripId || !isFetchedAfterMount) return;
+    const first = hydrated.current !== tripId;
+    if (!first && (isDirty || originalUpdatedAt.current === existingTrip.updatedAt)) return;
+    const initial = tripToForm(existingTrip);
+    originalForm.current = initial;
+    originalUpdatedAt.current = existingTrip.updatedAt;
+    setForm(initial);
+    setBaseline(JSON.stringify(initial));
+    hydrated.current = tripId;
+  }, [mode, existingTrip, tripId, isFetchedAfterMount, isDirty]);
 
   useEffect(() => {
     if (!isDirty) return;
@@ -891,6 +898,15 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
           )}
         </span>
       </div>
+
+      {mode === "edit" && existingTrip && (
+        <TripSyncStatus
+          sourceMetadata={existingTrip.sourceMetadata}
+          retrying={retrySync.isPending}
+          onRetry={() => retrySync.mutate()}
+          onOpenComparison={() => setActiveSection("review")}
+        />
+      )}
 
       {tripIssues.length > 0 && (
         <Notice

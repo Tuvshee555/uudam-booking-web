@@ -5,6 +5,7 @@ import { requireAdmin } from "@/server/auth";
 import { handler, json, publicCache, readJson, safeText } from "@/server/http";
 import { cached, invalidateCatalog } from "@/server/cache";
 import { queueTripSync, deliverTripSync } from "@/server/tripSyncQueue";
+import { sweepTripSyncSoon } from "@/server/tripSyncSweep";
 import { listTrip } from "@/lib/publicTrip";
 import {
   TRIP_INCLUDE,
@@ -29,6 +30,7 @@ import {
 
 /** GET /api/trips — public catalog. */
 export const GET = handler(async (req: Request) => {
+  sweepTripSyncSoon();
   const url = new URL(req.url);
   const categoryId = url.searchParams.get("category");
   const featured = url.searchParams.get("featured");

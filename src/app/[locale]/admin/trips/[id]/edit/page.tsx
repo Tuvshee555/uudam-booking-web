@@ -11,7 +11,7 @@ export default function EditTripPage({ params }: { params: Promise<{ id: string 
   const { id } = use(params);
   const { locale } = useI18n();
   // Shares TripForm's cached query, so naming the page costs no extra request.
-  const { data: trip } = useTrip(id);
+  const { data: trip } = useTrip(id, undefined, { admin: true });
 
   return (
     <>

@@ -41,7 +41,12 @@ export function useTrips(
  * HTML and only appeared after this request resolved in the browser. Crawlers
  * and Messenger unfurlers saw an empty shell.
  */
-export function useTrip(idOrSlug?: string, initialData?: Trip) {
+/**
+ * `admin: true` (the trip editor) always refetches on open and on focus: the
+ * chatbot can rewrite a trip at any time, and an editor opened on a cached
+ * copy showed staff prices that were no longer true.
+ */
+export function useTrip(idOrSlug?: string, initialData?: Trip, options?: { admin?: boolean }) {
   return useQuery<Trip>({
     queryKey: ["trip", idOrSlug],
     enabled: Boolean(idOrSlug),
@@ -50,7 +55,8 @@ export function useTrip(idOrSlug?: string, initialData?: Trip) {
       return data;
     },
     initialData,
-    staleTime: 60_000,
+    staleTime: options?.admin ? 0 : 60_000,
+    ...(options?.admin ? { refetchOnMount: "always" as const, refetchOnWindowFocus: true } : {}),
   });
 }
 
