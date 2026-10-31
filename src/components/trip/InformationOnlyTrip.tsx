@@ -4,8 +4,10 @@ import { BedDouble, CalendarDays, Check, Clock, FileDown, X } from "lucide-react
 
 import { formatMnt } from "@/lib/pricing";
 import { formatTripTitle } from "@/lib/tripDisplay";
+import { splitHealthCheckup } from "@/lib/healthCheckup";
 import type { Trip } from "@/types/trip";
 import TripMedia from "./TripMedia";
+import HealthCheckupSection from "./HealthCheckupSection";
 
 function record(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value)
@@ -70,6 +72,7 @@ function FarePanel({ trip, source }: { trip: Trip; source: ReturnType<typeof arc
 export default function InformationOnlyTrip({ trip, sourceMetadata }: { trip: Trip; sourceMetadata: unknown }) {
   const days = trip.itinerary.filter((day) => day.dayNumber > 0).sort((a, b) => a.dayNumber - b.dayNumber);
   const source = archiveDetails(sourceMetadata);
+  const checkup = splitHealthCheckup(trip.description);
 
   return (
     <main className="uudam-container py-8 pb-16">
@@ -91,8 +94,10 @@ export default function InformationOnlyTrip({ trip, sourceMetadata }: { trip: Tr
               {trip.hotel && <span className="flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 font-medium"><BedDouble className="h-3 w-3" />{trip.hotel}</span>}
             </div>
             <h1 className="mt-3 text-2xl font-bold leading-tight md:text-3xl">{formatTripTitle(trip.title)}</h1>
-            {trip.description && <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">{trip.description}</p>}
+            {checkup.intro && <p className="mt-2 whitespace-pre-line text-[15px] leading-relaxed text-muted-foreground">{checkup.intro}</p>}
           </header>
+
+          <HealthCheckupSection lists={checkup.lists} />
 
           <div className="mt-5 lg:hidden"><FarePanel trip={trip} source={source} /></div>
 

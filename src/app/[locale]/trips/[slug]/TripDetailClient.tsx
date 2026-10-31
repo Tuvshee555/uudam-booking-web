@@ -18,7 +18,6 @@ import {
   Mountain,
   ReceiptText,
   Star,
-  Stethoscope,
   Utensils,
   X,
 } from "lucide-react";
@@ -49,6 +48,8 @@ import ShareButton from "@/components/trip/ShareButton";
 import SaveButton from "@/components/trip/SaveButton";
 import DownloadTripButton from "@/components/trip/DownloadTripButton";
 import MessengerButton from "@/components/trip/MessengerButton";
+import HealthCheckupSection from "@/components/trip/HealthCheckupSection";
+import { splitHealthCheckup } from "@/lib/healthCheckup";
 import { Button } from "@/components/ui/button";
 import { hotelProfilesFromData, hotelTextSegments, type HotelLink, type HotelProfile } from "@/lib/hotelLinks";
 
@@ -289,6 +290,19 @@ function TripDetailClientInner({
     [siteSettings?.tripNotice],
   );
   const showBrochure = trip?.sourceMetadata?.hide_brochure_on_website !== true;
+  // A clinic test list pasted into the description gets its own section; the
+  // rest of the description stays "Аяллын тухай".
+  const checkup = useMemo(() => {
+    const description = trip?.description ?? "";
+    const fromDescription = splitHealthCheckup(description);
+    const notes = typeof trip?.sourceMetadata?.health_checkup_notes === "string" ? trip.sourceMetadata.health_checkup_notes : "";
+    const lists = fromDescription.lists.length ? fromDescription.lists : splitHealthCheckup(notes).lists;
+    return {
+      about: fromDescription.lists.length ? fromDescription.intro : description,
+      lists,
+      fallbackText: lists.length ? "" : notes.trim(),
+    };
+  }, [trip?.description, trip?.sourceMetadata]);
   // One source of truth: the weather, calendar, price, and enquiry all use
   // this same departure. Keeping it here prevents sibling panels drifting.
   const [chosenDepartureDate, setChosenDepartureDate] = useState<string | undefined>(selectedDate);
@@ -318,7 +332,8 @@ function TripDetailClientInner({
 
     return [
       trip.highlights.length > 0 && { id: "highlights", label: "Онцлох" },
-      trip.description.trim() && { id: "about", label: "Тухай" },
+      checkup.about.trim() && { id: "about", label: "Тухай" },
+      (checkup.lists.length > 0 || checkup.fallbackText) && { id: "checkup", label: "Шинжилгээ" },
       trip.itinerary.length > 0 && { id: "itinerary", label: "Хөтөлбөр" },
       routeStops.length > 0 && { id: "route", label: "Маршрут" },
       hasWeather && { id: "weather", label: "Цаг агаар" },
@@ -342,7 +357,7 @@ function TripDetailClientInner({
       travelerMedia.length > 0 && { id: "traveler-media", label: "Аялагчид" },
       trip.testimonials && trip.testimonials.length > 0 && { id: "reviews", label: "Сэтгэгдэл" },
     ].filter((entry): entry is { id: string; label: string } => Boolean(entry));
-  }, [trip, siteNoticeLines, hotelProfiles, travelerMedia, hasWeather, routeStops, showBrochure]);
+  }, [trip, checkup, siteNoticeLines, hotelProfiles, travelerMedia, hasWeather, routeStops, showBrochure]);
 
   useEffect(() => {
     if (trip) recordRecentlyViewed(trip.slug);
@@ -513,33 +528,22 @@ function TripDetailClientInner({
             </section>
           )}
 
-          {trip.description.trim() && (
+          {checkup.about.trim() && (
           <section id="about" className="mt-8 scroll-mt-28">
             <h2 className="text-lg font-bold">Аяллын тухай</h2>
             <p className="mt-3 whitespace-pre-line text-[15px] leading-relaxed text-muted-foreground">
-              {trip.description}
+              {checkup.about}
             </p>
           </section>
           )}
+
+          <HealthCheckupSection lists={checkup.lists} fallbackText={checkup.fallbackText} />
 
           {trip.itinerary.length > 0 && (
           <section id="itinerary" className="mt-8 scroll-mt-28">
             <h2 className="text-lg font-bold">Өдөр тутмын хөтөлбөр</h2>
             <ItineraryAccordion days={trip.itinerary} hotelLinks={hotelProfiles.filter((hotel) => hotel.url)} photoSource={trip} />
           </section>
-          )}
-
-          {typeof trip.sourceMetadata?.health_checkup_notes === "string" &&
-            trip.sourceMetadata.health_checkup_notes.trim() && (
-            <section className="mt-8 rounded-2xl border border-primary/25 bg-primary/5 p-5">
-              <h2 className="flex items-center gap-2 text-lg font-bold">
-                <Stethoscope className="h-5 w-5 text-primary" />
-                Эрүүл мэндийн шинжилгээ
-              </h2>
-              <p className="mt-3 whitespace-pre-line text-sm leading-relaxed">
-                {trip.sourceMetadata.health_checkup_notes}
-              </p>
-            </section>
           )}
 
           {routeStops.length > 0 && (
