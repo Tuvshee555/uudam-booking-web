@@ -1,122 +1,105 @@
-import { cache } from "react";
+import { cache, Suspense } from "react";
 import { unstable_cache } from "next/cache";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import PageHero from "@/components/site/PageHero";
+import CatalogBrowser from "@/components/catalog/CatalogBrowser";
+import CatalogSkeleton from "@/components/catalog/CatalogSkeleton";
 import { prisma } from "@/server/prisma";
-import { getCategoryWithTrips as getCategoryWithTripsUncached } from "@/server/catalog";
-import { tripCountsByCategory as tripCountsByCategoryUncached } from "@/server/categoryCounts";
+import { getTripSummaries } from "@/server/catalog";
+import { getPriceRanges } from "@/server/priceRanges";
+import { renderTime } from "@/server/clock";
+import { ulaanbaatarDay } from "@/lib/calendar";
+import { canonicalPath } from "@/lib/locales";
 import { shareMetadata } from "@/lib/seo";
-import CategoryPageClient from "./CategoryPageClient";
+import { formatCategoryName } from "@/lib/tripDisplay";
 
 type Props = { params: Promise<{ id: string }> };
 
 /**
  * Pre-render every real category at build time. Without `generateStaticParams`
  * defined at all (even returning []), Next never adds this route to its
- * prerender manifest, and NOTHING caches — not this `revalidate`, not
- * `unstable_cache` below, nothing — every visit renders from scratch.
- * Confirmed directly against `.next/prerender-manifest.json` on the sibling
- * trips/[slug] route, which had the identical symptom (permanent
- * `Cache-Control: no-store`) until this was added there.
+ * prerender manifest, and nothing caches — every visit renders from scratch.
  */
 export async function generateStaticParams() {
   const categories = await prisma.category.findMany({ select: { slug: true, id: true } });
   return categories.map((category) => ({ id: category.slug ?? category.id }));
 }
 
-/**
- * Without this the page is prerendered once at build time and its trip list
- * is frozen until the next deploy.
- *
- * Saving a category or a trip revalidates this path immediately (see
- * revalidateCategoryPages in /api/categories and revalidateTripPages in
- * /api/trips/[id]), so this timer is a safety net, not the only way an
- * edit reaches a visitor.
- */
+/** Saving a trip or a category refreshes this page at once (revalidateStorefront). */
 export const revalidate = 300;
 
-/**
- * `cache` dedupes within one request (generateMetadata + the page share a
- * call); `unstable_cache` is what persists it across requests and visitors
- * — plain Prisma queries are invisible to Next's route cache otherwise.
- */
 const findCategory = cache(
   unstable_cache(
-    async (idOrSlug: string) => {
-      return prisma.category.findFirst({
+    async (idOrSlug: string) =>
+      prisma.category.findFirst({
         where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
-        select: {
-          id: true,
-          categoryName: true,
-          description: true,
-          image: true,
-        },
-      });
-    },
+        select: { id: true, categoryName: true, description: true, image: true, slug: true },
+      }),
     ["category-detail"],
-    { revalidate: 300 },
+    { revalidate: 300, tags: ["site-nav"] },
   ),
 );
 
-const getCategoryWithTrips = unstable_cache(getCategoryWithTripsUncached, ["category-detail-trips"], {
-  revalidate: 300,
-});
-
-/**
- * `tripCountsByCategory` returns a `Map`, which doesn't survive
- * `unstable_cache`'s serialization (it comes back a plain object, so `.get`
- * is gone — this broke the build the first time). Cache the serializable
- * entries array instead and rebuild the Map after.
- */
-const getTripCountEntries = unstable_cache(
-  async () => [...(await tripCountsByCategoryUncached())],
-  ["category-detail-counts"],
-  { revalidate: 300 },
-);
-async function tripCountsByCategory() {
-  return new Map(await getTripCountEntries());
+function inCategory(id: string) {
+  return (trip: { categoryId: string | null; categories: { id: string }[] }) =>
+    trip.categoryId === id || trip.categories.some((category) => category.id === id);
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const category = await findCategory(id);
+  if (!category) return { title: "Ангилал олдсонгүй" };
 
-  if (!category) {
-    return { title: "Ангилал олдсонгүй" };
-  }
-
+  const name = formatCategoryName(category.categoryName);
+  const count = (await getTripSummaries()).filter(inCategory(category.id)).length;
   const description =
-    category.description?.trim() ||
-    `${category.categoryName} чиглэлийн ${
-      (await tripCountsByCategory()).get(category.id) ?? 0
-    } аялал — хөтөлбөр, үнэ, хөдлөх огноог шууд харна уу.`;
+    category.description?.trim() || `${name} — ${count} аялал. Хөтөлбөр, огноо бүрийн үнэ, багтсан зүйлсийг харж онлайнаар захиална.`;
 
   return {
-    title: category.categoryName,
+    title: name,
     description,
-    ...shareMetadata(
-      `/category/${id}`,
-      category.categoryName,
-      description,
-      category.image ? { url: category.image, width: 1200, height: 630 } : undefined,
-    ),
+    // An empty category is a thin page: keep it out of search results.
+    ...(count === 0 ? { robots: { index: false, follow: true } } : {}),
+    ...shareMetadata(`/category/${category.slug ?? id}`, `${name} · Uudam Travel`, description, category.image ? { url: category.image, width: 1200, height: 630 } : undefined),
   };
 }
 
 export default async function CategoryPage({ params }: Props) {
   const { id } = await params;
   const category = await findCategory(id);
-
-  // Without this, a bad category link rendered "Энэ ангилалд ... алга
-  // байна" — the same copy as a real, empty category — instead of a 404.
   if (!category) notFound();
 
-  // Same lookup the client hook would otherwise make on first paint, seeded
-  // here so the trip grid exists in the initial HTML. Previously this page
-  // fetched category data only for generateMetadata and handed the client
-  // component nothing but the id, so the page shipped zero trip cards.
-  const initialData = await getCategoryWithTrips(id);
+  const [trips, prices] = await Promise.all([getTripSummaries(), getPriceRanges()]);
+  const now = renderTime();
+  const name = formatCategoryName(category.categoryName);
+  const own = trips.filter(inCategory(category.id));
+  const cover = own.find((trip) => trip.image)?.image ?? category.image;
 
-  return <CategoryPageClient id={id} initialData={initialData ?? undefined} />;
+  return (
+    <>
+      <PageHero
+        compact
+        crumbs={[
+          { label: "Нүүр", href: canonicalPath("") },
+          { label: "Аялалууд", href: canonicalPath("/trips") },
+          { label: name },
+        ]}
+        eyebrow="Аяллын төрөл"
+        title={name}
+        lede={category.description?.trim() || `${own.length} аялал. Чиглэл, хөдлөх сар, үнээр шүүж харьцуулаарай.`}
+        image={cover}
+      />
+      <Suspense fallback={<CatalogSkeleton />}>
+        <CatalogBrowser
+          initialTrips={trips}
+          prices={prices}
+          now={now}
+          currentYear={Number(ulaanbaatarDay(now).slice(0, 4))}
+          lockedCategory={{ id: category.id, name }}
+        />
+      </Suspense>
+    </>
+  );
 }

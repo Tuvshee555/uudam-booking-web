@@ -19,7 +19,6 @@ export default function SaveButton({
   const { isSaved, toggle } = useSavedTrips();
   const saved = isSaved(slug);
 
-  // Cards wrap the whole tile in a Link, so the click must not navigate.
   const onClick = (event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
@@ -35,14 +34,14 @@ export default function SaveButton({
         aria-pressed={saved}
         aria-label={saved ? "Хадгалснаас хасах" : "Аяллыг хадгалах"}
         className={cn(
-          "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
+          "inline-flex h-10 items-center gap-2 rounded-full border px-4 text-[13px] font-semibold transition-colors focus-ring",
           saved
-            ? "border-destructive text-destructive"
-            : "border-border hover:border-primary hover:text-primary",
+            ? "border-destructive/40 bg-destructive/5 text-destructive"
+            : "border-border bg-card text-foreground hover:border-foreground/35",
           className,
         )}
       >
-        <Heart className={cn("h-3.5 w-3.5", saved && "fill-current")} />
+        <Heart className={cn("h-4 w-4", saved && "fill-current")} aria-hidden="true" />
         {saved ? "Хадгалсан" : "Хадгалах"}
       </button>
     );
@@ -55,11 +54,11 @@ export default function SaveButton({
       aria-pressed={saved}
       aria-label={saved ? "Хадгалснаас хасах" : "Аяллыг хадгалах"}
       className={cn(
-        "flex h-8 w-8 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm transition-colors hover:bg-black/65",
+        "flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-navy-night shadow-sm backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold",
         className,
       )}
     >
-      <Heart className={cn("h-4 w-4", saved && "fill-destructive text-destructive")} />
+      <Heart className={cn("h-4 w-4", saved && "fill-destructive text-destructive")} aria-hidden="true" />
     </button>
   );
 }

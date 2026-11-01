@@ -9,7 +9,7 @@ const nextConfig = {
     // instead of being proxied through /_next/image.
     loader: "custom",
     loaderFile: "./src/lib/imageLoader.ts",
-    qualities: [75, 85, 90],
+    qualities: [70, 75, 85, 90],
     remotePatterns: [
       {
         protocol: "https",

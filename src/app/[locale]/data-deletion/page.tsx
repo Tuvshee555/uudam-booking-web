@@ -1,55 +1,55 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Trash2 } from "lucide-react";
+import { Mail, ShieldCheck } from "lucide-react";
+
+import PageHero from "@/components/site/PageHero";
 import { CONTACT, hasLink } from "@/lib/contact";
+import { canonicalPath } from "@/lib/locales";
 import { shareMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "Мэдээлэл устгах",
-  description: "Хувийн мэдээллээ устгуулах заавар.",
-  ...shareMetadata("/data-deletion", "Мэдээлэл устгах · Uudam Travel", "Хувийн мэдээллээ устгуулах заавар."),
+  title: "Хувийн мэдээлэл устгах",
+  description: "Uudam Travel-д үлдээсэн хувийн мэдээллээ (нэр, утас, и-мэйл) устгуулах заавар.",
+  ...shareMetadata("/data-deletion", "Хувийн мэдээлэл устгах · Uudam Travel", "Хувийн мэдээллээ устгуулах заавар."),
 };
 
-export default async function DataDeletion({
-  params,
-}: {
-  params: Promise<{ locale: string }>;
-}) {
-  const { locale } = await params;
-
+export default function DataDeletion() {
   return (
-    <div className="uudam-container max-w-2xl py-14">
-      <span className="inline-flex rounded-xl bg-primary/10 p-3 text-primary">
-        <Trash2 className="h-5 w-5" />
-      </span>
-      <h1 className="mt-4 text-2xl font-bold md:text-3xl">Мэдээлэл устгах заавар</h1>
-      <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-        Бидэнд үлдээсэн хувийн мэдээллээ (нэр, утасны дугаар, и-мэйл) устгуулахыг хүсвэл
-        доорх хаягаар бидэнтэй холбогдоно уу. Хүсэлтийг хүлээн авснаас хойш ажлын 7
-        хоногт багтаан мэдээллийг устгана.
-      </p>
-
-      <div className="mt-6 rounded-2xl border border-border p-5">
-        {hasLink(CONTACT.email) ? (
-          <>
-            <div className="text-sm font-semibold">И-мэйл хаяг</div>
-            <a
-              href={`mailto:${CONTACT.email}`}
-              className="mt-1 block text-sm text-primary hover:underline"
-            >
-              {CONTACT.email}
-            </a>
-          </>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Холбоо барих мэдээллийг{" "}
-            <Link href={`/${locale}/contact`} className="text-primary hover:underline">
-              Холбоо барих
-            </Link>{" "}
-            хуудаснаас харна уу.
-          </p>
-        )}
+    <>
+      <PageHero
+        compact
+        crumbs={[{ label: "Нүүр", href: canonicalPath("") }, { label: "Хувийн мэдээлэл устгах" }]}
+        eyebrow="Хувийн мэдээлэл"
+        title="Мэдээлэл устгах заавар"
+        lede="Бидэнд үлдээсэн хувийн мэдээллээ (нэр, утасны дугаар, и-мэйл) устгуулахыг хүсвэл доорх хаягаар бидэнтэй холбогдоно уу. Хүсэлтийг хүлээн авснаас хойш ажлын 7 хоногт багтаан мэдээллийг устгана."
+      />
+      <div className="site-container max-w-2xl pb-20 pt-12">
+        <div className="rounded-xl border border-border bg-card p-6 sm:p-8">
+          {hasLink(CONTACT.email) ? (
+            <>
+              <Mail className="h-5 w-5 text-gold-text" aria-hidden="true" />
+              <h2 className="mt-4 text-[15px] font-semibold text-foreground">Устгах хүсэлтээ илгээх и-мэйл</h2>
+              <a href={`mailto:${CONTACT.email}?subject=${encodeURIComponent("Хувийн мэдээлэл устгах хүсэлт")}`} className="mt-2 inline-block font-display text-[1.5rem] text-foreground underline decoration-gold underline-offset-4 focus-ring">
+                {CONTACT.email}
+              </a>
+              <p className="mt-4 text-[14px] leading-relaxed text-muted-foreground">
+                Хүсэлтдээ сайтад үлдээсэн нэр, утасны дугаараа бичвэл таны мэдээллийг олоход хялбар.
+              </p>
+            </>
+          ) : (
+            <p className="text-[14.5px] text-muted-foreground">
+              Холбоо барих мэдээллийг{" "}
+              <Link href={canonicalPath("/contact")} className="font-semibold text-foreground underline decoration-gold underline-offset-4">Холбоо барих</Link>{" "}
+              хуудаснаас харна уу.
+            </p>
+          )}
+        </div>
+        <p className="mt-6 flex gap-3 text-[13.5px] leading-relaxed text-muted-foreground">
+          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+          Сайтад үлдээсэн мэдээллийг зөвхөн таны хүсэлт, захиалгын талаар холбогдоход ашигладаг. Дэлгэрэнгүйг{" "}
+          <Link href={canonicalPath("/terms")} className="underline underline-offset-2 hover:text-foreground">үйлчилгээний нөхцөл</Link>-өөс уншина уу.
+        </p>
       </div>
-    </div>
+    </>
   );
 }

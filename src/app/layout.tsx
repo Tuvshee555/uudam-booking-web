@@ -1,5 +1,5 @@
-import type { Metadata } from "next";
-import { Manrope } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Manrope, Noto_Serif_Display } from "next/font/google";
 import "./globals.css";
 import JsonLd from "@/components/content/JsonLd";
 import { CONTACT, hasLink } from "@/lib/contact";
@@ -17,6 +17,19 @@ const manrope = Manrope({
   display: "swap",
 });
 
+/**
+ * The display face for headings, chosen by rendering real Mongolian copy:
+ * Playfair has no Ү/Ө (it falls back mid-word), Cormorant and Forum draw л
+ * and д in the old Λ-like form, and Prata and Literata set "11" as "ll".
+ * Noto Serif Display keeps Ө, Ү and the digits clear at every heading size.
+ */
+const displaySerif = Noto_Serif_Display({
+  variable: "--font-display",
+  weight: ["400", "500"],
+  subsets: ["latin", "cyrillic", "cyrillic-ext"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
@@ -24,7 +37,8 @@ export const metadata: Metadata = {
     template: "%s · Uudam Travel",
   },
   description:
-    "Uudam Travel Agency — гадаад, дотоодын аяллын багц. Хөтөлбөр, үнэ, хөдлөх огноог шууд харж захиална.",
+    "Uudam Travel Agency — аяллын багц: хөтөлбөр, үнэ, хөдлөх огноог шууд харж захиална.",
+  applicationName: "Uudam Travel",
   icons: {
     icon: "/favicon.ico",
     apple: "/apple-icon.png",
@@ -34,13 +48,17 @@ export const metadata: Metadata = {
   // of those still unfurls with a picture.
   openGraph: {
     title: "Uudam Travel Agency",
-    description: "Гадаад, дотоодын аяллын багц. Хөтөлбөр, үнэ, огноог шууд харна.",
+    description: "Аяллын багц: хөтөлбөр, үнэ, огноог шууд харна.",
     type: "website",
     siteName: "Uudam Travel Agency",
     locale: "mn_MN",
     images: [DEFAULT_SHARE_IMAGE],
   },
   twitter: { card: "summary_large_image", images: [DEFAULT_SHARE_IMAGE.url] },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0a2540",
 };
 
 /**
@@ -51,10 +69,17 @@ export const metadata: Metadata = {
 const businessJsonLd = {
   "@context": "https://schema.org",
   "@type": "TravelAgency",
+  "@id": `${SITE_URL}/#agency`,
   name: "Uudam Travel Agency",
   url: SITE_URL,
-  image: `${SITE_URL}/uudam-logo.jpg`,
-  address: { "@type": "PostalAddress", addressCountry: "MN", streetAddress: CONTACT.address },
+  logo: `${SITE_URL}/icon-512.png`,
+  image: `${SITE_URL}/og-default.jpg`,
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: CONTACT.address,
+    addressLocality: "Улаанбаатар",
+    addressCountry: "MN",
+  },
   ...(hasLink(CONTACT.phone) ? { telephone: CONTACT.phone } : {}),
   ...(hasLink(CONTACT.email) ? { email: CONTACT.email } : {}),
   sameAs: [CONTACT.facebook, CONTACT.instagram].filter((url) => hasLink(url)),
@@ -63,7 +88,7 @@ const businessJsonLd = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="mn" suppressHydrationWarning>
-      <body className={`${manrope.variable} font-sans antialiased`}>
+      <body className={`${manrope.variable} ${displaySerif.variable} font-sans antialiased`}>
         <JsonLd id="business-json-ld" data={businessJsonLd} />
         {children}
       </body>

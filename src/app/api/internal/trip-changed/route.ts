@@ -1,8 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
-import { revalidatePath } from "next/cache";
 import { handler, httpError, json, readJson } from "@/server/http";
-import { invalidateCatalog } from "@/server/cache";
-import { LOCALES } from "@/lib/locales";
+import { revalidateStorefront } from "@/server/revalidate";
 
 export const dynamic = "force-dynamic";
 
@@ -28,14 +26,6 @@ export const POST = handler(async (req: Request) => {
   const slugs = (Array.isArray(body.slugs) ? body.slugs : [])
     .filter((slug): slug is string => typeof slug === "string" && SLUG.test(slug))
     .slice(0, 50);
-  invalidateCatalog();
-  for (const locale of LOCALES) {
-    revalidatePath(`/${locale}`, "page");
-    revalidatePath(`/${locale}/trips`, "page");
-    revalidatePath(`/${locale}/departures`, "page");
-    for (const slug of slugs) revalidatePath(`/${locale}/trips/${slug}`, "page");
-  }
-  revalidatePath("/[locale]/trips/[slug]", "page");
-  revalidatePath("/[locale]/category/[id]", "page");
+  revalidateStorefront();
   return json({ ok: true, revalidated: slugs.length });
 });

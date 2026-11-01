@@ -38,27 +38,25 @@ export default function TripSidebar({
   return (
     <div>
       {hasPrice && (
-        <div className="mb-3 grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1">
-          <button
-            type="button"
-            onClick={() => setSelectedMode("book")}
-            className={cn(
-              "rounded-lg py-2 text-sm font-semibold transition-colors",
-              mode === "book" ? "bg-card text-primary shadow-sm" : "text-muted-foreground",
-            )}
-          >
-            {variablePricing ? "Үнэ сонгох" : "Онлайн захиалах"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedMode("ask")}
-            className={cn(
-              "rounded-lg py-2 text-sm font-semibold transition-colors",
-              mode === "ask" ? "bg-card text-primary shadow-sm" : "text-muted-foreground",
-            )}
-          >
-            Ажилтнаар холбогдох
-          </button>
+        <div role="tablist" aria-label="Захиалах арга" className="mb-3 grid grid-cols-2 gap-1 rounded-full border border-border bg-card p-1">
+          {([
+            { key: "book", label: variablePricing ? "Үнэ сонгох" : "Онлайн захиалах" },
+            { key: "ask", label: "Ажилтанд асуух" },
+          ] as const).map((entry) => (
+            <button
+              key={entry.key}
+              type="button"
+              role="tab"
+              aria-selected={mode === entry.key}
+              onClick={() => setSelectedMode(entry.key)}
+              className={cn(
+                "h-10 rounded-full text-[13.5px] font-semibold transition-colors focus-ring",
+                mode === entry.key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {entry.label}
+            </button>
+          ))}
         </div>
       )}
 

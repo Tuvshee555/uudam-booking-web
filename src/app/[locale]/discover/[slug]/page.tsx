@@ -1,24 +1,20 @@
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import type { Metadata } from "next";
-import Link from "next/link";
-import Image from "next/image";
 import { notFound } from "next/navigation";
-import { Sparkles } from "lucide-react";
 
 import { prisma } from "@/server/prisma";
-import { formatFullDate } from "@/lib/departures";
+import { getTripSummaries } from "@/server/catalog";
+import { canonicalPath } from "@/lib/locales";
 import { shareMetadata } from "@/lib/seo";
-import ArticleVideo from "@/components/content/ArticleVideo";
+import ArticleLayout, { relatedTripsFor } from "@/components/content/ArticleLayout";
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
 /**
  * Pre-render every published article at build time. Without
  * `generateStaticParams` defined at all (even returning []), Next never adds
- * this route to its prerender manifest and nothing caches — not `revalidate`,
- * not `unstable_cache`, nothing. See the identical fix (and the full story)
- * on trips/[slug]/page.tsx.
+ * this route to its prerender manifest and nothing caches.
  */
 export async function generateStaticParams() {
   const articles = await prisma.knowledgeArticle.findMany({
@@ -60,69 +56,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function DiscoverArticlePage({ params }: Props) {
-  const { locale, slug } = await params;
+  const { slug } = await params;
   const article = await findArticle(slug);
 
   if (!article) notFound();
 
   return (
-    <article className="uudam-container max-w-3xl py-10">
-      <nav className="mb-5 flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Link href={`/${locale}`} className="hover:text-primary">
-          Нүүр
-        </Link>
-        <span>/</span>
-        <Link href={`/${locale}/discover`} className="hover:text-primary">
-          Танин мэдэхүй
-        </Link>
-      </nav>
-
-      <h1 className="text-2xl font-bold leading-tight md:text-3xl">{article.title}</h1>
-      <p className="mt-2 text-xs text-muted-foreground">
-        {formatFullDate(article.publishedAt ?? article.createdAt)}
-      </p>
-
-      {article.coverImage && (
-        <div className="relative mt-6 aspect-[16/9] overflow-hidden rounded-2xl bg-secondary">
-          <Image
-            src={article.coverImage}
-            alt={article.title}
-            fill
-            sizes="(max-width: 768px) 100vw, 768px"
-            className="object-cover"
-            priority
-          />
-        </div>
-      )}
-
-      {article.excerpt && (
-        <p className="mt-6 text-[16px] font-medium leading-relaxed text-muted-foreground">
-          {article.excerpt}
-        </p>
-      )}
-
-      {article.video && <ArticleVideo url={article.video} title={article.title} />}
-
-      {article.facts.length > 0 && (
-        <div className="mt-8 rounded-2xl border border-border bg-card p-5">
-          <div className="flex items-center gap-2 text-sm font-bold text-primary">
-            <Sparkles className="h-4 w-4" />
-            Сонирхолтой баримтууд
-          </div>
-          <ul className="mt-3 space-y-2.5">
-            {article.facts.map((fact, index) => (
-              <li key={index} className="flex gap-2.5 text-[15px] leading-relaxed">
-                <span className="mt-0.5 text-primary">•</span>
-                <span>{fact}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {article.body && (
-        <div className="mt-6 whitespace-pre-line text-[15px] leading-relaxed">{article.body}</div>
-      )}
-    </article>
+    <ArticleLayout
+      article={article}
+      path={`/discover/${slug}`}
+      eyebrow="Танин мэдэхүй"
+      crumbs={[
+        { label: "Нүүр", href: canonicalPath("") },
+        { label: "Танин мэдэхүй", href: canonicalPath("/discover") },
+        { label: article.title },
+      ]}
+      related={relatedTripsFor(article, await getTripSummaries())}
+    />
   );
 }

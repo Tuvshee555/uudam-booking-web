@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
 import type { Prisma } from "@prisma/client";
 import { prisma, withPrismaRetry } from "@/server/prisma";
 import { optionalAdmin, requireAdmin } from "@/server/auth";
 import { handler, httpError, json, publicCache, readJson, safeText } from "@/server/http";
-import { invalidateCatalog } from "@/server/cache";
+import { revalidateStorefront } from "@/server/revalidate";
 import { queueTripSync, deliverTripSync } from "@/server/tripSyncQueue";
 import { publicTrip } from "@/lib/publicTrip";
 import { saveDepartures } from "@/server/saveDepartures";
@@ -28,7 +27,6 @@ import {
   toVideoUrls,
   uniqueSlug,
 } from "@/server/tripInput";
-import { LOCALES } from "@/lib/locales";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -48,15 +46,6 @@ async function findTrip(idOrSlug: string) {
       },
     },
   });
-}
-
-function revalidateTripPages(slug: string) {
-  for (const locale of LOCALES) {
-    revalidatePath(`/${locale}`, "page");
-    revalidatePath(`/${locale}/trips`, "page");
-    revalidatePath(`/${locale}/trips/${slug}`, "page");
-    revalidatePath(`/${locale}/departures`, "page");
-  }
 }
 
 export const GET = handler(async (req: Request, ctx: Ctx) => {
@@ -228,10 +217,7 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
   }, { timeout: 15_000 }));
 
   await deliverTripSync(trip.id);
-  invalidateCatalog();
-  revalidatePath("/[locale]/trips/[slug]", "page");
-  revalidatePath("/[locale]/departures", "page");
-  revalidatePath("/[locale]/trips", "page");
+  revalidateStorefront();
 
   return json(await withPrismaRetry(() => prisma.trip.findUnique({ where: { id }, include: TRIP_INCLUDE })));
 });
@@ -261,8 +247,7 @@ export const DELETE = handler(async (req: Request, ctx: Ctx) => {
     }));
     const complete = await deliverTripSync(trip.id);
 
-    invalidateCatalog();
-    revalidateTripPages(source.slug);
+    revalidateStorefront();
 
     return json({
       success: true,

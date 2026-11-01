@@ -27,7 +27,8 @@ export function shareMetadata(
 ): Pick<Metadata, "alternates" | "openGraph" | "twitter"> {
   const url = canonicalPath(path);
   return {
-    alternates: { canonical: url },
+    // One language for now (see lib/locales.ts); the hreflang pair says so explicitly.
+    alternates: { canonical: url, languages: { "mn-MN": url, "x-default": url } },
     openGraph: {
       title,
       description,

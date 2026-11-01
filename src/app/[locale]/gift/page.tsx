@@ -1,21 +1,25 @@
 import type { Metadata } from "next";
 
+import PageHero from "@/components/site/PageHero";
+import LeadForm from "@/components/lead/LeadForm";
 import { getSiteSettings } from "@/server/siteSettings";
 import { DEFAULT_GIFT_BODY, DEFAULT_GIFT_TITLE } from "@/lib/siteContent";
-import LeadForm from "@/components/lead/LeadForm";
+import { canonicalPath } from "@/lib/locales";
 import { shareMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Аяллын бэлгийн эрхийн бичиг",
   description:
-    "Хайртай хүндээ аялал бэлэглээрэй. Тодорхой аяллаар эсвэл өөрийн сонгосон дүнгээр эрхийн бичиг захиалах боломжтой.",
+    "Хайртай хүндээ аялал бэлэглээрэй. Тодорхой аяллаар эсвэл өөрийн сонгосон дүнгээр эрхийн бичиг захиалах хүсэлт илгээнэ.",
   ...shareMetadata("/gift", "Аяллын бэлгийн эрхийн бичиг · Uudam Travel", "Хайртай хүндээ мартагдашгүй аялал бэлэглээрэй."),
 };
 
+export const revalidate = 300;
+
 /**
- * A request, not a purchase. Mongolayalal sells vouchers online; there is no
- * checkout here by design, so this captures the lead and staff arrange payment
- * the same way they close every other sale.
+ * A request, not a purchase: there is no checkout here by design, so this
+ * captures the lead and staff arrange payment the same way they close every
+ * other sale.
  */
 export default async function GiftPage() {
   const settings = await getSiteSettings();
@@ -23,40 +27,26 @@ export default async function GiftPage() {
   const body = settings?.giftBody || DEFAULT_GIFT_BODY;
 
   return (
-    <div className="uudam-container max-w-2xl py-10">
-      <header className="text-center">
-        <h1 className="text-2xl font-bold md:text-3xl">{title}</h1>
-        <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">{body}</p>
-      </header>
-
-      <div className="mt-8">
+    <>
+      <PageHero
+        compact
+        crumbs={[{ label: "Нүүр", href: canonicalPath("") }, { label: "Аялал бэлэглэх" }]}
+        eyebrow="Бэлгийн эрхийн бичиг"
+        title={title}
+        lede={body}
+      />
+      <div className="site-container max-w-2xl pb-20 pt-12">
         <LeadForm
           kind="GIFT"
-          submitLabel="Эрхийн бичиг захиалах"
-          successNote="Ажилтан тантай холбогдож эрхийн бичгийг бэлдэнэ. Хүсэлтийн дугаар:"
+          submitLabel="Эрхийн бичгийн хүсэлт илгээх"
+          successNote="Ажилтан тантай холбогдож эрхийн бичиг, төлбөрийн нөхцөлийг тохирно. Хүсэлтийн дугаар:"
           fields={[
-            {
-              name: "giftAmount",
-              label: "Ямар дүнгээр бэлэглэх вэ? (₮)",
-              type: "number",
-              placeholder: "1000000",
-              hint: "Тодорхой аялал бэлэглэхийг хүсвэл доор аяллын нэрээ бичээрэй.",
-              required: true,
-            },
-            {
-              name: "giftRecipient",
-              label: "Хүлээн авагчийн нэр",
-              placeholder: "Болормаа",
-            },
-            {
-              name: "message",
-              label: "Бэлгийн мессеж эсвэл нэмэлт хүсэлт",
-              type: "textarea",
-              placeholder: "Эрхийн бичигт бичих мессеж, эсвэл сонирхож буй аяллын нэр…",
-            },
+            { name: "giftAmount", label: "Ямар дүнгээр бэлэглэх вэ? (₮)", type: "number", placeholder: "1000000", hint: "Тодорхой аялал бэлэглэх бол доор аяллын нэрийг бичээрэй.", required: true },
+            { name: "giftRecipient", label: "Хүлээн авагчийн нэр", placeholder: "Болормаа" },
+            { name: "message", label: "Бэлгийн мессеж эсвэл нэмэлт хүсэлт", type: "textarea", placeholder: "Эрхийн бичигт бичих мессеж, эсвэл сонирхож буй аяллын нэр…" },
           ]}
         />
       </div>
-    </div>
+    </>
   );
 }

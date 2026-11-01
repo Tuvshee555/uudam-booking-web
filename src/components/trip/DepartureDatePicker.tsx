@@ -5,16 +5,19 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { availability, formatDepartureDate } from "@/lib/departures";
 import { departureDateKey } from "@/lib/departureDate";
+import { monthTitle, WEEKDAYS_MN } from "@/lib/calendar";
 import type { Departure } from "@/types/trip";
 import { cn } from "@/lib/utils";
-
-const weekdays = ["Да", "Мя", "Лх", "Пү", "Ба", "Бя", "Ня"];
 
 function monthKey(value: string) { return departureDateKey(value).slice(0, 7); }
 function shortPrice(value: number) {
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value / 1_000_000);
 }
 
+/**
+ * The trip's own departure calendar: only months with a date, each date with
+ * its price in millions, full dates struck through and unselectable.
+ */
 export default function DepartureDatePicker({
   departures,
   selectedId,
@@ -30,7 +33,13 @@ export default function DepartureDatePicker({
   const selected = departures.find((departure) => departure.id === selectedId);
   const [shownMonth, setShownMonth] = useState(() => selected ? monthKey(selected.startDate) : months[0] || "");
   const current = months.includes(shownMonth) ? shownMonth : months[0];
-  if (!current) return <p className="py-3 text-sm text-muted-foreground">Товлосон огноо алга.</p>;
+  if (!current) {
+    return (
+      <p className="rounded-lg bg-secondary/70 p-4 text-[13px] leading-relaxed text-muted-foreground">
+        Энэ аялалд одоогоор товлосон огноо алга. Хүссэн огноогоо ажилтанд хэлээрэй — боломжтой огноог тодруулж өгнө.
+      </p>
+    );
+  }
   const position = months.indexOf(current);
   const [year, month] = current.split("-").map(Number);
   const days = new Date(Date.UTC(year, month, 0)).getUTCDate();
@@ -44,21 +53,21 @@ export default function DepartureDatePicker({
     .map((departure) => [Number(departureDateKey(departure.startDate).slice(8, 10)), departure]));
 
   return (
-    <div className="mt-3 border-t border-border pt-3">
+    <div>
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Явах огноо</h3>
-        <div className="flex items-center gap-1 text-sm font-medium">
-          <button type="button" title="Өмнөх сар" aria-label="Өмнөх сар" disabled={position === 0}
+        <h3 className="text-[13px] font-semibold text-foreground">Явах огноо</h3>
+        <div className="flex items-center gap-1">
+          <button type="button" aria-label="Өмнөх сар" disabled={position === 0}
             onClick={() => setShownMonth(months[position - 1])}
-            className="flex h-8 w-8 items-center justify-center disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button>
-          <span className="min-w-24 text-center tabular-nums">{year} · {month}-р сар</span>
-          <button type="button" title="Дараагийн сар" aria-label="Дараагийн сар" disabled={position === months.length - 1}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-foreground hover:bg-secondary focus-ring disabled:opacity-30"><ChevronLeft className="h-4 w-4" aria-hidden="true" /></button>
+          <span className="min-w-[8.5rem] text-center text-[13px] font-semibold tabular-nums text-foreground" aria-live="polite">{monthTitle(current)}</span>
+          <button type="button" aria-label="Дараагийн сар" disabled={position === months.length - 1}
             onClick={() => setShownMonth(months[position + 1])}
-            className="flex h-8 w-8 items-center justify-center disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button>
+            className="flex h-8 w-8 items-center justify-center rounded-full text-foreground hover:bg-secondary focus-ring disabled:opacity-30"><ChevronRight className="h-4 w-4" aria-hidden="true" /></button>
         </div>
       </div>
-      <div className="mt-2 grid grid-cols-7 text-center text-[11px] text-muted-foreground">
-        {weekdays.map((day) => <span key={day} className="py-1">{day}</span>)}
+      <div className="mt-2 grid grid-cols-7 text-center text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground" aria-hidden="true">
+        {WEEKDAYS_MN.map((day) => <span key={day} className="py-1">{day}</span>)}
       </div>
       <div className="grid grid-cols-7 gap-1">
         {Array.from({ length: leading }, (_, i) => <span key={`blank-${i}`} />)}
@@ -68,38 +77,35 @@ export default function DepartureDatePicker({
           const seats = departure ? availability(departure) : null;
           const price = departure?.price ?? basePrice;
           const active = departure?.id === selectedId;
+          const full = departure && !seats?.selectable;
           return departure ? (
             <button key={day} type="button" disabled={!seats?.selectable} onClick={() => onSelect(departure)}
-              aria-label={`${current}-${String(day).padStart(2, "0")}, ${seats?.label}, эхлэх үнэ ${price.toLocaleString("en-US")} төгрөг`}
+              aria-label={`${current}-${String(day).padStart(2, "0")}, ${seats?.label}${price > 0 ? `, нэг том хүн ${price.toLocaleString("en-US")} төгрөг` : ""}`}
               aria-pressed={active}
-              className={cn("relative flex h-9 flex-col items-center justify-center rounded-md border text-xs leading-tight transition-colors",
-                active ? "border-primary bg-primary font-semibold text-primary-foreground" : "border-border bg-secondary/45 hover:border-primary",
-                // A disabled date must look unmistakably un-clickable, not just
-                // tinted red — without this it rendered at full opacity with a
-                // normal pointer cursor, so a sold-out day looked identical to
-                // an open one and a customer could not tell a click had done
-                // nothing until they tried it.
-                !seats?.selectable && "cursor-not-allowed border-destructive/25 bg-destructive/5 text-destructive opacity-60 hover:border-destructive/25")}
+              className={cn("relative flex h-11 flex-col items-center justify-center rounded-lg border text-[12px] leading-tight transition-colors focus-ring",
+                active ? "border-primary bg-primary font-semibold text-primary-foreground" : "border-border bg-card text-foreground hover:border-foreground/40",
+                full && "cursor-not-allowed border-transparent bg-secondary/60 text-muted-foreground line-through hover:border-transparent")}
             >
               {seats?.tone === "tight" && (
-                <span aria-hidden className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-background" />
+                <span aria-hidden="true" className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-warning" />
               )}
               <span className="font-semibold">{day}</span>
-              <span className="text-[9px] tabular-nums opacity-80">{!seats?.selectable ? (departure.status === "SOLD_OUT" || departure.seatsLeft === 0 ? "Дүүрсэн" : seats?.label) : price > 0 ? shortPrice(price) : "—"}</span>
+              <span className={cn("text-[9.5px] tabular-nums", active ? "text-primary-foreground/85" : "text-muted-foreground")}>
+                {full ? "Дүүрсэн" : price > 0 ? shortPrice(price) : "—"}
+              </span>
             </button>
-          ) : <span key={day} className="flex h-9 items-center justify-center text-xs text-muted-foreground/40">{day}</span>;
+          ) : <span key={day} className="flex h-11 items-center justify-center text-[12px] text-muted-foreground/45">{day}</span>;
         })}
       </div>
-      <p className="mt-2 text-[11px] text-muted-foreground">Үнэ: сая ₮, нэг том хүний эхлэх үнэ.</p>
-      {hasTight && (
-        <p className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          <span aria-hidden className="h-2 w-2 rounded-full bg-destructive" />
-          Цөөн суудалтай өдөр
-        </p>
-      )}
+      <p className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-muted-foreground">
+        <span>Үнэ: сая ₮, нэг том хүн</span>
+        {hasTight && (
+          <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-warning" /> Цөөн суудалтай</span>
+        )}
+      </p>
       {selected && selectedSeats?.tone === "tight" && (
-        <p role="status" className="mt-2 rounded-md bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive">
-          {formatDepartureDate(selected.startDate)} — цөөн суудал үлдсэн. Захиалгаа түргэн баталгаажуулаарай.
+        <p role="status" className="mt-2 rounded-lg bg-warning/10 px-3 py-2 text-[12.5px] font-semibold text-warning">
+          {formatDepartureDate(selected.startDate)} — цөөн суудал үлдсэн.
         </p>
       )}
     </div>

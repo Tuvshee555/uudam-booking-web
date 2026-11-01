@@ -1,147 +1,133 @@
-"use client";
-
 import Link from "next/link";
-import { Facebook, Instagram, Mail, MapPin, Phone } from "lucide-react";
-import { useI18n } from "@/components/i18n/ClientI18nProvider";
-import { CONTACT, hasLink } from "@/lib/contact";
-import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
+import { ArrowRight, Clock, MapPin } from "lucide-react";
 
-export default function SiteFooter() {
-  const { locale } = useI18n();
-  const base = `/${locale}`;
+import ThemeToggle from "@/components/theme/ThemeToggle";
+import Wordmark from "@/components/site/Wordmark";
+import { HorizonArcs } from "@/components/site/SunMark";
+import { ChannelLink } from "@/components/site/channels";
+import { CHANNELS } from "@/lib/channels";
+import { CONTACT } from "@/lib/contact";
+import { canonicalPath } from "@/lib/locales";
+import { categoryHref, destinationHref, GUIDE_LINKS, type SiteNav } from "@/lib/siteNav";
+
+function Column({ title, links }: { title: string; links: { href: string; label: string }[] }) {
+  if (!links.length) return null;
+  return (
+    <div>
+      <h2 className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gold">{title}</h2>
+      <ul className="mt-5 space-y-3">
+        {links.map((link) => (
+          <li key={link.href}>
+            <Link href={link.href} className="link-draw rounded-sm text-[14px] text-white/75 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">
+              {link.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export default function SiteFooter({ nav }: { nav: SiteNav }) {
+  const year = new Date().getFullYear();
+  const phone = CHANNELS.find((entry) => entry.key === "phone");
+  const social = CHANNELS.filter((entry) => entry.key !== "phone");
 
   return (
-    <footer className="mt-20 border-t border-border bg-secondary/40">
-      <div className="uudam-container grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-4">
-        <div>
-          <div className="text-lg font-extrabold tracking-wide text-primary">UUDAM</div>
-          <div className="uudam-eyebrow mt-1">Travel Agency</div>
-          <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
-            Гадаад, дотоодын аяллын багц. Хөтөлбөр, үнэ, хөдлөх огноог ил тод харуулна.
-            Хүсэлт үлдээвэл ажилтан тань руу залгаж дэлгэрэнгүйг тодруулна.
-          </p>
-        </div>
+    <footer className="relative isolate overflow-hidden surface-night" data-print="hide">
+      <HorizonArcs className="absolute -bottom-10 left-1/2 -z-10 h-[420px] w-[1100px] -translate-x-1/2 opacity-40" />
 
-        <div>
-          <h3 className="text-sm font-semibold">Аялал</h3>
-          <ul className="mt-4 space-y-2.5 text-sm text-muted-foreground">
-            <li>
-              <Link href={`${base}/trips`} className="hover:text-primary">
-                Бүх аялал
+      <div className="site-container pt-16 md:pt-24">
+        <div className="grid gap-12 border-b border-white/10 pb-14 lg:grid-cols-[1.3fr_1fr] lg:gap-20 lg:pb-20">
+          <div>
+            <p className="eyebrow eyebrow-on-dark">Uudam Travel Agency</p>
+            <p className="display-1 mt-5 max-w-xl text-balance text-white">Дараагийн аяллаа хамтдаа төлөвлөе.</p>
+            <p className="mt-5 max-w-lg text-base leading-relaxed text-white/70">
+              Хөтөлбөр, үнэ, хөдлөх огноог сайтаас харж, захиалгаа онлайнаар үлдээгээрэй. Нөхцөлийг манай ажилтан утсаар баталгаажуулна.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link href={canonicalPath("/trips")} className="inline-flex h-12 items-center gap-2 rounded-full bg-gold px-7 text-[15px] font-semibold text-navy-night transition-colors hover:bg-[hsl(41_88%_55%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
+                Аялал сонгох
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
-            </li>
-            <li>
-              <Link href={`${base}/trips?featured=true`} className="hover:text-primary">
-                Онцлох аялал
-              </Link>
-            </li>
-            <li>
-              <Link href={`${base}/contact`} className="hover:text-primary">
-                Зөвлөгөө авах
-              </Link>
-            </li>
-            <li>
-              <Link href={`${base}/faq`} className="hover:text-primary">
-                Түгээмэл асуулт
-              </Link>
-            </li>
-          </ul>
-        </div>
-
-        <div>
-          <h3 className="text-sm font-semibold">Компани</h3>
-          <ul className="mt-4 space-y-2.5 text-sm text-muted-foreground">
-            <li>
-              <Link href={`${base}/about`} className="hover:text-primary">
-                Бидний тухай
-              </Link>
-            </li>
-            <li>
-              <Link href={`${base}/contact`} className="hover:text-primary">
+              <Link href={canonicalPath("/contact")} className="inline-flex h-12 items-center rounded-full border border-white/35 px-7 text-[15px] font-semibold text-white transition-colors hover:bg-white hover:text-navy-night focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">
                 Холбоо барих
               </Link>
-            </li>
-            <li>
-              <Link href={`${base}/terms`} className="hover:text-primary">
-                Үйлчилгээний нөхцөл
-              </Link>
-            </li>
-            <li>
-              <Link href={`${base}/data-deletion`} className="hover:text-primary">
-                Мэдээлэл устгах
-              </Link>
-            </li>
-          </ul>
-        </div>
-
-        <div>
-          <h3 className="text-sm font-semibold">Холбоо барих</h3>
-          <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
-            {hasLink(CONTACT.phone) && (
-              <li className="flex items-start gap-2.5">
-                <Phone className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                <a href={CONTACT.phoneHref} className="hover:text-primary">
-                  {CONTACT.phone}
-                </a>
-              </li>
-            )}
-            {hasLink(CONTACT.email) && (
-              <li className="flex items-start gap-2.5">
-                <Mail className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                <a href={`mailto:${CONTACT.email}`} className="hover:text-primary">
-                  {CONTACT.email}
-                </a>
-              </li>
-            )}
-            <li className="flex items-start gap-2.5">
-              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              <span>{CONTACT.address}</span>
-            </li>
-          </ul>
-
-          <div className="mt-5 flex gap-2">
-            {hasLink(CONTACT.whatsapp) && (
-              <a
-                href={CONTACT.whatsapp}
-                target="_blank"
-                rel="noreferrer"
-                aria-label="WhatsApp"
-                className="rounded-lg border border-border p-2 text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-              >
-                <WhatsAppIcon className="h-4 w-4" />
-              </a>
-            )}
-            <a
-              href={CONTACT.facebook}
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Facebook"
-              className="rounded-lg border border-border p-2 text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-            >
-              <Facebook className="h-4 w-4" />
-            </a>
-            {hasLink(CONTACT.instagram) && (
-              <a
-                href={CONTACT.instagram}
-                target="_blank"
-                rel="noreferrer"
-                aria-label="Instagram"
-                className="rounded-lg border border-border p-2 text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-              >
-                <Instagram className="h-4 w-4" />
-              </a>
-            )}
+            </div>
           </div>
-        </div>
-      </div>
 
-      <div className="border-t border-border">
-        <div className="uudam-container flex flex-col gap-2 py-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <span>© {new Date().getFullYear()} Uudam Travel Agency. Бүх эрх хуулиар хамгаалагдсан.</span>
-          <span className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-gold" />
-            Аяллын мэргэжлийн баг
-          </span>
+          <address className="not-italic">
+            {phone && (
+              <ChannelLink channelKey="phone" from="footer" className="group block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">Утсаар</span>
+                <span className="mt-2 block font-display text-[2.4rem] leading-none text-white transition-colors group-hover:text-gold">{phone.value}</span>
+              </ChannelLink>
+            )}
+            {CONTACT.otherPhones.length > 0 && (
+              <p className="mt-3 text-sm tabular-nums text-white/60">{CONTACT.otherPhones.join(" · ")}</p>
+            )}
+            <ul className="mt-8 space-y-4 text-[14px] leading-relaxed text-white/75">
+              <li className="flex gap-3">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gold" aria-hidden="true" />
+                {CONTACT.address}
+              </li>
+              <li className="flex gap-3">
+                <Clock className="mt-0.5 h-4 w-4 shrink-0 text-gold" aria-hidden="true" />
+                {CONTACT.workingHours}
+              </li>
+            </ul>
+            <ul className="mt-8 flex flex-wrap gap-2" aria-label="Сошиал сүлжээ ба мессеж">
+              {social.map((entry) => (
+                <li key={entry.key}>
+                  <ChannelLink
+                    channelKey={entry.key}
+                    from="footer"
+                    ariaLabel={entry.label}
+                    className="flex h-11 w-11 items-center justify-center rounded-full border border-white/20 text-white/80 transition-colors hover:border-gold hover:bg-gold hover:text-navy-night focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+                  >
+                    <entry.icon className="h-[18px] w-[18px]" />
+                  </ChannelLink>
+                </li>
+              ))}
+            </ul>
+          </address>
+        </div>
+
+        <div className="grid grid-cols-2 gap-10 py-14 md:grid-cols-4">
+          <Column
+            title="Аялал"
+            links={[
+              { href: canonicalPath("/trips"), label: `Бүх аялал${nav.tripCount ? ` (${nav.tripCount})` : ""}` },
+              { href: canonicalPath("/departures"), label: "Хөдлөх хуваарь" },
+              { href: canonicalPath("/custom-trip"), label: "Захиалгат аялал" },
+              { href: canonicalPath("/gift"), label: "Аялал бэлэглэх" },
+              { href: canonicalPath("/saved"), label: "Хадгалсан аялал" },
+            ]}
+          />
+          <Column title="Аяллын төрөл" links={nav.categories.map((category) => ({ href: categoryHref(category.slug), label: category.name }))} />
+          <Column title="Чиглэл" links={nav.destinations.slice(0, 7).map((destination) => ({ href: destinationHref(destination.key), label: destination.label }))} />
+          <Column
+            title="Мэдээлэл"
+            links={[
+              ...GUIDE_LINKS.map((link) => ({ href: link.href, label: link.label })),
+              { href: canonicalPath("/about"), label: "Бидний тухай" },
+              { href: canonicalPath("/contact"), label: "Холбоо барих" },
+            ]}
+          />
+        </div>
+
+        <div className="flex flex-col gap-6 border-t border-white/10 py-8 md:flex-row md:items-center md:justify-between">
+          <Link href={canonicalPath("")} aria-label="Нүүр хуудас" className="w-fit rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">
+            <Wordmark tone="light" compact />
+          </Link>
+          <div className="flex flex-col gap-4 text-[13px] text-white/55 md:flex-row md:items-center md:gap-6">
+            <span>© {year} Uudam Travel Agency</span>
+            <Link href={canonicalPath("/terms")} className="link-draw w-fit hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">Үйлчилгээний нөхцөл</Link>
+            <Link href={canonicalPath("/data-deletion")} className="link-draw w-fit hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">Хувийн мэдээлэл устгах</Link>
+            <span className="flex items-center gap-2 text-white/70 [&_button]:text-white/80 [&_button:hover]:bg-white/10">
+              Харагдах өнгө <ThemeToggle />
+            </span>
+          </div>
         </div>
       </div>
     </footer>

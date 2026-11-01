@@ -14,6 +14,8 @@ import {
 } from "@/server/http";
 import { generateReference } from "@/server/reference";
 import { BookingError, createBooking, expireStaleHolds } from "@/server/booking";
+import { qpayConfigured } from "@/server/qpay";
+import { isBotSubmission } from "@/server/spam";
 import { sendEmail } from "@/server/mail";
 import { bookingCustomerEmail, bookingStaffEmail } from "@/server/emailTemplates";
 
@@ -103,6 +105,12 @@ export const POST = handler(async (req: Request) => {
 
   const body = await readJson(req);
 
+  // A hidden field no person sees or fills. A bot that fills it is told it
+  // succeeded, so it has no reason to try again, and nothing is stored.
+  if (isBotSubmission(body)) {
+    return json({ reference: generateReference().replace("UUD-", "UUD-B-"), status: "HELD", totalPrice: 0, holdExpiresAt: null, duplicate: false, payment: { qpay: false, bankDetails: null } }, { status: 201 });
+  }
+
   const firstName = safeText(body.firstName, 120);
   const phone = normalizePhone(body.phone);
   const tripId = safeText(body.tripId, 60);
@@ -149,6 +157,19 @@ export const POST = handler(async (req: Request) => {
       select: { bankDetails: true },
     });
 
+    // The same booking sent twice: answer with the one already made, and do
+    // not email anyone a second time.
+    if (booking.duplicate) {
+      return json({
+        reference: booking.reference,
+        status: booking.status,
+        totalPrice: booking.totalPrice,
+        holdExpiresAt: booking.holdExpiresAt,
+        duplicate: true,
+        payment: { qpay: qpayConfigured(), bankDetails: settings?.bankDetails ?? null },
+      }, { status: 200 });
+    }
+
     after(async () => {
       const payload = {
         reference: booking.reference,
@@ -189,6 +210,10 @@ export const POST = handler(async (req: Request) => {
         status: booking.status,
         totalPrice: booking.totalPrice,
         holdExpiresAt: booking.holdExpiresAt,
+        duplicate: false,
+        // What the confirmation screen may offer: QPay only when it is set up,
+        // bank details only when staff have entered them.
+        payment: { qpay: qpayConfigured(), bankDetails: settings?.bankDetails ?? null },
       },
       { status: 201 },
     );

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { useTrips } from "@/hooks/useTrips";
 import { getRecentlyViewed } from "@/lib/analytics";
+import SectionHeading from "@/components/site/SectionHeading";
 import TripCard from "./TripCard";
 
 /**
@@ -12,7 +13,7 @@ import TripCard from "./TripCard";
  * server render always has an empty list, and reading localStorage during
  * render would mismatch server/client HTML.
  */
-export default function RecentlyViewedStrip() {
+export default function RecentlyViewedStrip({ exclude }: { exclude?: string }) {
   const [slugs, setSlugs] = useState<string[]>([]);
   const { data: trips } = useTrips();
 
@@ -22,6 +23,7 @@ export default function RecentlyViewedStrip() {
   if (slugs.length === 0 || !trips) return null;
 
   const ordered = slugs
+    .filter((slug) => slug !== exclude)
     .map((slug) => trips.find((trip) => trip.slug === slug))
     .filter((trip): trip is NonNullable<typeof trip> => Boolean(trip))
     .slice(0, 4);
@@ -29,13 +31,15 @@ export default function RecentlyViewedStrip() {
   if (ordered.length === 0) return null;
 
   return (
-    <section className="uudam-container py-10">
-      <h2 className="text-2xl font-bold md:text-3xl">Сүүлд үзсэн аялалууд</h2>
-      <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+    <section aria-labelledby="recent-title" className="site-container pt-20 lg:pt-28" data-print="hide">
+      <SectionHeading id="recent-title" eyebrow="Таны үзсэн" title="Сүүлд үзсэн аялалууд" />
+      <ul className="mt-10 grid grid-cols-2 gap-x-3 gap-y-9 sm:gap-x-5 lg:grid-cols-4 lg:gap-x-6">
         {ordered.map((trip) => (
-          <TripCard key={trip.id} trip={trip} />
+          <li key={trip.id}>
+            <TripCard trip={trip} />
+          </li>
         ))}
-      </div>
+      </ul>
     </section>
   );
 }

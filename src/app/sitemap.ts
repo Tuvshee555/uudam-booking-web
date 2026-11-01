@@ -22,6 +22,12 @@ const STATIC_PATHS = [
 ];
 
 /**
+ * Built once at deploy otherwise. A trip save refreshes it at once
+ * (revalidateStorefront); the hour is the fallback for anything else.
+ */
+export const revalidate = 3600;
+
+/**
  * Every published trip and category in every live locale (only Mongolian — see lib/locales.ts), plus the
  * static pages. /admin is deliberately excluded — see robots.ts.
  */
@@ -31,7 +37,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       where: { isPublished: true },
       select: { slug: true, updatedAt: true },
     }),
+    // A category with nothing published is a thin page (and noindex): leave it out.
     prisma.category.findMany({
+      where: {
+        OR: [
+          { trips: { some: { isPublished: true } } },
+          { primaryTrips: { some: { isPublished: true } } },
+        ],
+      },
       select: { id: true, slug: true },
     }),
     prisma.post.findMany({

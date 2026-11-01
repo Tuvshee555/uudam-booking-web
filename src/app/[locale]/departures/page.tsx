@@ -1,47 +1,45 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
-import { prisma } from "@/server/prisma";
-import { TRIP_INCLUDE } from "@/server/tripInput";
-import { listTrip } from "@/lib/publicTrip";
+import PageHero from "@/components/site/PageHero";
+import { getTripSummaries } from "@/server/catalog";
+import { renderTime } from "@/server/clock";
+import { ulaanbaatarDay } from "@/lib/calendar";
+import { upcomingDepartures } from "@/lib/departures";
+import { canonicalPath } from "@/lib/locales";
 import { shareMetadata } from "@/lib/seo";
-import type { Trip } from "@/types/trip";
 import DeparturesPageClient from "./DeparturesPageClient";
 
 export const metadata: Metadata = {
   title: "Аяллын хуваарь",
   description:
-    "Uudam Travel-ийн ойрын хугацаанд хөдлөх бүх аялал огноогоор. Хэзээ явахаа мэдэж байгаа бол эндээс сонгоно уу.",
-  ...shareMetadata("/departures", "Аяллын хуваарь · Uudam Travel", "Ойрын хугацаанд хөдлөх аяллуудыг огноогоор нь харна уу."),
+    "Uudam Travel-ийн ойрын хугацаанд хөдлөх бүх аялал хуанлиар. Хэзээ явахаа мэдэж байгаа бол өдрөө сонгоод тухайн өдөр гарах аяллуудыг харна уу.",
+  ...shareMetadata("/departures", "Аяллын хуваарь · Uudam Travel", "Ойрын хугацаанд хөдлөх аяллуудыг хуанлиар харна уу."),
 };
 
 /**
- * Without this the page is prerendered once at build time and its data is
- * frozen until the next deploy — staff edit trips daily, and the departures
- * cutoff is a `new Date()` that would freeze with it.
- *
- * Saving a trip revalidates this path immediately (see revalidateTripPages
- * in /api/trips/[id]), so this timer is a safety net, not the only way an
- * edit reaches a visitor.
+ * Saving a trip refreshes this page at once (revalidateStorefront). The timer
+ * also moves "today" along: the calendar opens on the current Ulaanbaatar
+ * month and never lists a departure that has already left.
  */
 export const revalidate = 300;
 
-/**
- * Only trips that actually have a future departure. Pulling the whole
- * catalogue here would ship 33 trips to render a dozen rows.
- */
 export default async function DeparturesPage() {
-  const trips = await prisma.trip.findMany({
-    where: {
-      isPublished: true,
-      departures: {
-        some: {
-          startDate: { gte: new Date() },
-          status: { notIn: ["CANCELLED", "DEPARTED"] },
-        },
-      },
-    },
-    include: TRIP_INCLUDE,
-  });
+  const now = renderTime();
+  const trips = (await getTripSummaries()).filter((trip) => upcomingDepartures(trip, now).length > 0);
 
-  return <DeparturesPageClient trips={JSON.parse(JSON.stringify(trips.map(listTrip))) as Trip[]} />;
+  return (
+    <>
+      <PageHero
+        compact
+        crumbs={[{ label: "Нүүр", href: canonicalPath("") }, { label: "Хуваарь" }]}
+        eyebrow="Хөдлөх хуваарь"
+        title="Хэзээ явах вэ?"
+        lede="Өдрөө сонгоход тухайн өдөр хөдлөх бүх аялал, тухайн огнооны үнийн хамт гарна. Дүүрсэн огноог зурааслан тэмдэглэсэн."
+      />
+      <Suspense fallback={<div className="site-container h-[640px] animate-pulse pt-10" aria-busy="true" />}>
+        <DeparturesPageClient trips={trips} today={ulaanbaatarDay(now)} now={now} />
+      </Suspense>
+    </>
+  );
 }

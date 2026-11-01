@@ -1,24 +1,18 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
 import { prisma } from "@/server/prisma";
 import { requireAdmin } from "@/server/auth";
 import { handler, httpError, json, publicCache, readJson, safeText } from "@/server/http";
-import { cached, invalidateCatalog } from "@/server/cache";
+import { cached } from "@/server/cache";
+import { revalidateStorefront } from "@/server/revalidate";
 import { slugify } from "@/server/tripInput";
 import { tripCountsByCategory } from "@/server/categoryCounts";
-import { LOCALES } from "@/lib/locales";
 
 /**
- * Category pages are ISR-cached on a long timer (see category/[id]/page.tsx)
- * since nothing else refreshes them — this is the "something actually
- * changed" signal that makes the timer a safety net rather than the only
- * way a saved edit ever shows up.
+ * A category appears in the menu on every page, so any category change
+ * refreshes the whole storefront (lazily, page by page on the next visit).
  */
-function revalidateCategoryPages(id?: string) {
-  for (const locale of LOCALES) {
-    revalidatePath(`/${locale}`, "page");
-    if (id) revalidatePath(`/${locale}/category/${id}`, "page");
-  }
+function revalidateCategoryPages() {
+  revalidateStorefront();
 }
 
 const CATEGORY_SELECT = {
@@ -99,7 +93,7 @@ export const POST = handler(async (req: Request) => {
     if (!parent) throw httpError(400, "Эцэг ангилал олдсонгүй");
   }
 
-  const created = await prisma.category.create({
+  await prisma.category.create({
     data: {
       categoryName,
       parentId,
@@ -109,8 +103,7 @@ export const POST = handler(async (req: Request) => {
     },
   });
 
-  invalidateCatalog();
-  revalidateCategoryPages(created.slug ?? created.id);
+  revalidateCategoryPages();
 
   return json(await listCategories());
 });
@@ -156,8 +149,7 @@ export const PUT = handler(async (req: Request) => {
     },
   });
 
-  invalidateCatalog();
-  revalidateCategoryPages(category.slug ?? category.id);
+  revalidateCategoryPages();
 
   return json({ success: true, category });
 });
@@ -197,7 +189,6 @@ export const DELETE = handler(async (req: Request) => {
     if (!isMissing) throw err;
   }
 
-  invalidateCatalog();
   revalidateCategoryPages();
 
   return json({ success: true, detachedTrips: tripCount });

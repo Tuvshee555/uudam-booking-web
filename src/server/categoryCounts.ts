@@ -1,12 +1,16 @@
 import { prisma } from "./prisma";
 
 /**
- * Counts every trip against its primary category and any extra storefront
+ * Counts trips against their primary category and any extra storefront
  * categories. A Set per trip avoids double-counting when the primary category
  * is also present in the many-to-many list.
+ *
+ * `publishedOnly` is what visitors see: counting drafts made the menu promise
+ * "14 аялал" for a category that listed 8.
  */
-export async function tripCountsByCategory() {
+export async function tripCountsByCategory({ publishedOnly = false }: { publishedOnly?: boolean } = {}) {
   const trips = await prisma.trip.findMany({
+    where: publishedOnly ? { isPublished: true } : undefined,
     select: {
       categoryId: true,
       categories: { select: { id: true } },

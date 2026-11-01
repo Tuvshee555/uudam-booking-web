@@ -1,8 +1,15 @@
-import { prisma } from "@/server/prisma";
+import { cache } from "react";
+import type { Prisma } from "@prisma/client";
+
+import { prisma, withPrismaRetry } from "@/server/prisma";
 import { TRIP_INCLUDE } from "@/server/tripInput";
 import { tripCountsByCategory } from "@/server/categoryCounts";
+import { cached } from "@/server/cache";
 import type { CategoryNode, Trip } from "@/types/trip";
-import { listTrip } from "@/lib/publicTrip";
+import { summaryFields } from "@/lib/publicTrip";
+import { destinationCounts } from "@/lib/destinations";
+import { formatCategoryName } from "@/lib/tripDisplay";
+import { EMPTY_NAV, type SiteNav } from "@/lib/siteNav";
 
 /**
  * Server-side reads of the public catalogue, shaped exactly like the API
@@ -14,14 +21,106 @@ import { listTrip } from "@/lib/publicTrip";
  * would disagree.
  */
 
-export async function getPublishedTrips(): Promise<Trip[]> {
-  const trips = await prisma.trip.findMany({
-    where: { isPublished: true },
-    include: TRIP_INCLUDE,
-    orderBy: { createdAt: "desc" },
-  });
+/** Departures that ended more than two days ago never reach a card. */
+const PAST_GRACE_MS = 2 * 24 * 60 * 60 * 1000;
 
-  return JSON.parse(JSON.stringify(trips.map(listTrip))) as Trip[];
+const SUMMARY_SELECT = {
+  id: true,
+  slug: true,
+  title: true,
+  summary: true,
+  country: true,
+  city: true,
+  region: true,
+  destinations: true,
+  durationDays: true,
+  durationNights: true,
+  minTravelers: true,
+  maxTravelers: true,
+  difficulty: true,
+  transport: true,
+  languages: true,
+  season: true,
+  image: true,
+  video: true,
+  videos: true,
+  price: true,
+  oldPrice: true,
+  discount: true,
+  childPrice: true,
+  infantPrice: true,
+  singleSupplement: true,
+  currency: true,
+  sourceTripId: true,
+  foodIncluded: true,
+  brochurePdfUrl: true,
+  categoryId: true,
+  isFeatured: true,
+  isPublished: true,
+  salesCount: true,
+  avgRating: true,
+  reviewCount: true,
+  createdAt: true,
+  updatedAt: true,
+  category: true,
+  categories: { orderBy: { categoryName: "asc" } },
+  tags: { orderBy: { name: "asc" } },
+} satisfies Prisma.TripSelect;
+
+async function loadSummaries(where: Prisma.TripWhereInput): Promise<Trip[]> {
+  const cutoff = new Date(Date.now() - PAST_GRACE_MS);
+  const rows = await withPrismaRetry(() =>
+    prisma.trip.findMany({
+      where,
+      select: {
+        ...SUMMARY_SELECT,
+        departures: {
+          where: { startDate: { gte: cutoff }, status: { notIn: ["CANCELLED", "DEPARTED"] } },
+          orderBy: { startDate: "asc" },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+  );
+  if (!rows.length) return [];
+
+  // The card reads four small keys of sourceMetadata, which for some trips is
+  // hundreds of kilobytes; pull just those keys instead of the whole column.
+  const ids = rows.map((row) => row.id);
+  // Keep this key list in step with SUMMARY_METADATA_KEYS.
+  const metadataRows = await withPrismaRetry(() =>
+    prisma.$queryRaw<{ id: string; metadata: Record<string, unknown> | null }[]>`
+      SELECT id, jsonb_strip_nulls(jsonb_build_object(
+        'marketingBadge', "sourceMetadata"->'marketingBadge',
+        'marketing_badge', "sourceMetadata"->'marketing_badge',
+        'seats_left', "sourceMetadata"->'seats_left',
+        'seats_total', "sourceMetadata"->'seats_total'
+      )) AS metadata
+      FROM "Trip" WHERE id = ANY(${ids})`,
+  );
+  const metadata = new Map(metadataRows.map((row) => [row.id, row.metadata]));
+
+  return JSON.parse(JSON.stringify(rows.map((row) => summaryFields(row, metadata.get(row.id) ?? null)))) as Trip[];
+}
+
+/**
+ * Every published trip as a card-sized record — the catalogue, the home page,
+ * the calendar and saved trips render from this. Read fresh for each render
+ * (once per request): the page itself is what is cached, and a save
+ * regenerates it. An in-memory copy here would outlive the save — the save
+ * runs in another route's module instance (or another server) and can't
+ * clear it — and the stale list would then be baked into the page for its
+ * whole cache life.
+ */
+export const getTripSummaries = cache((): Promise<Trip[]> => loadSummaries({ isPublished: true }));
+
+/**
+ * The same list for the public JSON API, which answers far more requests than
+ * pages render: kept 20 s per instance (a save on this instance clears it at
+ * once), behind the CDN cache that route sets anyway.
+ */
+export function getCachedTripSummaries(): Promise<Trip[]> {
+  return cached("trips:summaries", 20_000, () => loadSummaries({ isPublished: true }));
 }
 
 /**
@@ -36,7 +135,7 @@ export async function getCategoryWithTrips(
   { includeDrafts = false }: { includeDrafts?: boolean } = {},
 ) {
   const categories = await prisma.category.findMany({
-    select: { id: true, parentId: true, categoryName: true, slug: true },
+    select: { id: true, parentId: true, categoryName: true, slug: true, description: true, image: true },
   });
 
   const target = categories.find((c) => c.id === idOrSlug || c.slug === idOrSlug);
@@ -56,23 +155,28 @@ export async function getCategoryWithTrips(
     }
   }
 
-  const trips = await prisma.trip.findMany({
-    where: {
-      OR: [
-        { categoryId: { in: Array.from(ids) } },
-        { categories: { some: { id: { in: Array.from(ids) } } } },
-      ],
-      ...(includeDrafts ? {} : { isPublished: true }),
-    },
-    include: TRIP_INCLUDE,
-    orderBy: { createdAt: "desc" },
-  });
-
-  return {
-    category: { id: target.id, categoryName: target.categoryName, slug: target.slug },
-    // Drafts are an admin view and keep staff-only fields; the public page never does.
-    trips: JSON.parse(JSON.stringify(includeDrafts ? trips : trips.map(listTrip))) as Trip[],
+  const inCategory: Prisma.TripWhereInput = {
+    OR: [
+      { categoryId: { in: Array.from(ids) } },
+      { categories: { some: { id: { in: Array.from(ids) } } } },
+    ],
   };
+
+  const category = {
+    id: target.id,
+    categoryName: target.categoryName,
+    slug: target.slug,
+    description: target.description,
+    image: target.image,
+  };
+
+  if (includeDrafts) {
+    // Drafts are an admin view and keep staff-only fields.
+    const trips = await prisma.trip.findMany({ where: inCategory, include: TRIP_INCLUDE, orderBy: { createdAt: "desc" } });
+    return { category, trips: JSON.parse(JSON.stringify(trips)) as Trip[] };
+  }
+
+  return { category, trips: await loadSummaries({ ...inCategory, isPublished: true }) };
 }
 
 /**
@@ -110,7 +214,7 @@ export async function getSiteSettings(): Promise<{
   return { tripNotice: row?.tripNotice ?? null, bankDetails: row?.bankDetails ?? null };
 }
 
-/** Mirrors GET /api/categories/tree, including its orphan-promotion rule. */
+/** Mirrors GET /api/categories/tree (the public read), including its orphan-promotion rule. */
 export async function getCategoryTree(): Promise<CategoryNode[]> {
   const all = await prisma.category.findMany({
     select: {
@@ -123,7 +227,7 @@ export async function getCategoryTree(): Promise<CategoryNode[]> {
     },
     orderBy: { categoryName: "asc" },
   });
-  const tripCounts = await tripCountsByCategory();
+  const tripCounts = await tripCountsByCategory({ publishedOnly: true });
 
   const byId = new Map<string, CategoryNode>();
   const roots: CategoryNode[] = [];
@@ -154,4 +258,37 @@ export async function getCategoryTree(): Promise<CategoryNode[]> {
   }
 
   return roots;
+}
+
+function flatten(nodes: CategoryNode[]): CategoryNode[] {
+  return nodes.flatMap((node) => [node, ...flatten(node.children)]);
+}
+
+/** What the header menu, footer and mobile drawer list: only categories and places with trips in them. */
+export function siteNavFrom(trips: Trip[], categories: CategoryNode[]): SiteNav {
+  return {
+    tripCount: trips.length,
+    categories: flatten(categories)
+      .filter((category) => category.tripCount > 0)
+      .sort((a, b) => b.tripCount - a.tripCount)
+      .map((category) => ({
+        id: category.id,
+        slug: category.slug ?? category.id,
+        name: formatCategoryName(category.categoryName),
+        count: category.tripCount,
+        image: category.image,
+      })),
+    destinations: destinationCounts(trips),
+  };
+}
+
+export async function getSiteNav(): Promise<SiteNav> {
+  try {
+    const [trips, categories] = await Promise.all([getTripSummaries(), getCategoryTree()]);
+    return siteNavFrom(trips, categories);
+  } catch (error) {
+    // The menu must never take a page down with it.
+    console.error("Site navigation unavailable:", error);
+    return EMPTY_NAV;
+  }
 }

@@ -1,28 +1,40 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import Link from "next/link";
-import { Check, Copy, Loader2, Minus, Plus } from "lucide-react";
+import { ArrowLeft, Check, Copy, Loader2, Minus, Plus, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import { api, apiErrorMessage } from "@/lib/api";
 import { getVisitorId, track } from "@/lib/analytics";
-import { ageBandsFor, formatMnt, hasKnownTripPrice, hasMissingPassengerFare, lineTotal, passengerFareLabel, resolvePrices } from "@/lib/pricing";
+import { ageBandsFor, fareFor, formatMnt, hasKnownTripPrice, hasMissingPassengerFare, lineTotal, passengerFareLabel, resolvePrices } from "@/lib/pricing";
 import { availability, formatFullDate, formatDepartureDate, startingPrice, upcomingDepartures } from "@/lib/departures";
 import { saleBadgeLabel } from "@/lib/tripMarketing";
 import { datePriceOptions, formatAdultOption, formatPriceDelta, hasVariablePricing, priceDimensionOptions } from "@/lib/tripPriceOptions";
 import { roundTemp, shortDate, weatherIcon, weatherLabel, type TripWeatherReport } from "@/lib/weather";
+import { emailError, formatPhoneInput, nameError, phoneError } from "@/lib/formValidation";
+import { canonicalPath } from "@/lib/locales";
+import { formatTripTitle } from "@/lib/tripDisplay";
 import DepartureDatePicker from "./DepartureDatePicker";
 import { departureDateKey } from "@/lib/departureDate";
 import { useTripWeather } from "./TripWeather";
 import QpayPayButton, { QpayPaidBadge } from "./QpayPayButton";
-import { useI18n } from "@/components/i18n/ClientI18nProvider";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import FormField, { inputClass, revealConfirmation, useSubmitGuard } from "@/components/site/FormField";
+import Honeypot from "@/components/site/Honeypot";
+import { ChannelLink } from "@/components/site/channels";
+import { channel } from "@/lib/channels";
+import { cn } from "@/lib/utils";
 import type { Departure, Trip } from "@/types/trip";
 
 type Step = "select" | "details" | "done";
+
+type BookingResult = {
+  reference: string;
+  totalPrice: number;
+  holdExpiresAt: string | null;
+  duplicate: boolean;
+  payment: { qpay: boolean; bankDetails: string | null };
+};
 
 function formatRange(departure: Departure) {
   const startText = formatFullDate(departure.startDate);
@@ -32,6 +44,10 @@ function formatRange(departure: Departure) {
 
 function pricedHint(age: string, price: number | null | undefined) {
   return [age, !hasKnownTripPrice(price) ? "Үнэ лавлах" : formatMnt(price)].filter(Boolean).join(" · ");
+}
+
+function ulaanbaatarTime(value: string): string {
+  return new Date(value).toLocaleTimeString("en-GB", { timeZone: "Asia/Ulaanbaatar", hour: "2-digit", minute: "2-digit" });
 }
 
 function BookingWeatherSummary({ report }: { report: TripWeatherReport }) {
@@ -49,90 +65,103 @@ function BookingWeatherSummary({ report }: { report: TripWeatherReport }) {
     .join(", ");
 
   return (
-    <div className="mt-4 rounded-md border border-sky-200 bg-sky-50/80 p-3 text-sky-950 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-50">
-      <div className="flex items-start gap-3">
-        {iconDay.symbol && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={weatherIcon(iconDay.symbol)} alt={weatherLabel(iconDay.symbol)} className="h-12 w-12 shrink-0" draggable={false} />
-        )}
-        <div className="min-w-0">
-          <div className="text-xs font-bold uppercase tracking-wide text-sky-700 dark:text-sky-300">
-            {typical ? "Аялах үеийн дундаж цаг агаар" : "Аялах үеийн цаг агаар"}
-          </div>
-          <div className="mt-1 text-sm font-semibold">
-            {shortDate(days[0].date)}–{shortDate(days[days.length - 1].date)}
-            {places ? ` · ${places}` : ""}
-          </div>
-          <p className="mt-1 text-xs leading-relaxed text-sky-800 dark:text-sky-200">
-            Дунджаар өдөртөө <span className="font-semibold">{roundTemp(avgHi)}°C</span>, шөнөдөө{" "}
-            <span className="font-semibold">{roundTemp(avgLo)}°C</span>.
-            {wetDays > 0 ? ` Бороо орох магадлалтай ${wetDays} өдөр байна.` : " Бороо бага магадлалтай."}
-          </p>
-          <p className="mt-1 text-[11px] leading-relaxed text-sky-700 dark:text-sky-300">
-            {typical
-              ? "Энэ нь олон жилийн дундаж. Аялал ойртоход бодит урьдчилсан мэдээгээр автоматаар солигдоно."
-              : "Энэ нь ойрын өдрүүдийн бодит урьдчилсан мэдээ."}
-          </p>
-        </div>
+    <div className="mt-4 flex items-start gap-3 rounded-lg bg-secondary/70 p-3.5">
+      {iconDay.symbol && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={weatherIcon(iconDay.symbol)} alt={weatherLabel(iconDay.symbol)} className="h-11 w-11 shrink-0" draggable={false} />
+      )}
+      <div className="min-w-0 text-[12.5px] leading-relaxed text-muted-foreground">
+        <p className="font-semibold text-foreground">
+          {typical ? "Аялах үеийн дундаж цаг агаар" : "Аялах үеийн цаг агаар"}
+          <span className="font-normal text-muted-foreground"> · {shortDate(days[0].date)}–{shortDate(days[days.length - 1].date)}{places ? ` · ${places}` : ""}</span>
+        </p>
+        <p className="mt-0.5">
+          Өдөртөө дунджаар <span className="font-semibold text-foreground">{roundTemp(avgHi)}°C</span>, шөнөдөө{" "}
+          <span className="font-semibold text-foreground">{roundTemp(avgLo)}°C</span>.
+          {wetDays > 0 ? ` Бороо орох магадлалтай ${wetDays} өдөр.` : " Бороо бага магадлалтай."}
+          {typical ? " Олон жилийн дундаж; ойртоход бодит мэдээгээр солигдоно." : ""}
+        </p>
       </div>
     </div>
   );
 }
 
-function Counter({
+export function Counter({
   label,
   hint,
   value,
   onChange,
   min = 0,
+  max = 30,
 }: {
   label: string;
   hint: string;
   value: number;
   onChange: (next: number) => void;
   min?: number;
+  max?: number;
 }) {
   return (
-    <div className="flex items-center justify-between py-2.5">
-      <div>
-        <div className="text-sm font-medium">{label}</div>
-        <div className="text-xs text-muted-foreground">{hint}</div>
+    <div className="flex items-center justify-between gap-4 py-3">
+      <div className="min-w-0">
+        <div className="text-[14px] font-semibold text-foreground">{label}</div>
+        {hint && <div className="mt-0.5 text-[12px] text-muted-foreground">{hint}</div>}
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex shrink-0 items-center gap-3" role="group" aria-label={label}>
         <button
           type="button"
           onClick={() => onChange(Math.max(min, value - 1))}
           disabled={value <= min}
-          className="flex h-8 w-8 items-center justify-center rounded-full border border-border disabled:opacity-40"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-foreground transition-colors hover:border-foreground/40 focus-ring disabled:cursor-not-allowed disabled:opacity-35"
           aria-label={`${label} хасах`}
         >
-          <Minus className="h-3.5 w-3.5" />
+          <Minus className="h-4 w-4" aria-hidden="true" />
         </button>
-        <span className="w-6 text-center text-sm font-semibold tabular-nums">{value}</span>
+        <span className="w-6 text-center text-[15px] font-semibold tabular-nums text-foreground" aria-live="polite">{value}</span>
         <button
           type="button"
-          onClick={() => onChange(value + 1)}
-          className="flex h-8 w-8 items-center justify-center rounded-full border border-border"
+          onClick={() => onChange(Math.min(max, value + 1))}
+          disabled={value >= max}
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-foreground transition-colors hover:border-foreground/40 focus-ring disabled:cursor-not-allowed disabled:opacity-35"
           aria-label={`${label} нэмэх`}
         >
-          <Plus className="h-3.5 w-3.5" />
+          <Plus className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
     </div>
   );
 }
 
+function StepIndicator({ step }: { step: Step }) {
+  const steps = [
+    { key: "select", label: "Огноо, хүн" },
+    { key: "details", label: "Холбоо барих" },
+  ];
+  const index = step === "select" ? 0 : 1;
+  return (
+    <ol className="mt-5 grid grid-cols-2 gap-2" aria-label="Захиалгын алхам">
+      {steps.map((entry, position) => (
+        <li key={entry.key} aria-current={position === index ? "step" : undefined} className="flex flex-col gap-1.5">
+          <span className={cn("h-[3px] rounded-full", position <= index ? "bg-gold" : "bg-border")} />
+          <span className={cn("text-[11.5px] font-semibold", position === index ? "text-foreground" : "text-muted-foreground")}>
+            {position + 1}. {entry.label}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 /**
  * Online booking, alongside (not instead of) the callback enquiry.
  *
- * The site still takes no money: this holds seats and hands the customer a
- * reference to quote on a bank transfer, which is how the agency already
- * gets paid. Every figure shown here is recomputed server-side at submit —
- * this panel's total is a preview, never the authority.
+ * Booking here holds the seats for an hour and gives the customer a
+ * reference; nothing is charged, and a member of staff confirms the booking
+ * by phone. Every figure shown is a preview: the server recomputes the total
+ * from the database at submit.
  */
 export default function BookingPanel({
   trip,
-  bankDetails,
   onAsk,
   selectedDate,
   onDepartureChange,
@@ -143,8 +172,9 @@ export default function BookingPanel({
   onDepartureChange: (date: string) => void;
   onAsk: (selection: { departureId: string; message: string; adults: number; children: number; infants: number }) => void;
 }) {
-  const { locale } = useI18n();
-
+  // The page mounts one panel for phones and one for the desktop column.
+  const uid = useId();
+  const fieldId = (name: string) => `${uid}-bk-${name}`;
   const [step, setStep] = useState<Step>("select");
   const [departureId, setDepartureId] = useState<string | null>(() =>
     trip.departures.find((departure) => departureDateKey(departure.startDate) === selectedDate)?.id ?? null);
@@ -159,9 +189,11 @@ export default function BookingPanel({
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [notes, setNotes] = useState("");
+  const [website, setWebsite] = useState("");
+  const [showErrors, setShowErrors] = useState(false);
 
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ reference: string; totalPrice: number } | null>(null);
+  const { busy, run } = useSubmitGuard();
+  const [result, setResult] = useState<BookingResult | null>(null);
   const [copied, setCopied] = useState(false);
   const [paidViaQpay, setPaidViaQpay] = useState(false);
 
@@ -202,159 +234,186 @@ export default function BookingPanel({
   const adultHint = option?.adultMax != null && option.adultMax > (option.adult ?? 0)
     ? [ageBands.adult, `${formatAdultOption(option)} / хүн`].filter(Boolean).join(" · ")
     : pricedHint(ageBands.adult, option?.adult ?? prices.adult);
+  const fromPrice = startingPrice(trip, now);
+  const multiplePrices = fromPrice !== trip.price || new Set(openDepartures.filter((d) => availability(d).selectable).map((d) => d.price ?? trip.price)).size > 1;
+
+  const errors = {
+    firstName: nameError(firstName),
+    phone: phoneError(phone),
+    email: emailError(email),
+  };
+  const visibleError = (key: keyof typeof errors) => (showErrors ? errors[key] : null);
+
+  const breakdown = [
+    { label: "Том хүн", count: adults, fare: fareFor("adult", prices) },
+    ...(children > 0 ? [{ label: "Хүүхэд", count: children, fare: fareFor("child", prices) }] : []),
+    ...(infants > 0 ? [{ label: "Нярай", count: infants, fare: fareFor("infant", prices) }] : []),
+  ];
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-
-    if (!firstName.trim()) {
-      toast.error("Нэрээ оруулна уу");
-      return;
-    }
-    if (phone.replace(/\D/g, "").length < 6) {
-      toast.error("Утасны дугаараа зөв оруулна уу");
+    if (errors.firstName || errors.phone || errors.email) {
+      setShowErrors(true);
+      const first = errors.firstName ? "first" : errors.phone ? "phone" : "email";
+      document.getElementById(fieldId(first))?.focus();
       return;
     }
 
-    setBusy(true);
-    try {
-      const { data } = await api.post("/bookings", {
-        tripId: trip.id,
-        departureId: selected?.id,
-        adults,
-        children,
-        infants,
-        firstName: firstName.trim(),
-        lastName: lastName.trim() || undefined,
-        phone: phone.trim(),
-        email: email.trim() || undefined,
-        notes: notes.trim() || undefined,
-        source: typeof window !== "undefined" ? window.location.pathname : undefined,
-        visitorId: getVisitorId(),
-      });
+    await run(async () => {
+      try {
+        const { data } = await api.post<BookingResult>("/bookings", {
+          tripId: trip.id,
+          departureId: selected?.id,
+          adults,
+          children,
+          infants,
+          firstName: firstName.trim(),
+          lastName: lastName.trim() || undefined,
+          phone: phone.trim(),
+          email: email.trim() || undefined,
+          notes: notes.trim() || undefined,
+          website,
+          source: typeof window !== "undefined" ? window.location.pathname : undefined,
+          visitorId: getVisitorId(),
+        });
 
-      track("booking_submit", { tripId: trip.id });
-      setResult({ reference: data.reference, totalPrice: data.totalPrice });
-      setStep("done");
-    } catch (err) {
-      toast.error(apiErrorMessage(err, "Захиалга үүсгэхэд алдаа гарлаа"));
-    } finally {
-      setBusy(false);
-    }
+        track("booking_submit", { tripId: trip.id, properties: { duplicate: data.duplicate } });
+        setResult(data);
+        setStep("done");
+      } catch (err) {
+        toast.error(apiErrorMessage(err, "Захиалга илгээхэд алдаа гарлаа. Дахин оролдоно уу."));
+      }
+    });
   }
 
   if (step === "done" && result) {
+    const phoneChannel = channel("phone");
     return (
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-        <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
-          <Check className="h-6 w-6" />
+      <div ref={revealConfirmation} className="scroll-mt-24 rounded-xl border border-border bg-card p-6 shadow-panel">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-success/10 text-success">
+          <Check className="h-6 w-6" aria-hidden="true" />
         </span>
-        <h2 className="mt-4 text-center text-lg font-bold">Захиалга үүслээ</h2>
-        <p className="mt-2 text-center text-sm leading-relaxed text-muted-foreground">
-          Суудлыг түр барьлаа. Доорх дугаарыг гүйлгээний утга дээр бичиж
-          шилжүүлэг хийнэ үү.
+        <h2 tabIndex={-1} className="display-3 mt-5 text-foreground focus:outline-none">{result.duplicate ? "Энэ захиалга аль хэдийн илгээгдсэн" : "Захиалгыг хүлээн авлаа"}</h2>
+        <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
+          {result.holdExpiresAt
+            ? `Суудал ${ulaanbaatarTime(result.holdExpiresAt)} цаг хүртэл таны нэр дээр түр хадгалагдана.`
+            : "Захиалгын дугаараа хадгалаарай."}{" "}
+          Захиалга ажилтан баталгаажуулсны дараа хүчинтэй болно.
         </p>
 
-        <div className="mt-4 rounded-xl bg-secondary p-4 text-center">
-          <div className="text-xs text-muted-foreground">Захиалгын дугаар</div>
-          <div className="mt-1 text-2xl font-bold tracking-wider text-primary">
-            {result.reference}
+        <div className="mt-5 rounded-lg bg-secondary/80 p-4">
+          <div className="text-[12px] text-muted-foreground">Захиалгын дугаар</div>
+          <div className="mt-1 flex items-center justify-between gap-3">
+            <span className="text-[1.6rem] font-bold tracking-[0.08em] text-foreground">{result.reference}</span>
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(result.reference);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                } catch {
+                  toast.error("Хуулж чадсангүй");
+                }
+              }}
+              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-[12px] font-semibold text-foreground focus-ring"
+            >
+              {copied ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
+              {copied ? "Хуулсан" : "Хуулах"}
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(result.reference);
-                setCopied(true);
-                toast.success("Хуулагдлаа");
-                setTimeout(() => setCopied(false), 2000);
-              } catch {
-                toast.error("Хуулж чадсангүй");
-              }
-            }}
-            className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-primary"
-          >
-            {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-            Дугаар хуулах
-          </button>
+          <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-[14px]">
+            <span className="text-muted-foreground">Нийт дүн</span>
+            <span className="font-bold tabular-nums text-foreground">{formatMnt(result.totalPrice)}</span>
+          </div>
         </div>
 
-        <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
-          <span className="text-sm text-muted-foreground">Нийт төлөх дүн</span>
-          <span className="text-xl font-bold text-primary">{formatMnt(result.totalPrice)}</span>
-        </div>
+        <h3 className="mt-6 text-[13px] font-semibold uppercase tracking-[0.14em] text-foreground">Дараа нь юу болох вэ</h3>
+        <ol className="mt-3 space-y-2.5 text-[13.5px] leading-relaxed text-muted-foreground">
+          <li className="flex gap-3"><span className="font-semibold text-gold-text">1</span>Манай ажилтан ажлын цагаар тантай холбогдоно.</li>
+          <li className="flex gap-3"><span className="font-semibold text-gold-text">2</span>Хүний тоо, нөхцөл, төлбөрийн мэдээллийг тантай тохирно.</li>
+          <li className="flex gap-3"><span className="font-semibold text-gold-text">3</span>Төлбөр төлөгдсөний дараа захиалга баталгаажна.</li>
+        </ol>
 
         {paidViaQpay ? (
-          <div className="mt-4">
-            <QpayPaidBadge />
-          </div>
+          <div className="mt-5"><QpayPaidBadge /></div>
         ) : (
-          <div className="mt-4 space-y-3">
-            <QpayPayButton reference={result.reference} onPaid={() => setPaidViaQpay(true)} />
-
-            {bankDetails ? (
-              <div className="whitespace-pre-line rounded-xl border border-gold/40 bg-gold/10 p-4 text-sm leading-relaxed">
-                <div className="font-semibold">Эсвэл банкаар шилжүүлэх</div>
-                {bankDetails}
+          <div className="mt-5 space-y-3">
+            {result.payment.qpay && <QpayPayButton reference={result.reference} onPaid={() => setPaidViaQpay(true)} />}
+            {result.payment.bankDetails ? (
+              <div className="whitespace-pre-line rounded-lg border border-gold/40 bg-gold/10 p-4 text-[13px] leading-relaxed text-foreground">
+                <div className="font-semibold">Банкаар шилжүүлэх бол</div>
+                {result.payment.bankDetails}
+                <div className="mt-2 text-muted-foreground">Гүйлгээний утга: {result.reference}</div>
               </div>
             ) : (
-              <p className="rounded-xl bg-secondary p-3 text-xs leading-relaxed text-muted-foreground">
-                Банкны шилжүүлгийн мэдээллийг ажилтан тантай холбогдож хэлнэ.
+              <p className="rounded-lg bg-secondary/70 p-3.5 text-[13px] leading-relaxed text-muted-foreground">
+                Төлбөрийн мэдээллийг ажилтан тантай холбогдохдоо хэлнэ. Одоо юу ч төлөх шаардлагагүй.
               </p>
             )}
           </div>
         )}
 
-        <Button asChild variant="outline" className="mt-4 w-full">
-          <Link href={`/${locale}/booking/${result.reference}`}>Захиалгаа харах</Link>
-        </Button>
+        <div className="mt-5 grid gap-2">
+          <Link
+            href={canonicalPath(`/booking/${result.reference}`)}
+            className="flex h-11 items-center justify-center rounded-full bg-primary text-[14px] font-semibold text-primary-foreground focus-ring"
+          >
+            Захиалгаа харах
+          </Link>
+          {phoneChannel && (
+            <ChannelLink channelKey="phone" tripId={trip.id} from="booking-done" className="flex h-11 items-center justify-center rounded-full border border-border text-[14px] font-semibold text-foreground focus-ring">
+              Одоо залгах · {phoneChannel.value}
+            </ChannelLink>
+          )}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="rounded-md border border-border bg-card p-4">
-      <div className="flex items-end justify-between">
+    <div className="rounded-xl border border-border bg-card p-5 shadow-panel sm:p-6">
+      <div className="flex items-start justify-between gap-3">
         <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold-text">{requiresQuote ? "Үнийн санал" : "Онлайн захиалга"}</p>
           {option?.packageId && (
-            <div className="mb-1 inline-flex rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold text-primary-foreground">
-              {option.packageId}
-            </div>
+            <div className="mt-2 inline-flex rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold text-primary-foreground">{option.packageId}</div>
           )}
           {/* Without a chosen date this is the cheapest bookable fare, said so
               out loud: quoting the base fare showed 4,590,000₮ on a trip whose
               every open date cost 4,790,000₮. */}
-          <div className="text-xl font-bold text-primary">{requiresQuote && option ? formatAdultOption(option) : formatMnt(selected ? prices.adult : startingPrice(trip))}</div>
-          <div className="text-xs text-muted-foreground">
-            {requiresQuote ? "нэг том хүний үнэ" : selected ? `нэг том хүн · ${formatDepartureDate(selected.startDate)}-ний үнэ` : startingPrice(trip) !== trip.price || new Set(upcomingDepartures(trip).filter((d) => availability(d).selectable).map((d) => d.price ?? trip.price)).size > 1 ? "нэг том хүн · эхлэх үнэ" : "нэг том хүн"}
+          <div className="mt-2 text-[1.7rem] font-bold leading-none tabular-nums text-foreground">
+            {requiresQuote && option ? formatAdultOption(option) : formatMnt(selected ? prices.adult : fromPrice)}
+          </div>
+          <div className="mt-1.5 text-[12.5px] text-muted-foreground">
+            {requiresQuote
+              ? "нэг том хүний үнэ"
+              : selected
+                ? `нэг том хүн · ${formatDepartureDate(selected.startDate)}-ний үнэ`
+                : multiplePrices ? "нэг том хүн · хамгийн хямд огноо" : "нэг том хүн"}
           </div>
         </div>
-        <div className="flex flex-col items-end gap-1.5">
-          {saleLabel && (
-            <span className="rounded-full bg-destructive px-2.5 py-1 text-[11px] font-bold text-destructive-foreground">
-              {saleLabel}
-            </span>
-          )}
-          <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
-            Онлайн захиалга
-          </span>
-        </div>
+        {saleLabel && (
+          <span className="shrink-0 rounded-full bg-destructive px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-white">{saleLabel}</span>
+        )}
       </div>
 
-      {!requiresQuote && <div className="mt-4 space-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
-        <div className="flex justify-between">
-          <span>Хүүхэд</span>
-          <span className="font-medium text-foreground">{childFareLabel}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Нярай</span>
-          <span className="font-medium text-foreground">{infantFareLabel}</span>
-        </div>
-      </div>}
+      {!requiresQuote && (
+        <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-1 border-t border-border pt-3 text-[12.5px]">
+          <dt className="text-muted-foreground">Хүүхэд{ageBands.child ? ` (${ageBands.child})` : ""}</dt>
+          <dd className="text-right font-semibold text-foreground">{childFareLabel}</dd>
+          <dt className="text-muted-foreground">Нярай{ageBands.infant ? ` (${ageBands.infant})` : ""}</dt>
+          <dd className="text-right font-semibold text-foreground">{infantFareLabel}</dd>
+          {option?.singleSupplement != null && (
+            <>
+              <dt className="text-muted-foreground">Ганц хүний өрөө</dt>
+              <dd className="text-right font-semibold text-foreground">+{formatMnt(option.singleSupplement)}</dd>
+            </>
+          )}
+        </dl>
+      )}
 
-      {option?.singleSupplement != null && <div className="mt-3 flex justify-between gap-3 text-xs text-muted-foreground">
-        <span>Ганц хүний өрөөний нэмэгдэл</span>
-        <span className="font-medium text-foreground">{formatMnt(option.singleSupplement)}</span>
-      </div>}
+      {step !== "done" && <StepIndicator step={step} />}
 
       {step === "select" && (
         <div className="mt-5">
@@ -369,33 +428,33 @@ export default function BookingPanel({
 
           {bookingWeather && <BookingWeatherSummary report={bookingWeather} />}
 
-          {packageChoices.length > 1 && <div className="mt-4 border-t border-border pt-4">
-            <h3 className="text-sm font-semibold">Багц</h3>
+          {packageChoices.length > 1 && <div className="mt-5 border-t border-border pt-4">
+            <h3 className="text-[13px] font-semibold text-foreground">Багц</h3>
             <div className="mt-2 grid grid-cols-2 gap-2">
               {packageChoices.map((item) => <button key={item.id} type="button" aria-pressed={option?.packageId === item.id}
                 onClick={() => { setSelectedOptionKey(item.optionKey); setTierCounts({}); }}
-                className={`rounded-md border px-3 py-3 text-left ${option?.packageId === item.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}>
-                <span className="block text-sm font-semibold">{item.label}</span>
-                <span className="mt-1 block text-xs text-muted-foreground">{formatPriceDelta(item)}</span>
+                className={cn("rounded-lg border px-3 py-3 text-left transition-colors focus-ring", option?.packageId === item.id ? "border-primary bg-primary/5" : "border-border hover:border-foreground/35")}>
+                <span className="block text-[13px] font-semibold text-foreground">{item.label}</span>
+                <span className="mt-1 block text-[12px] text-muted-foreground">{formatPriceDelta(item)}</span>
               </button>)}
             </div>
           </div>}
 
-          {hotelChoices.length > 1 && <div className="mt-4 border-t border-border pt-4">
-            <h3 className="text-sm font-semibold">Буудал</h3>
+          {hotelChoices.length > 1 && <div className="mt-5 border-t border-border pt-4">
+            <h3 className="text-[13px] font-semibold text-foreground">Буудал</h3>
             <div className="mt-2 space-y-1.5">
               {hotelChoices.map((item) => <button key={item.id} type="button" aria-pressed={option?.hotel === item.id}
                 onClick={() => { setSelectedOptionKey(item.optionKey); setTierCounts({}); }}
-                className={`w-full rounded-md border px-3 py-2.5 text-left ${option?.hotel === item.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}>
+                className={cn("w-full rounded-lg border px-3 py-2.5 text-left transition-colors focus-ring", option?.hotel === item.id ? "border-primary bg-primary/5" : "border-border hover:border-foreground/35")}>
                 <span className="flex items-center justify-between gap-2">
-                  <span className="min-w-0 text-sm font-semibold">{item.label}</span>
-                  <span className="shrink-0 text-xs font-bold tabular-nums">{formatPriceDelta(item)}</span>
+                  <span className="min-w-0 text-[13px] font-semibold text-foreground">{item.label}</span>
+                  <span className="shrink-0 text-[12px] font-bold tabular-nums text-foreground">{formatPriceDelta(item)}</span>
                 </span>
               </button>)}
             </div>
           </div>}
 
-          <div className="mt-4 divide-y divide-border border-t border-border">
+          <div className="mt-5 divide-y divide-border border-t border-border">
             <Counter label="Том хүн" hint={adultHint} value={adults} onChange={setAdults} min={1} />
             {requiresQuote && specialTiers.length > 0 ? specialTiers.map((item) =>
               <Counter key={tierKey(item)} label={item.label} hint={[item.ageRange, item.price === 0 ? "Үнэгүй" : !hasKnownTripPrice(item.price) ? "Үнэ лавлах" : formatMnt(item.price)].filter(Boolean).join(" · ")}
@@ -406,18 +465,44 @@ export default function BookingPanel({
             </>}
           </div>
 
-          <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
-            <span className="text-sm text-muted-foreground">{requiresQuote ? "Тооцоолсон үнэ" : "Нийт дүн"}</span>
-            <span className="text-lg font-bold text-primary">{requiresQuote
-              ? quoteMin == null ? "Үнэ лавлах" : quoteMax != null && quoteMax > quoteMin
-                ? `${formatMnt(quoteMin)}–${formatMnt(quoteMax)}` : formatMnt(quoteMin)
-              : formatMnt(total)}</span>
+          <div className="mt-2 rounded-lg bg-secondary/70 p-4">
+            {requiresQuote ? (
+              <>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-[13px] text-muted-foreground">Тооцоолсон үнэ</span>
+                  <span className="text-[17px] font-bold tabular-nums text-foreground">
+                    {quoteMin == null ? "Үнэ лавлах" : quoteMax != null && quoteMax > quoteMin ? `${formatMnt(quoteMin)}–${formatMnt(quoteMax)}` : formatMnt(quoteMin)}
+                  </span>
+                </div>
+                <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+                  Энэ аяллын үнэ {quoteOnly ? "буудал, багц, огнооноос" : "насны ангиллаас"} хамаарна. Эцсийн үнэ, өрөөний сонголтыг ажилтан баталгаажуулна.
+                </p>
+              </>
+            ) : selected ? (
+              <>
+                <ul className="space-y-1.5 text-[13px]">
+                  {breakdown.map((line) => (
+                    <li key={line.label} className="flex items-baseline justify-between gap-3">
+                      <span className="text-muted-foreground">
+                        {line.label} {line.count} × {line.fare === 0 ? "Үнэгүй" : formatMnt(line.fare)}
+                      </span>
+                      <span className="tabular-nums text-foreground">{line.fare === 0 ? "0₮" : formatMnt(line.count * line.fare)}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-3 flex items-baseline justify-between gap-3 border-t border-border pt-3">
+                  <span className="text-[13px] font-semibold text-foreground">Нийт дүн</span>
+                  <span className="text-[1.25rem] font-bold tabular-nums text-foreground">{formatMnt(total)}</span>
+                </div>
+              </>
+            ) : (
+              <p className="text-[13px] text-muted-foreground">Огноогоо сонгоход тухайн өдрийн үнээр нийт дүн бодогдоно.</p>
+            )}
           </div>
 
-          {requiresQuote && <p className="mt-1 text-xs text-muted-foreground">Эцсийн үнэ, өрөөний сонголтыг ажилтан баталгаажуулна.</p>}
-
-          <Button
-            className="mt-4 w-full"
+          <button
+            type="button"
+            className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gold text-[15px] font-semibold text-navy-night transition-colors hover:bg-[hsl(41_88%_55%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!selected}
             onClick={() => {
               if (requiresQuote && selected) {
@@ -437,100 +522,91 @@ export default function BookingPanel({
               }
             }}
           >
-            {selected ? requiresQuote ? "Үнийн санал авах" : "Захиалах" : "Огноогоо сонгоно уу"}
-          </Button>
+            {selected ? requiresQuote ? "Үнийн санал авах" : "Үргэлжлүүлэх" : "Огноогоо сонгоно уу"}
+          </button>
+          <p className="mt-2.5 text-center text-[12px] text-muted-foreground">Энэ алхамд мөнгө төлөхгүй.</p>
         </div>
       )}
 
-      {step === "details" && (
-        <form onSubmit={submit} className="mt-5">
+      {step === "details" && selected && (
+        <form onSubmit={submit} noValidate className="relative mt-5">
           <button
             type="button"
             onClick={() => setStep("select")}
-            className="text-xs font-semibold text-muted-foreground hover:text-primary"
+            className="inline-flex items-center gap-1.5 rounded-sm text-[13px] font-semibold text-muted-foreground hover:text-foreground focus-ring"
           >
-            ← Огноо солих
+            <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" /> Огноо, хүн солих
           </button>
 
-          <div className="mt-3 rounded-xl bg-secondary p-3 text-xs">
-            <div className="font-semibold">{selected && formatRange(selected)}</div>
-            <div className="mt-0.5 text-muted-foreground">
-              {adults} том хүн
-              {children > 0 && `, ${children} хүүхэд`}
-              {infants > 0 && `, ${infants} нярай`}
-            </div>
+          <div className="mt-3 rounded-lg bg-secondary/70 p-4 text-[13px]">
+            <p className="line-clamp-2 font-semibold text-foreground">{formatTripTitle(trip.title)}</p>
+            <p className="mt-1 text-muted-foreground">{formatRange(selected)}</p>
+            <p className="mt-0.5 text-muted-foreground">
+              {adults} том хүн{children > 0 && `, ${children} хүүхэд`}{infants > 0 && `, ${infants} нярай`}
+            </p>
+            <p className="mt-2 flex items-baseline justify-between border-t border-border pt-2">
+              <span className="font-semibold text-foreground">Нийт дүн</span>
+              <span className="text-[16px] font-bold tabular-nums text-foreground">{formatMnt(total)}</span>
+            </p>
           </div>
 
-          <div className="mt-4 grid gap-3">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="bk-first">Нэр *</Label>
-                <Input
-                  id="bk-first"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  className="mt-1.5"
+          <div className="mt-5 grid gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField id={fieldId("first")} label="Нэр" required error={visibleError("firstName")}>
+                {(props) => <input {...props} value={firstName} onChange={(e) => setFirstName(e.target.value)} autoComplete="given-name" className={inputClass} />}
+              </FormField>
+              <FormField id={fieldId("last")} label="Овог">
+                {(props) => <input {...props} value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="family-name" className={inputClass} />}
+              </FormField>
+            </div>
+            <FormField id={fieldId("phone")} label="Утасны дугаар" required error={visibleError("phone")} hint="Ажилтан энэ дугаараар холбогдоно.">
+              {(props) => (
+                <input
+                  {...props}
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(formatPhoneInput(e.target.value))}
+                  placeholder="9911 2233"
+                  className={inputClass}
                 />
-              </div>
-              <div>
-                <Label htmlFor="bk-last">Овог</Label>
-                <Input
-                  id="bk-last"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  className="mt-1.5"
+              )}
+            </FormField>
+            <FormField id={fieldId("email")} label="И-мэйл" error={visibleError("email")} hint="Захиалгын дугаар, мэдээллийг и-мэйлээр илгээнэ.">
+              {(props) => <input {...props} type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />}
+            </FormField>
+            <FormField id={fieldId("notes")} label="Нэмэлт хүсэлт">
+              {(props) => (
+                <textarea
+                  {...props}
+                  rows={3}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Өрөөний хүсэлт, хүүхдийн нас гэх мэт"
+                  className={cn(inputClass, "h-auto py-3")}
                 />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="bk-phone">Утас *</Label>
-              <Input
-                id="bk-phone"
-                type="tel"
-                inputMode="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="9911 2233"
-                className="mt-1.5"
-              />
-            </div>
-            <div>
-              <Label htmlFor="bk-email">И-мэйл</Label>
-              <Input
-                id="bk-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Захиалгын мэдээлэл илгээнэ"
-                className="mt-1.5"
-              />
-            </div>
-            <div>
-              <Label htmlFor="bk-notes">Нэмэлт хүсэлт</Label>
-              <textarea
-                id="bk-notes"
-                rows={2}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="mt-1.5 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
-            </div>
+              )}
+            </FormField>
           </div>
+          <Honeypot value={website} onChange={setWebsite} />
 
-          <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
-            <span className="text-sm text-muted-foreground">Нийт дүн</span>
-            <span className="text-xl font-bold text-primary">{formatMnt(total)}</span>
-          </div>
-
-          <Button type="submit" disabled={busy} className="mt-4 w-full">
-            {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Захиалга баталгаажуулах
-          </Button>
-
-          <p className="mt-2 text-center text-[11px] leading-relaxed text-muted-foreground">
-            Төлбөрийг банкны шилжүүлгээр хийнэ. Одоо мөнгө таталгүй, зөвхөн
-            суудал захиална.
+          <p className="mt-5 flex gap-2.5 rounded-lg border border-border p-3.5 text-[12.5px] leading-relaxed text-muted-foreground">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+            <span>
+              Илгээсний дараа суудал 60 минут таны нэр дээр түр хадгалагдана. Одоо мөнгө төлөхгүй — ажилтан холбогдож захиалгыг баталгаажуулна.
+              Таны мэдээллийг зөвхөн энэ захиалгын талаар холбогдоход ашиглана (<Link href={canonicalPath("/terms")} className="underline underline-offset-2 hover:text-foreground">нөхцөл</Link>).
+            </span>
           </p>
+
+          <button
+            type="submit"
+            disabled={busy}
+            className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gold text-[15px] font-semibold text-navy-night transition-colors hover:bg-[hsl(41_88%_55%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-70"
+          >
+            {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+            {busy ? "Илгээж байна…" : "Захиалга илгээх"}
+          </button>
         </form>
       )}
     </div>

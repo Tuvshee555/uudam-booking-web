@@ -26,15 +26,16 @@ export type CategoryTreeNode = {
 export const GET = handler(async (req: Request) => {
   if (new URL(req.url).searchParams.get("all") === "true") {
     await requireAdmin(req);
-    return json(await buildTree());
+    return json(await buildTree({ publishedOnly: false }));
   }
 
-  const roots = await cached<CategoryTreeNode[]>("categories:tree", 30_000, buildTree);
+  const roots = await cached<CategoryTreeNode[]>("categories:tree", 30_000, () => buildTree({ publishedOnly: true }));
 
   return publicCache(NextResponse.json(roots));
 });
 
-async function buildTree(): Promise<CategoryTreeNode[]> {
+/** Staff count drafts too; visitors only see what a category page will list. */
+async function buildTree({ publishedOnly }: { publishedOnly: boolean }): Promise<CategoryTreeNode[]> {
   const all = await withPrismaRetry(() =>
     prisma.category.findMany({
       select: {
@@ -48,7 +49,7 @@ async function buildTree(): Promise<CategoryTreeNode[]> {
       orderBy: { categoryName: "asc" },
     }),
   );
-  const tripCounts = await tripCountsByCategory();
+  const tripCounts = await tripCountsByCategory({ publishedOnly });
 
   const byId = new Map<string, CategoryTreeNode>();
   const built: CategoryTreeNode[] = [];

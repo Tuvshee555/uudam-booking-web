@@ -27,3 +27,40 @@ export function listTrip<T extends { sourceMetadata: unknown; itinerary?: unknow
   if (base.sourceMetadata) delete base.sourceMetadata.itinerary_days;
   return { ...base, itinerary: [], extraImages: [] };
 }
+
+/**
+ * The only sourceMetadata a card reads: the sale badge and its seat facts.
+ * Everything else in it (fare tables, conflict history, photo credits) belongs
+ * to the trip's own page.
+ */
+export const SUMMARY_METADATA_KEYS = ["marketingBadge", "marketing_badge", "seats_left", "seats_total"] as const;
+
+/**
+ * The fields a trip card, the catalogue filters and the departure calendar
+ * read, with every long-form field emptied. Shaped like a full Trip so the
+ * same card and filter code takes either.
+ */
+export function summaryFields<T extends object>(row: T, metadata: Record<string, unknown> | null) {
+  return {
+    ...row,
+    description: "",
+    sourceMetadata: metadata && Object.keys(metadata).length ? metadata : null,
+    meetingPoint: null,
+    latitude: null,
+    longitude: null,
+    mapUrl: null,
+    highlights: [] as string[],
+    included: [] as string[],
+    excluded: [] as string[],
+    requirements: null,
+    cancellationPolicy: null,
+    importantNotes: [] as string[],
+    extraImages: [] as string[],
+    hotel: null,
+    departureRule: null,
+    extraFees: [] as string[],
+    roomPrices: [] as string[],
+    childPriceNotes: [] as string[],
+    itinerary: [] as never[],
+  };
+}

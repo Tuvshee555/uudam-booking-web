@@ -8,7 +8,11 @@ import InformationOnlyTrip from "@/components/trip/InformationOnlyTrip";
 import { prisma } from "@/server/prisma";
 import { TRIP_INCLUDE } from "@/server/tripInput";
 import { getSiteSettings as getSiteSettingsUncached } from "@/server/catalog";
+import { renderTime } from "@/server/clock";
 import { formatTripStartingPrice, hasKnownTripPrice } from "@/lib/pricing";
+import { availability, startingPrice, upcomingDepartures } from "@/lib/departures";
+import { hasVariablePricing } from "@/lib/tripPriceOptions";
+import { tripGalleryImages } from "@/lib/tripMedia";
 import { shareMetadata } from "@/lib/seo";
 import { SITE_URL } from "@/lib/siteUrl";
 import { tripMetaDescription } from "@/lib/tripSeo";
@@ -123,16 +127,26 @@ function serializeTrip(trip: NonNullable<Awaited<ReturnType<typeof findPublished
   return JSON.parse(JSON.stringify(publicTrip(trip))) as Trip;
 }
 
+/**
+ * The "-с эхлэн" price the page itself shows: the cheapest date still open,
+ * not the base fare (which can belong to a date that has left). Trips priced
+ * by hotel or package quote no single figure at all.
+ */
+function shownStartingPrice(trip: Trip): number | null {
+  if (hasVariablePricing(trip)) return null;
+  const price = startingPrice(trip);
+  return hasKnownTripPrice(price) ? price : null;
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const trip = await findPublishedTrip(slug);
+  const row = await findPublishedTrip(slug);
 
-  if (!trip) {
+  if (!row) {
     return { title: "Аялал олдсонгүй" };
   }
 
-  const description = tripMetaDescription(trip);
-
+  const trip = serializeTrip(row);
   const displayTitle = formatTripTitle(trip.title);
   if (!trip.isPublished) {
     return {
@@ -141,7 +155,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       robots: { index: false, follow: false },
     };
   }
-  const title = `${displayTitle} — ${formatTripStartingPrice(trip.price)}`;
+  const price = shownStartingPrice(trip);
+  const description = tripMetaDescription({ ...trip, price: price ?? 0 });
+  const title = price ? `${displayTitle} — ${formatTripStartingPrice(price)}-с` : displayTitle;
   const photo = trip.image ? { url: trip.image, width: 1200, height: 630, alt: displayTitle } : undefined;
 
   return { title, description, ...shareMetadata(`/trips/${slug}`, title, description, photo) };
@@ -149,54 +165,64 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function TripDetailPage({ params }: Props) {
   const { slug } = await params;
-  const [trip, siteSettings] = await Promise.all([findPublishedTrip(slug), getSiteSettings()]);
+  const [row, siteSettings] = await Promise.all([findPublishedTrip(slug), getSiteSettings()]);
 
   // A shared link to a trip that's since been unpublished or deleted should
   // 404 for real (search engines, unfurl bots), not render a 200 page whose
   // content happens to say "not found" — that was a soft-404.
-  if (!trip) notFound();
+  if (!row) notFound();
+  const trip = serializeTrip(row);
   if (!trip.isPublished) {
-    return <InformationOnlyTrip trip={serializeTrip(trip)} sourceMetadata={trip.sourceMetadata} />;
+    return <InformationOnlyTrip trip={trip} sourceMetadata={row.sourceMetadata} />;
   }
-  const visibleDepartures = trip.departures.filter(
-    (departure) =>
-      departure.status !== "CANCELLED" &&
-      departure.status !== "DEPARTED",
-  );
-  const allUpcomingSoldOut =
-    visibleDepartures.length > 0 &&
-    visibleDepartures.every(
-      (departure) =>
-        departure.status === "SOLD_OUT" ||
-        (typeof departure.seatsLeft === "number" && departure.seatsLeft <= 0),
-    );
 
-  const jsonLd = trip && {
+  const url = `${SITE_URL}/mn/trips/${slug}`;
+  const now = renderTime();
+  const openDepartures = upcomingDepartures(trip, now).filter((departure) => availability(departure).selectable);
+  const price = shownStartingPrice(trip);
+  const openPrices = openDepartures
+    .map((departure) => departure.price ?? trip.price)
+    .filter((value): value is number => hasKnownTripPrice(value));
+  const shownReviews = (trip.testimonials ?? []).filter((testimonial) => testimonial.rating > 0);
+
+  // Only what the page shows: the same starting price, the open dates, and a
+  // rating only when the reviews it summarises are on the page.
+  const jsonLd = {
     "@context": "https://schema.org",
     "@type": "TouristTrip",
     name: formatTripTitle(trip.title),
-    description: tripMetaDescription(trip),
-    image: trip.image || undefined,
-    url: `${SITE_URL}/mn/trips/${slug}`,
-    touristType: trip.country ? `${[trip.city, trip.country].filter(Boolean).join(", ")}` : undefined,
-    itinerary: { "@type": "ItemList", numberOfItems: trip.durationDays },
-    offers: hasKnownTripPrice(trip.price)
+    description: tripMetaDescription({ ...trip, price: price ?? 0 }),
+    image: tripGalleryImages(trip).slice(0, 5),
+    url,
+    provider: { "@type": "TravelAgency", "@id": `${SITE_URL}/#agency`, name: "Uudam Travel Agency", url: SITE_URL },
+    ...(trip.itinerary.length
       ? {
-          "@type": "Offer",
-          price: trip.price,
-          priceCurrency: trip.currency,
-          availability: allUpcomingSoldOut
-            ? "https://schema.org/SoldOut"
-            : "https://schema.org/InStock",
-          url: `${SITE_URL}/mn/trips/${slug}`,
+          itinerary: {
+            "@type": "ItemList",
+            numberOfItems: trip.itinerary.length,
+            itemListElement: trip.itinerary.map((day, index) => ({ "@type": "ListItem", position: index + 1, name: day.title })),
+          },
         }
-      : undefined,
-    ...(trip.reviewCount > 0
+      : {}),
+    ...(price
+      ? {
+          offers: {
+            "@type": "AggregateOffer",
+            priceCurrency: trip.currency || "MNT",
+            lowPrice: price,
+            highPrice: openPrices.length ? Math.max(...openPrices) : price,
+            offerCount: Math.max(openDepartures.length, 1),
+            availability: openDepartures.length ? "https://schema.org/InStock" : "https://schema.org/SoldOut",
+            url,
+          },
+        }
+      : {}),
+    ...(shownReviews.length
       ? {
           aggregateRating: {
             "@type": "AggregateRating",
-            ratingValue: trip.avgRating,
-            reviewCount: trip.reviewCount,
+            ratingValue: Math.round((shownReviews.reduce((sum, review) => sum + review.rating, 0) / shownReviews.length) * 10) / 10,
+            reviewCount: shownReviews.length,
           },
         }
       : {}),
@@ -204,10 +230,10 @@ export default async function TripDetailPage({ params }: Props) {
 
   return (
     <>
-      {jsonLd && <JsonLd id={`trip-json-ld-${slug}`} data={jsonLd} />}
+      <JsonLd id={`trip-json-ld-${slug}`} data={jsonLd} />
       <TripDetailClient
         slug={slug}
-        initialTrip={serializeTrip(trip)}
+        initialTrip={trip}
         initialSiteSettings={siteSettings}
       />
     </>

@@ -1,57 +1,58 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
-import Image from "next/image";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   AlertCircle,
   BedDouble,
   CalendarDays,
   Check,
-  ChevronDown,
   Clock,
-  FileDown,
-  FileText,
+  Compass,
   ExternalLink,
+  FileDown,
   Languages,
   MapPin,
-  Mountain,
-  ReceiptText,
   Star,
+  Users,
   Utensils,
   X,
 } from "lucide-react";
 
 import { useTrip, useTrips, useSiteSettings } from "@/hooks/useTrips";
 import type { Trip } from "@/types/trip";
-import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { recordRecentlyViewed } from "@/lib/analytics";
-import { formatTripTitle } from "@/lib/tripDisplay";
-import { availability, nextBookableDeparture, nextDeparture, startingPrice, upcomingDepartures } from "@/lib/departures";
-import { formatMnt, hasKnownTripPrice } from "@/lib/pricing";
-import {
-  isSoldOutDeparture,
-  saleBadgeLabel,
-} from "@/lib/tripMarketing";
+import { formatCategoryName, formatTripTitle, isAllCapsTitle } from "@/lib/tripDisplay";
+import { availability, formatDepartureDate, startingPrice, upcomingDepartures } from "@/lib/departures";
+import { hasKnownTripPrice } from "@/lib/pricing";
+import { saleBadgeLabel } from "@/lib/tripMarketing";
+import { tripDestinations } from "@/lib/destinations";
+import { tripStatus } from "@/lib/tripStatus";
+import { canonicalPath } from "@/lib/locales";
+import { categoryHref } from "@/lib/siteNav";
 import { parseMediaItems } from "@/lib/media";
-import TripMedia from "@/components/trip/TripMedia";
+import { splitHealthCheckup } from "@/lib/healthCheckup";
+import { hotelProfilesFromData, type HotelProfile } from "@/lib/hotelLinks";
+import Breadcrumbs from "@/components/site/Breadcrumbs";
+import TripGallery from "@/components/trip/TripGallery";
 import PhotoCredits from "@/components/trip/PhotoCredits";
-import { photoAlt } from "@/lib/photoCredits";
 import MediaGallery from "@/components/trip/MediaGallery";
 import TripWeather, { useTripWeather } from "@/components/trip/TripWeather";
 import RouteMap, { type RouteStop } from "@/components/trip/RouteMap";
 import TripCard from "@/components/trip/TripCard";
 import TripSidebar from "@/components/trip/TripSidebar";
 import StickyHandoffSidebar from "@/components/trip/StickyHandoffSidebar";
-import EnquiryTrustNote from "@/components/trust/EnquiryTrustNote";
 import ShareButton from "@/components/trip/ShareButton";
 import SaveButton from "@/components/trip/SaveButton";
 import DownloadTripButton from "@/components/trip/DownloadTripButton";
-import MessengerButton from "@/components/trip/MessengerButton";
 import HealthCheckupSection from "@/components/trip/HealthCheckupSection";
-import { splitHealthCheckup } from "@/lib/healthCheckup";
-import { Button } from "@/components/ui/button";
-import { hotelProfilesFromData, hotelTextSegments, type HotelLink, type HotelProfile } from "@/lib/hotelLinks";
+import ItineraryTimeline from "@/components/trip/ItineraryTimeline";
+import PricingSection from "@/components/trip/PricingSection";
+import SectionNav, { type PageSection } from "@/components/trip/SectionNav";
+import MobileTripBar from "@/components/trip/MobileTripBar";
+import { ChannelLink } from "@/components/site/channels";
+import { cn } from "@/lib/utils";
 
 /**
  * Trips imported from the chatbot project carry sourceTripId="trip-<poster
@@ -68,8 +69,7 @@ function chatbotPosterPdfUrl(sourceTripId: string | null): string | null {
 }
 
 const DIFFICULTY_LABEL: Record<string, string> = {
-  EASY: "Хөнгөн",
-  MODERATE: "Дунд",
+  MODERATE: "Дунд зэрэг",
   CHALLENGING: "Хүнд",
 };
 
@@ -84,113 +84,35 @@ function closestSelectableDepartureDate(trip: Trip): string | undefined {
   return upcomingDepartures(trip).find((departure) => availability(departure).selectable)?.startDate.slice(0, 10);
 }
 
-const MEAL_SLOTS = [
-  { match: /өглөө/i, label: "Өглөөний цай" },
-  { match: /өдөр/i, label: "Өдрийн хоол" },
-  { match: /орой/i, label: "Оройн хоол" },
-] as const;
-
-function ItineraryAccordion({ days, hotelLinks, photoSource }: { days: Trip["itinerary"]; hotelLinks: HotelLink[]; photoSource: Pick<Trip, "sourceMetadata"> }) {
-  const [openDayId, setOpenDayId] = useState<string | null>(() => days[0]?.id ?? null);
-  // A trip whose days carry no meal data at all says nothing about meals; once any
-  // day has them, every day shows all three so a missing meal reads as "not included".
-  const showMeals = days.some((day) => day.meals.length > 0);
-
+function TripSection({ id, title, eyebrow, children, className }: { id: string; title: string; eyebrow?: string; children: ReactNode; className?: string }) {
   return (
-    <ol className="mt-4 divide-y divide-border rounded-xl border border-border bg-card">
-      {days.map((day) => {
-        const open = openDayId === day.id;
-        return (
-          <li key={day.id}>
-            <button
-              type="button"
-              aria-expanded={open}
-              onClick={() => setOpenDayId(open ? null : day.id)}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-secondary/50 sm:px-5"
-            >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-                {day.dayNumber}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-bold leading-snug text-primary">{day.title}</span>
-                {day.location && <span className="mt-0.5 block truncate text-xs text-muted-foreground">{day.location}</span>}
-              </span>
-              <ChevronDown className={`h-5 w-5 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
-            </button>
-
-            <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
-              <div className="min-h-0 overflow-hidden">
-                <div className="border-t border-border px-4 pb-4 pt-3 sm:px-5">
-                {day.description && <p className="whitespace-pre-line text-[15px] leading-7 text-foreground/80">{day.description}</p>}
-                {day.image && (
-                  <div className="relative mt-3 aspect-[16/9] w-full max-w-xl overflow-hidden rounded-lg bg-secondary">
-                    <Image src={day.image} alt={photoAlt(photoSource, day.image, day.title)} fill sizes="(max-width: 640px) 100vw, 576px" className="uudam-photo-drift object-cover" />
-                  </div>
-                )}
-                {day.video && <video src={day.video} controls preload="metadata" playsInline className="mt-3 aspect-video w-full max-w-xl rounded-lg bg-black print:hidden" />}
-                {showMeals && (
-                  <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-[13px]" aria-label="Хоол">
-                    {MEAL_SLOTS.map(({ match, label }) => {
-                      const included = day.meals.some((meal) => match.test(meal));
-                      return (
-                        <li
-                          key={label}
-                          className={`flex items-center gap-1.5 ${included ? "font-medium text-foreground" : "text-muted-foreground"}`}
-                        >
-                          {included ? (
-                            <Check className="h-4 w-4 text-primary" aria-hidden="true" />
-                          ) : (
-                            <X className="h-4 w-4 text-muted-foreground/60" aria-hidden="true" />
-                          )}
-                          <span>{label}</span>
-                          <span className="sr-only">{included ? "багтсан" : "багтаагүй"}</span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-                {day.accommodation && (
-                  <p className="mt-2 flex items-center gap-1.5 text-[13px] text-foreground/80">
-                    <BedDouble className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-                    <span>
-                      {hotelTextSegments(day.accommodation, hotelLinks).map((segment, index) => segment.url ? (
-                        <a
-                          key={`${segment.url}-${index}`}
-                          href={segment.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-baseline gap-1 font-semibold text-primary underline decoration-primary/35 underline-offset-4 transition-colors hover:text-primary/75 focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                          title="Зочид буудлын хуудсыг шинэ цонхонд нээх"
-                        >
-                          {segment.text}
-                          <ExternalLink className="h-3 w-3 shrink-0 self-center" aria-hidden="true" />
-                        </a>
-                      ) : <span key={`text-${index}`}>{segment.text}</span>)}
-                    </span>
-                  </p>
-                )}
-                </div>
-              </div>
-            </div>
-          </li>
-        );
-      })}
-    </ol>
+    <section id={id} aria-labelledby={`${id}-title`} className={cn("scroll-mt-36 border-t border-border pt-12 first:border-t-0 first:pt-0 lg:scroll-mt-40", className)}>
+      {eyebrow && <p className="eyebrow">{eyebrow}</p>}
+      <h2 id={`${id}-title`} className={cn("display-2 text-foreground", eyebrow && "mt-3")}>{title}</h2>
+      <div className="mt-6">{children}</div>
+    </section>
   );
 }
 
 function HotelNameLink({ hotel }: { hotel: HotelProfile }) {
   if (!hotel.url) return <span>{hotel.name}</span>;
   return (
-    <a
-      href={hotel.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="inline-flex items-center gap-1 font-semibold text-primary underline decoration-primary/35 underline-offset-4 transition-colors hover:text-primary/75"
-    >
+    <a href={hotel.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-semibold underline decoration-gold underline-offset-4 focus-ring">
       {hotel.name}
       <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
     </a>
+  );
+}
+
+function Fact({ icon: Icon, label, value }: { icon: typeof Clock; label: string; value: ReactNode }) {
+  return (
+    <div className="flex gap-3">
+      <Icon className="mt-0.5 h-[18px] w-[18px] shrink-0 text-gold-text" aria-hidden="true" />
+      <div className="min-w-0">
+        <dt className="text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</dt>
+        <dd className="mt-1 text-[14.5px] leading-relaxed text-foreground">{value}</dd>
+      </div>
+    </div>
   );
 }
 
@@ -202,20 +124,14 @@ type TripDetailClientProps = {
    * leaving a shell until the browser refetches.
    */
   initialTrip?: Trip;
-  initialSiteSettings?: { tripNotice: string | null };
+  initialSiteSettings?: { tripNotice: string | null; bankDetails?: string | null };
 };
 
 /**
  * `useSearchParams()` must sit behind a `<Suspense>` boundary for this route
- * to be statically generated at all — without one, `next build` throws
- * "useSearchParams() should be wrapped in a suspense boundary" and the
- * route's static shell (and therefore ALL of its caching: generateStaticParams,
- * revalidate, unstable_cache) never gets built in the first place. The read
- * itself lives here, isolated to the one thing that actually needs it, so the
- * boundary is as tight as possible; everything else in the real component
- * renders immediately from `initialTrip` with no fallback flash in the
- * common case (a direct visit, which is what matters — every other page on
- * the site links here without `?departure=`).
+ * to be statically generated at all. The read lives in the one component that
+ * needs it (the `?departure=` a shared link opens on), so everything else
+ * renders straight from `initialTrip`.
  */
 export default function TripDetailClient(props: TripDetailClientProps) {
   return (
@@ -228,12 +144,7 @@ export default function TripDetailClient(props: TripDetailClientProps) {
 function TripDetailClientWithSearchParams(props: TripDetailClientProps) {
   // Read client-side, not as a page-level `searchParams` prop: a server
   // component that reads `searchParams` is forced fully dynamic by Next (no
-  // ISR, no CDN caching, "Cache-Control: no-store" on every response) even
-  // though the trip DATA has nothing to do with this param — it only seeds
-  // which departure date starts selected, so a shared
-  // `?departure=2026-11-01` link opens on that date. Reading it here instead
-  // costs nothing (this component already mounts client-side) and lets the
-  // actual page be cached again.
+  // ISR, no CDN caching) even though the trip data has nothing to do with it.
   const searchParams = useSearchParams();
   const rawDeparture = searchParams.get("departure");
   const selectedDate =
@@ -248,36 +159,25 @@ function TripDetailClientInner({
   initialSiteSettings,
   selectedDate,
 }: TripDetailClientProps & { selectedDate: string | undefined }) {
-  const { locale } = useI18n();
-
   const { data: trip, isLoading } = useTrip(slug, initialTrip);
   const { data: siteSettings } = useSiteSettings(initialSiteSettings);
   const { data: allTrips } = useTrips();
 
   const related = useMemo(() => {
     if (!trip || !allTrips) return [];
-
-    const tripCategoryIds = new Set([
-      trip.categoryId,
-      ...trip.categories.map((category) => category.id),
-    ].filter((id): id is string => Boolean(id)));
-
-    const shareTag = (candidate: (typeof allTrips)[number]) =>
-      candidate.tags.some((tag) => trip.tags.some((t) => t.id === tag.id));
-
-    const shareCategory = (candidate: (typeof allTrips)[number]) => {
-      const candidateCategoryIds = [
-        candidate.categoryId,
-        ...candidate.categories.map((category) => category.id),
-      ].filter((id): id is string => Boolean(id));
-
-      return candidateCategoryIds.some((id) => tripCategoryIds.has(id));
-    };
-
+    const places = new Set(tripDestinations(trip).map((destination) => destination.key));
+    const categoryIds = new Set([trip.categoryId, ...trip.categories.map((category) => category.id)].filter((id): id is string => Boolean(id)));
+    const score = (candidate: Trip) =>
+      tripDestinations(candidate).filter((destination) => places.has(destination.key)).length * 3 +
+      [candidate.categoryId, ...candidate.categories.map((category) => category.id)].filter((id) => id && categoryIds.has(id)).length +
+      (tripStatus(candidate).kind === "open" ? 1 : 0);
     return allTrips
       .filter((candidate) => candidate.id !== trip.id)
-      .filter((candidate) => shareCategory(candidate) || shareTag(candidate))
-      .slice(0, 4);
+      .map((candidate) => ({ candidate, score: score(candidate) }))
+      .filter((entry) => entry.score > 1)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 4)
+      .map((entry) => entry.candidate);
   }, [trip, allTrips]);
 
   const hotelProfiles = useMemo(
@@ -285,10 +185,7 @@ function TripDetailClientInner({
     [trip],
   );
   const travelerMedia = useMemo(() => parseMediaItems(trip?.travelerMedia) ?? [], [trip]);
-  const siteNoticeLines = useMemo(
-    () => noticeLines(siteSettings?.tripNotice),
-    [siteSettings?.tripNotice],
-  );
+  const siteNoticeLines = useMemo(() => noticeLines(siteSettings?.tripNotice), [siteSettings?.tripNotice]);
   const showBrochure = trip?.sourceMetadata?.hide_brochure_on_website !== true;
   // A clinic test list pasted into the description gets its own section; the
   // rest of the description stays "Аяллын тухай".
@@ -303,8 +200,9 @@ function TripDetailClientInner({
       fallbackText: lists.length ? "" : notes.trim(),
     };
   }, [trip?.description, trip?.sourceMetadata]);
-  // One source of truth: the weather, calendar, price, and enquiry all use
-  // this same departure. Keeping it here prevents sibling panels drifting.
+
+  // One source of truth: the weather, the price table, the calendar and the
+  // booking form all use this same departure.
   const [chosenDepartureDate, setChosenDepartureDate] = useState<string | undefined>(selectedDate);
   const activeDepartureDate = chosenDepartureDate ?? (trip ? closestSelectableDepartureDate(trip) : undefined);
   const { data: weather } = useTripWeather(trip?.slug, activeDepartureDate);
@@ -322,42 +220,26 @@ function TripDetailClientInner({
     });
   }, [weather]);
 
-  /**
-   * Anchors for the sticky section nav. Built from the same conditions the
-   * sections themselves render under, so the nav can never link to a heading
-   * that isn't on the page — trip content varies a lot across the catalogue.
-   */
-  const sections = useMemo(() => {
-    if (!trip) return [];
+  const conditionsShown = Boolean(
+    trip && (siteNoticeLines.length > 0 || trip.importantNotes.length > 0 || trip.requirements || trip.cancellationPolicy || trip.departureRule || (showBrochure && (trip.brochurePdfUrl || chatbotPosterPdfUrl(trip.sourceTripId)))),
+  );
+  const stayShown = hotelProfiles.length > 0 || Boolean(trip?.hotel);
 
+  const sections = useMemo<PageSection[]>(() => {
+    if (!trip) return [];
     return [
-      trip.highlights.length > 0 && { id: "highlights", label: "Онцлох" },
-      checkup.about.trim() && { id: "about", label: "Тухай" },
+      { id: "overview", label: "Тойм" },
       (checkup.lists.length > 0 || checkup.fallbackText) && { id: "checkup", label: "Шинжилгээ" },
       trip.itinerary.length > 0 && { id: "itinerary", label: "Хөтөлбөр" },
-      routeStops.length > 0 && { id: "route", label: "Маршрут" },
+      { id: "prices", label: "Үнэ, огноо" },
+      (trip.included.length > 0 || trip.excluded.length > 0) && { id: "included", label: "Багц" },
+      stayShown && { id: "stay", label: "Буудал" },
+      conditionsShown && { id: "conditions", label: "Нөхцөл" },
       hasWeather && { id: "weather", label: "Цаг агаар" },
-      (trip.included.length > 0 || trip.excluded.length > 0) && {
-        id: "included",
-        label: "Багц",
-      },
-      (siteNoticeLines.length > 0 ||
-        trip.importantNotes.length > 0 ||
-        trip.extraFees.length > 0 ||
-        trip.roomPrices.length > 0 ||
-        trip.childPriceNotes.length > 0 ||
-        (showBrochure && trip.brochurePdfUrl)) && { id: "important", label: "Чухал" },
-      (trip.transport.length > 0 ||
-        trip.languages.length > 0 ||
-        trip.meetingPoint ||
-        trip.hotel ||
-        hotelProfiles.length > 0 ||
-        trip.foodIncluded !== null ||
-        trip.departureRule) && { id: "notes", label: "Бэлтгэл" },
-      travelerMedia.length > 0 && { id: "traveler-media", label: "Аялагчид" },
+      routeStops.length > 0 && { id: "route", label: "Маршрут" },
       trip.testimonials && trip.testimonials.length > 0 && { id: "reviews", label: "Сэтгэгдэл" },
-    ].filter((entry): entry is { id: string; label: string } => Boolean(entry));
-  }, [trip, checkup, siteNoticeLines, hotelProfiles, travelerMedia, hasWeather, routeStops, showBrochure]);
+    ].filter((entry): entry is PageSection => Boolean(entry));
+  }, [trip, checkup, stayShown, conditionsShown, hasWeather, routeStops]);
 
   useEffect(() => {
     if (trip) recordRecentlyViewed(trip.slug);
@@ -365,515 +247,351 @@ function TripDetailClientInner({
 
   if (isLoading) {
     return (
-      <div className="uudam-container py-10">
-        <div className="h-[380px] animate-pulse rounded-2xl bg-secondary" />
+      <div className="site-container py-10" aria-busy="true">
+        <div className="h-[420px] animate-pulse rounded-xl bg-sand" />
       </div>
     );
   }
 
   if (!trip) {
     return (
-      <div className="uudam-container py-24 text-center">
-        <h1 className="text-2xl font-bold">Аялал олдсонгүй</h1>
-        <Button asChild className="mt-6">
-          <a href={`/${locale}/trips`}>Бүх аялал руу буцах</a>
-        </Button>
+      <div className="site-container py-24 text-center">
+        <h1 className="display-2 text-foreground">Аялал олдсонгүй</h1>
+        <Link href={canonicalPath("/trips")} className="mt-6 inline-flex h-11 items-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground">
+          Бүх аялал руу буцах
+        </Link>
       </div>
     );
   }
 
-  const detailSaleLabel = saleBadgeLabel(trip);
-  const selectableDeparture = nextBookableDeparture(trip);
-  const detailSoldOut = !selectableDeparture && isSoldOutDeparture(nextDeparture(trip));
-  const mobileCtaClosed = detailSoldOut && !selectableDeparture;
+  const title = formatTripTitle(trip.title);
+  const places = tripDestinations(trip);
+  const status = tripStatus(trip);
+  const saleLabel = saleBadgeLabel(trip);
+  const fromPrice = startingPrice(trip);
+  const brochureUrl = showBrochure ? trip.brochurePdfUrl || chatbotPosterPdfUrl(trip.sourceTripId) : null;
+  const categoryNames = [trip.category, ...trip.categories]
+    .filter((category): category is NonNullable<typeof category> => Boolean(category))
+    .filter((category, index, all) => all.findIndex((entry) => entry.id === category.id) === index);
+  const primaryCategory = categoryNames[0];
+  const travelers = trip.maxTravelers
+    ? `${trip.minTravelers > 1 ? `${trip.minTravelers}–` : ""}${trip.maxTravelers} хүн`
+    : trip.minTravelers > 1 ? `Хамгийн багадаа ${trip.minTravelers} хүн` : null;
+
+  const sidebar = (
+    <>
+      <TripSidebar trip={trip} bankDetails={siteSettings?.bankDetails} selectedDate={activeDepartureDate} onDepartureChange={setChosenDepartureDate} />
+      <div className="mt-4 grid grid-cols-2 gap-2" data-print="hide">
+        <ChannelLink channelKey="phone" tripId={trip.id} from="trip-sidebar" className="flex h-11 items-center justify-center gap-2 rounded-full border border-border bg-card text-[13px] font-semibold text-foreground focus-ring">
+          Залгах
+        </ChannelLink>
+        <ChannelLink channelKey="messenger" tripId={trip.id} from="trip-sidebar" className="flex h-11 items-center justify-center gap-2 rounded-full border border-border bg-card text-[13px] font-semibold text-foreground focus-ring">
+          Messenger
+        </ChannelLink>
+      </div>
+    </>
+  );
 
   return (
-    <div className="uudam-container py-8">
-      <nav className="mb-5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-        <a href={`/${locale}`} className="hover:text-primary">Нүүр</a>
-        <span>/</span>
-        <a href={`/${locale}/trips`} className="hover:text-primary">Аялалууд</a>
-        {trip.category && (
-          <>
-            <span>/</span>
-            <a
-              href={`/${locale}/category/${trip.category.slug ?? trip.category.id}`}
-              className="hover:text-primary"
-            >
-              {trip.category.categoryName}
-            </a>
-          </>
-        )}
-      </nav>
+    <article className="pb-10">
+      <div className="site-container pt-6 lg:pt-8">
+        <Breadcrumbs
+          items={[
+            { label: "Нүүр", href: canonicalPath("") },
+            { label: "Аялалууд", href: canonicalPath("/trips") },
+            ...(primaryCategory ? [{ label: formatCategoryName(primaryCategory.categoryName), href: categoryHref(primaryCategory.slug ?? primaryCategory.id) }] : []),
+            { label: title },
+          ]}
+        />
+        <div className="mt-5">
+          <TripGallery trip={trip} />
+        </div>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]" data-trip-layout-grid>
-        <div className="min-w-0" data-trip-layout-main>
-          <TripMedia trip={trip} />
-
-          <header className="mt-6">
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              {detailSaleLabel && (
-                <span className="rounded-full bg-destructive px-2.5 py-1 font-bold text-destructive-foreground">
-                  {detailSaleLabel}
-                </span>
+        <header className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:gap-12">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              {places.length > 0 && (
+                <p className="eyebrow">
+                  {[...new Set([...places.map((place) => place.label), ...places.map((place) => place.country)])].join(" · ")}
+                </p>
               )}
-              {detailSoldOut && (
-                <span className="rounded-full bg-destructive/10 px-2.5 py-1 font-bold text-destructive ring-1 ring-destructive/20">
-                  Суудал дүүрсэн
-                </span>
+              {saleLabel && <span className="rounded-full bg-destructive px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-wider text-white">{saleLabel}</span>}
+              {status.kind === "full" && <span className="rounded-full bg-navy-night px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-wider text-white">Бүх огноо дүүрсэн</span>}
+            </div>
+            <h1 className={cn("mt-4 text-balance text-foreground", isAllCapsTitle(title) ? "display-2 tracking-[0.01em]" : "display-1")}>{title}</h1>
+            {trip.summary && <p className="lede mt-4 max-w-3xl">{trip.summary}</p>}
+            <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-3 text-[14px] text-foreground">
+              <li className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-gold-text" aria-hidden="true" />
+                {trip.durationDays} өдөр{trip.durationNights ? ` · ${trip.durationNights} шөнө` : ""}
+              </li>
+              <li className="flex items-center gap-2">
+                <CalendarDays className="h-4 w-4 text-gold-text" aria-hidden="true" />
+                {status.kind === "open"
+                  ? <>Ойрын хөдлөлт: {formatDepartureDate(status.departure.startDate)}{status.openCount > 1 ? <span className="text-muted-foreground"> · +{status.openCount - 1} огноо</span> : null}</>
+                  : status.kind === "full" ? "Бүх огноо дүүрсэн" : "Огноог ажилтнаас лавлана"}
+              </li>
+              {primaryCategory && (
+                <li className="flex items-center gap-2">
+                  <Compass className="h-4 w-4 text-gold-text" aria-hidden="true" />
+                  {formatCategoryName(primaryCategory.categoryName)}
+                </li>
               )}
-              {trip.country && (
-                <span className="flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 font-medium">
-                  <MapPin className="h-3 w-3" />
-                  {[trip.city, trip.country].filter(Boolean).join(", ")}
-                </span>
-              )}
-              <span className="flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 font-medium">
-                <Clock className="h-3 w-3" />
-                {trip.durationDays} хоног {trip.durationNights} шөнө
-              </span>
-              <span className="flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 font-medium">
-                <Mountain className="h-3 w-3" />
-                {DIFFICULTY_LABEL[trip.difficulty] ?? trip.difficulty}
-              </span>
               {trip.reviewCount > 0 && (
-                <span className="flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 font-medium">
-                  <Star className="h-3 w-3 fill-gold text-gold" />
+                <li className="flex items-center gap-2">
+                  <Star className="h-4 w-4 fill-gold text-gold" aria-hidden="true" />
                   {trip.avgRating.toFixed(1)} ({trip.reviewCount})
-                </span>
+                </li>
               )}
-            </div>
+            </ul>
+          </div>
+          <div className="flex flex-wrap items-center gap-2" data-print="hide">
+            <SaveButton slug={trip.slug} variant="button" />
+            <ShareButton title={title} tripId={trip.id} />
+            {showBrochure && <DownloadTripButton />}
+          </div>
+        </header>
+      </div>
 
-            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <h1 className="text-2xl font-bold leading-tight md:text-3xl">{formatTripTitle(trip.title)}</h1>
-              <div className="flex flex-wrap items-center gap-2 sm:mt-1 sm:shrink-0" data-print="hide">
-                <SaveButton slug={trip.slug} variant="button" />
-                <ShareButton title={formatTripTitle(trip.title)} tripId={trip.id} />
-                {showBrochure && <DownloadTripButton />}
-              </div>
-            </div>
-            {trip.summary && (
-              <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
-                {trip.summary}
-              </p>
-            )}
+      <div className="mt-10">
+        <SectionNav sections={sections} />
+      </div>
 
-            {/* The booking panel (with the price) sits far below on a phone;
-                without this the first screen never says what the trip costs. */}
-            {hasKnownTripPrice(startingPrice(trip)) && !mobileCtaClosed && (
-              <p className="mt-4 text-sm text-muted-foreground lg:hidden">
-                <span className="text-2xl font-bold text-foreground">{formatMnt(startingPrice(trip))}</span>{" "}
-                -с эхлэн
-              </p>
-            )}
-
-            <a
-              href="#booking-panel"
-              className={
-                "mt-4 inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-90 lg:hidden " +
-                (mobileCtaClosed
-                  ? "bg-destructive text-destructive-foreground"
-                  : "bg-primary text-primary-foreground")
-              }
-            >
-              <CalendarDays className="h-4 w-4" />
-              {mobileCtaClosed ? "Суудал дүүрсэн" : "Огноо сонгох"}
-            </a>
-          </header>
-
-          {showBrochure && (trip.brochurePdfUrl || chatbotPosterPdfUrl(trip.sourceTripId)) && (
-            <a
-              href={trip.brochurePdfUrl || chatbotPosterPdfUrl(trip.sourceTripId)!}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-4 inline-flex items-center gap-2 rounded-lg border border-border px-3.5 py-2 text-sm font-semibold transition-colors hover:border-primary hover:text-primary"
-            >
-              <FileDown className="h-4 w-4" />
-              Хөтөлбөр татах
-            </a>
-          )}
-
-          {sections.length > 1 && (
-            <nav
-              aria-label="Хуудасны хэсгүүд"
-              data-print="hide"
-              className="sticky top-[72px] z-20 -mx-4 mt-6 border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80"
-            >
-              <ul className="no-scrollbar flex gap-1 overflow-x-auto py-2">
-                {sections.map((section) => (
-                  <li key={section.id}>
-                    <a
-                      href={`#${section.id}`}
-                      className="inline-block shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                    >
-                      {section.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          )}
-
-          {trip.highlights.length > 0 && (
-            <section id="highlights" className="mt-8 scroll-mt-28">
-              <h2 className="text-lg font-bold">Онцлох мөчүүд</h2>
-              <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+      <div className="site-container mt-10 grid gap-12 lg:mt-14 lg:grid-cols-[minmax(0,1fr)_25rem] lg:gap-14 xl:grid-cols-[minmax(0,1fr)_26.5rem]" data-trip-layout-grid>
+        <div className="min-w-0 space-y-14 lg:space-y-16" data-trip-layout-main>
+          <TripSection id="overview" eyebrow="Аяллын тойм" title="Энэ аялалд юу хүлээж байна">
+            {checkup.about.trim() && <p className="whitespace-pre-line text-[16px] leading-[1.8] text-ink-soft">{checkup.about}</p>}
+            {trip.highlights.length > 0 && (
+              <ul className={cn("grid gap-3 sm:grid-cols-2", checkup.about.trim() && "mt-8")}>
                 {trip.highlights.map((highlight) => (
-                  <li key={highlight} className="flex items-start gap-2 text-sm">
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-gold" />
+                  <li key={highlight} className="flex items-start gap-3 rounded-lg border border-border bg-card p-4 text-[14.5px] leading-snug text-foreground">
+                    <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-gold" aria-hidden="true" />
                     {highlight}
                   </li>
                 ))}
               </ul>
-            </section>
-          )}
-
-          {checkup.about.trim() && (
-          <section id="about" className="mt-8 scroll-mt-28">
-            <h2 className="text-lg font-bold">Аяллын тухай</h2>
-            <p className="mt-3 whitespace-pre-line text-[15px] leading-relaxed text-muted-foreground">
-              {checkup.about}
-            </p>
-          </section>
-          )}
+            )}
+            <dl className={cn("grid gap-6 rounded-xl border border-border bg-card p-6 sm:grid-cols-2", (checkup.about.trim() || trip.highlights.length > 0) && "mt-8")}>
+              <Fact icon={Clock} label="Хугацаа" value={`${trip.durationDays} өдөр${trip.durationNights ? `, ${trip.durationNights} шөнө` : ""}`} />
+              {places.length > 0 && <Fact icon={MapPin} label="Чиглэл" value={places.map((place) => (place.label === place.country ? place.label : `${place.label} (${place.country})`)).join(", ")} />}
+              {categoryNames.length > 0 && <Fact icon={Compass} label="Аяллын төрөл" value={categoryNames.map((category) => formatCategoryName(category.categoryName)).join(", ")} />}
+              {trip.foodIncluded !== null && <Fact icon={Utensils} label="Хоол" value={trip.foodIncluded ? "Хөтөлбөрт заасан хоол багтсан" : "Хоол багцад ороогүй"} />}
+              {trip.transport.length > 0 && <Fact icon={Compass} label="Тээвэр" value={trip.transport.join(", ")} />}
+              {trip.languages.length > 0 && <Fact icon={Languages} label="Хөтчийн хэл" value={trip.languages.join(", ")} />}
+              {travelers && <Fact icon={Users} label="Бүлгийн хэмжээ" value={travelers} />}
+              {DIFFICULTY_LABEL[trip.difficulty] && <Fact icon={Compass} label="Ачаалал" value={DIFFICULTY_LABEL[trip.difficulty]} />}
+              {trip.meetingPoint && <Fact icon={MapPin} label="Цугларах цэг" value={trip.meetingPoint} />}
+            </dl>
+          </TripSection>
 
           <HealthCheckupSection lists={checkup.lists} fallbackText={checkup.fallbackText} />
 
           {trip.itinerary.length > 0 && (
-          <section id="itinerary" className="mt-8 scroll-mt-28">
-            <h2 className="text-lg font-bold">Өдөр тутмын хөтөлбөр</h2>
-            <ItineraryAccordion days={trip.itinerary} hotelLinks={hotelProfiles.filter((hotel) => hotel.url)} photoSource={trip} />
-          </section>
+            <TripSection id="itinerary" eyebrow={`${trip.itinerary.length} өдөр`} title="Өдөр тутмын хөтөлбөр">
+              <ItineraryTimeline days={trip.itinerary} hotelLinks={hotelProfiles.filter((hotel) => hotel.url)} photoSource={trip} />
+            </TripSection>
+          )}
+
+          <TripSection id="prices" eyebrow="Үнэ ба огноо" title="Хэзээ, хэдээр">
+            <PricingSection
+              trip={trip}
+              activeDate={activeDepartureDate}
+              onSelect={(date) => {
+                setChosenDepartureDate(date);
+                if (window.matchMedia("(max-width: 1023px)").matches) {
+                  document.getElementById("booking")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+              }}
+            />
+          </TripSection>
+
+          <div id="booking" className="scroll-mt-36 lg:hidden">
+            <h2 className="sr-only">Захиалга</h2>
+            {sidebar}
+          </div>
+
+          {(trip.included.length > 0 || trip.excluded.length > 0) && (
+            <TripSection id="included" eyebrow="Багц" title="Үнэд юу багтсан бэ">
+              <div className="grid gap-6 md:grid-cols-2">
+                {trip.included.length > 0 && (
+                  <div className="rounded-xl border border-border bg-card p-6">
+                    <h3 className="text-[15px] font-semibold text-foreground">Багцад багтсан</h3>
+                    <ul className="mt-4 space-y-3">
+                      {trip.included.map((item) => (
+                        <li key={item} className="flex items-start gap-3 text-[14.5px] leading-snug text-foreground">
+                          <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {trip.excluded.length > 0 && (
+                  <div className="rounded-xl border border-border bg-card p-6">
+                    <h3 className="text-[15px] font-semibold text-foreground">Багцад ороогүй</h3>
+                    <ul className="mt-4 space-y-3">
+                      {trip.excluded.map((item) => (
+                        <li key={item} className="flex items-start gap-3 text-[14.5px] leading-snug text-muted-foreground">
+                          <X className="mt-0.5 h-4 w-4 shrink-0 text-destructive" aria-hidden="true" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </TripSection>
+          )}
+
+          {stayShown && (
+            <TripSection id="stay" eyebrow="Байрлах газар" title="Зочид буудал">
+              <div className="space-y-4">
+                {hotelProfiles.length > 0 ? hotelProfiles.map((hotel, index) => (
+                  <article key={`${hotel.name}-${index}`} className="rounded-xl border border-border bg-card p-6">
+                    <h3 className="flex items-start gap-2.5 text-[16px] text-foreground">
+                      <BedDouble className="mt-0.5 h-5 w-5 shrink-0 text-gold-text" aria-hidden="true" />
+                      <HotelNameLink hotel={hotel} />
+                    </h3>
+                    {hotel.description && <p className="mt-3 whitespace-pre-line text-[14.5px] leading-relaxed text-muted-foreground">{hotel.description}</p>}
+                    {hotel.media.length > 0 && <div className="mt-4"><MediaGallery items={hotel.media} title={hotel.name} /></div>}
+                  </article>
+                )) : (
+                  <p className="flex items-start gap-2.5 rounded-xl border border-border bg-card p-6 text-[15px] leading-relaxed text-foreground">
+                    <BedDouble className="mt-0.5 h-5 w-5 shrink-0 text-gold-text" aria-hidden="true" />
+                    {trip.hotel}
+                  </p>
+                )}
+                <p className="text-[13px] leading-relaxed text-muted-foreground">
+                  Буудлын нэрийг хөтөлбөрт бичигдсэнээр харууллаа. «Эсвэл адил зэрэглэлийн» гэж бичсэн бол эцсийн буудлыг захиалга баталгаажих үед ажилтан мэдэгдэнэ.
+                </p>
+              </div>
+            </TripSection>
+          )}
+
+          {conditionsShown && (
+            <TripSection id="conditions" eyebrow="Анхаарах зүйл" title="Нөхцөл ба бэлтгэл">
+              <div className="space-y-5">
+                {(siteNoticeLines.length > 0 || trip.importantNotes.length > 0) && (
+                  <div className="rounded-xl border border-gold/50 bg-gold/10 p-6">
+                    <h3 className="flex items-center gap-2 text-[15px] font-semibold text-foreground">
+                      <AlertCircle className="h-[18px] w-[18px] text-gold-text" aria-hidden="true" />
+                      Чухал тэмдэглэл
+                    </h3>
+                    <ul className="mt-3 space-y-2 text-[14.5px] leading-relaxed text-foreground">
+                      {/* The standing, site-wide note always comes first, then this trip's own notes. */}
+                      {siteNoticeLines.map((note) => <li key={`site-${note}`}>{note}</li>)}
+                      {trip.importantNotes.map((note) => <li key={note}>{note}</li>)}
+                    </ul>
+                  </div>
+                )}
+                <dl className="divide-y divide-border rounded-xl border border-border bg-card">
+                  {trip.departureRule && (
+                    <div className="p-6">
+                      <dt className="text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Хөдлөх өдрийн дүрэм</dt>
+                      <dd className="mt-2 whitespace-pre-line text-[14.5px] leading-relaxed text-foreground">{trip.departureRule}</dd>
+                    </div>
+                  )}
+                  {trip.requirements && (
+                    <div className="p-6">
+                      <dt className="text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Шаардлага, бичиг баримт</dt>
+                      <dd className="mt-2 whitespace-pre-line text-[14.5px] leading-relaxed text-foreground">{trip.requirements}</dd>
+                    </div>
+                  )}
+                  <div className="p-6">
+                    <dt className="text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Цуцлалт, буцаалт</dt>
+                    <dd className="mt-2 whitespace-pre-line text-[14.5px] leading-relaxed text-foreground">
+                      {trip.cancellationPolicy || "Энэ аяллын цуцлалт, буцаалтын нөхцөлийг захиалга баталгаажих үед ажилтан тантай тохирно."}
+                    </dd>
+                  </div>
+                </dl>
+                {brochureUrl && (
+                  <a href={brochureUrl} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-card px-5 text-[14px] font-semibold text-foreground focus-ring hover:border-foreground/35">
+                    <FileDown className="h-4 w-4" aria-hidden="true" />
+                    Хөтөлбөрийг PDF-ээр татах
+                  </a>
+                )}
+              </div>
+            </TripSection>
+          )}
+
+          {weather && hasWeather && (
+            <TripSection id="weather" eyebrow="Цаг агаар" title="Аялах үеийн цаг агаар" className="print:hidden">
+              <p className="-mt-2 mb-5 text-[14px] leading-relaxed text-muted-foreground">
+                {weather.mode === "current"
+                  ? "Очих хотуудын одоогийн цаг агаар — аялал ойртоход өдөр бүрийн мэдээ энд гарна."
+                  : "Таны сонгосон огноонд, тухайн өдөр байх хотын цаг агаар."}
+              </p>
+              <TripWeather report={weather} onSelectDeparture={setChosenDepartureDate} />
+            </TripSection>
           )}
 
           {routeStops.length > 0 && (
-            <section id="route" className="mt-8 scroll-mt-28" data-print="hide">
-              <h2 className="text-lg font-bold">Аяллын маршрут</h2>
-              <div className="mt-4">
-                <RouteMap stops={routeStops} />
-              </div>
-            </section>
-          )}
-
-          <div id="booking-panel" className="mt-8 scroll-mt-28 lg:hidden">
-            <TripSidebar
-              trip={trip}
-              bankDetails={siteSettings?.bankDetails}
-              selectedDate={activeDepartureDate}
-              onDepartureChange={setChosenDepartureDate}
-            />
-            <MessengerButton tripSlug={trip.slug} tripId={trip.id} className="mt-3 w-full" />
-            <EnquiryTrustNote />
-          </div>
-
-          {weather && hasWeather && (
-            <section id="weather" className="mt-8 scroll-mt-28" data-print="hide">
-              <h2 className="text-lg font-bold">Аяллын үеийн цаг агаар</h2>
-              <p className="mb-4 mt-1 text-sm text-muted-foreground">
-                {weather.mode === "current"
-                  ? "Очих хотуудын одоогийн цаг агаар — аялал ойртоход таны аяллын өдөр бүрийн мэдээ энд гарна."
-                  : "Таны аялах өдрүүдэд, тухайн өдөр байх хотын цаг агаар."}
-              </p>
-              <TripWeather report={weather} onSelectDeparture={setChosenDepartureDate} />
-            </section>
-          )}
-
-          {(trip.included.length > 0 || trip.excluded.length > 0) && (
-            <section id="included" className="mt-8 grid scroll-mt-28 gap-6 sm:grid-cols-2">
-              {trip.included.length > 0 && (
-                <div>
-                  <h2 className="text-lg font-bold">Багцад багтсан</h2>
-                  <ul className="mt-3 space-y-2">
-                    {trip.included.map((item) => (
-                      <li key={item} className="flex items-start gap-2 text-sm">
-                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {trip.excluded.length > 0 && (
-                <div>
-                  <h2 className="text-lg font-bold">Багцад ороогүй</h2>
-                  <ul className="mt-3 space-y-2">
-                    {trip.excluded.map((item) => (
-                      <li key={item} className="flex items-start gap-2 text-sm text-muted-foreground">
-                        <X className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </section>
-          )}
-
-          {(siteNoticeLines.length > 0 ||
-            trip.importantNotes.length > 0 ||
-            trip.extraFees.length > 0 ||
-            trip.roomPrices.length > 0 ||
-            trip.childPriceNotes.length > 0 ||
-            (showBrochure && trip.brochurePdfUrl)) && (
-            <section id="important" className="mt-8 scroll-mt-28 space-y-5">
-              {(siteNoticeLines.length > 0 || trip.importantNotes.length > 0) && (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-950">
-                  <h2 className="flex items-center gap-2 text-lg font-bold">
-                    <AlertCircle className="h-5 w-5" />
-                    Чухал тэмдэглэл
-                  </h2>
-                  <ul className="mt-3 space-y-2 text-sm leading-relaxed">
-                    {/* Standing, site-wide note — set once in admin, shown on
-                        every trip — always comes first, then whatever is
-                        specific to this one trip. */}
-                    {siteNoticeLines.map((note) => (
-                      <li key={`site-${note}`}>{note}</li>
-                    ))}
-                    {trip.importantNotes.map((note) => (
-                      <li key={note}>{note}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {(trip.extraFees.length > 0 || trip.roomPrices.length > 0 || trip.childPriceNotes.length > 0) && (
-                <div className="grid gap-5 md:grid-cols-3">
-                  {trip.extraFees.length > 0 && (
-                    <InfoList icon={<ReceiptText className="h-4 w-4" />} title="Нэмэлт төлбөр" items={trip.extraFees} />
-                  )}
-                  {trip.roomPrices.length > 0 && (
-                    <InfoList icon={<BedDouble className="h-4 w-4" />} title="Өрөөний үнэ" items={trip.roomPrices} />
-                  )}
-                  {trip.childPriceNotes.length > 0 && (
-                    <InfoList icon={<ReceiptText className="h-4 w-4" />} title="Үнэ, насны ангилал" items={trip.childPriceNotes} />
-                  )}
-                </div>
-              )}
-
-              {showBrochure && trip.brochurePdfUrl && (
-                <Button asChild variant="outline" className="gap-2">
-                  <a href={trip.brochurePdfUrl} target="_blank" rel="noreferrer">
-                    <FileText className="h-4 w-4" />
-                    PDF брошур үзэх
-                  </a>
-                </Button>
-              )}
-            </section>
-          )}
-
-          {(trip.transport.length > 0 ||
-            trip.languages.length > 0 ||
-            trip.meetingPoint ||
-            trip.hotel ||
-            hotelProfiles.length > 0 ||
-            trip.foodIncluded !== null ||
-            trip.departureRule) && (
-            <section id="notes" className="mt-8 scroll-mt-28 rounded-2xl border border-border p-5">
-              <h2 className="text-lg font-bold">Бэлтгэл мэдээлэл</h2>
-              <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-                {trip.transport.length > 0 && (
-                  <div>
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Тээвэр
-                    </dt>
-                    <dd className="mt-1 text-sm">{trip.transport.join(", ")}</dd>
-                  </div>
-                )}
-                {trip.languages.length > 0 && (
-                  <div>
-                    <dt className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      <Languages className="h-3 w-3" />
-                      Хөтчийн хэл
-                    </dt>
-                    <dd className="mt-1 text-sm">{trip.languages.join(", ")}</dd>
-                  </div>
-                )}
-                {trip.meetingPoint && (
-                  <div className="sm:col-span-2">
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Цугларах цэг
-                    </dt>
-                    <dd className="mt-1 text-sm">{trip.meetingPoint}</dd>
-                  </div>
-                )}
-                {(hotelProfiles.length > 0 || trip.hotel) && (
-                  <div>
-                    <dt className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      <BedDouble className="h-3 w-3" />
-                      Зочид буудал
-                    </dt>
-                    <dd className="mt-1 space-y-1 text-sm">
-                      {hotelProfiles.length > 0
-                        ? hotelProfiles.map((hotel, index) => <div key={`${hotel.name}-${index}`}><HotelNameLink hotel={hotel} /></div>)
-                        : trip.hotel}
-                    </dd>
-                  </div>
-                )}
-                {trip.foodIncluded !== null && (
-                  <div>
-                    <dt className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      <Utensils className="h-3 w-3" />
-                      Хоол
-                    </dt>
-                    <dd className="mt-1 text-sm">
-                      {trip.foodIncluded ? "Хөтөлбөрт багтсан" : "Хөтөлбөрт багтаагүй"}
-                    </dd>
-                  </div>
-                )}
-                {trip.departureRule && (
-                  <div className="sm:col-span-2">
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Гарах өдрийн дүрэм
-                    </dt>
-                    <dd className="mt-1 whitespace-pre-line text-sm">{trip.departureRule}</dd>
-                  </div>
-                )}
-                {trip.requirements && (
-                  <div className="sm:col-span-2">
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Шаардлага
-                    </dt>
-                    <dd className="mt-1 whitespace-pre-line text-sm">{trip.requirements}</dd>
-                  </div>
-                )}
-                {trip.cancellationPolicy && (
-                  <div className="sm:col-span-2">
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Цуцлалтын нөхцөл
-                    </dt>
-                    <dd className="mt-1 whitespace-pre-line text-sm">{trip.cancellationPolicy}</dd>
-                  </div>
-                )}
-              </dl>
-
-              {hotelProfiles.some((hotel) => hotel.description || hotel.media.length > 0) && (
-                <div className="mt-5 grid gap-4 border-t border-border pt-4 sm:grid-cols-2">
-                  {hotelProfiles.filter((hotel) => hotel.description || hotel.media.length > 0).map((hotel, index) => (
-                    <article key={`${hotel.name}-${index}`} className="min-w-0 rounded-lg border border-border p-4">
-                      <h3 className="text-sm"><HotelNameLink hotel={hotel} /></h3>
-                      {hotel.description && <p className="mt-2 whitespace-pre-line text-sm leading-6 text-muted-foreground">{hotel.description}</p>}
-                      {hotel.media.length > 0 && (
-                        <div className="mt-3">
-                          <MediaGallery items={hotel.media} title={hotel.name} />
-                        </div>
-                      )}
-                    </article>
-                  ))}
-                </div>
-              )}
-            </section>
+            <TripSection id="route" eyebrow="Маршрут" title="Аяллын зам" className="print:hidden">
+              <RouteMap stops={routeStops} />
+            </TripSection>
           )}
 
           {travelerMedia.length > 0 && (
-            <section id="traveler-media" className="mt-8 scroll-mt-28 rounded-2xl border border-border p-5">
-              <h2 className="text-lg font-bold">Аялагчдын зураг, бичлэг</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Энэ аялалд явсан аялагчдын дурсамж.</p>
-              <div className="mt-4">
-                <MediaGallery items={travelerMedia} title="Аялагчдын дурсамж" />
-              </div>
-            </section>
+            <TripSection id="traveler-media" eyebrow="Дурсамж" title="Аялагчдын зураг, бичлэг">
+              <MediaGallery items={travelerMedia} title="Аялагчдын дурсамж" />
+            </TripSection>
           )}
 
           {trip.mapUrl && (
-            <section className="mt-8">
-              <h2 className="text-lg font-bold">Байршил</h2>
-              <div className="mt-3 aspect-video overflow-hidden rounded-2xl border border-border">
-                <iframe
-                  src={trip.mapUrl}
-                  title={`${trip.title} байршил`}
-                  className="h-full w-full"
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                />
+            <section className="print:hidden" aria-label="Байршил">
+              <div className="aspect-video overflow-hidden rounded-xl border border-border">
+                <iframe src={trip.mapUrl} title={`${title} — байршил`} className="h-full w-full" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
               </div>
             </section>
           )}
 
           {trip.testimonials && trip.testimonials.length > 0 && (
-            <section id="reviews" className="mt-8 scroll-mt-28">
-              <h2 className="text-lg font-bold">Харилцагчийн сэтгэгдэл</h2>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {trip.testimonials.map((t) => (
-                  <div key={t.id} className="rounded-2xl border border-border p-4">
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: t.rating }).map((_, i) => (
-                        <Star key={i} className="h-3.5 w-3.5 fill-gold text-gold" />
-                      ))}
+            <TripSection id="reviews" eyebrow="Сэтгэгдэл" title="Аялагчдын сэтгэгдэл">
+              <div className="grid gap-4 sm:grid-cols-2">
+                {trip.testimonials.map((testimonial) => (
+                  <figure key={testimonial.id} className="rounded-xl border border-border bg-card p-6">
+                    <div className="flex items-center gap-0.5" aria-label={`${testimonial.rating}/5`}>
+                      {Array.from({ length: testimonial.rating }).map((_, i) => <Star key={i} className="h-4 w-4 fill-gold text-gold" aria-hidden="true" />)}
                     </div>
-                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t.comment}</p>
-                    <p className="mt-2 text-xs font-semibold">{t.authorName}</p>
-                  </div>
+                    <blockquote className="mt-3 text-[14.5px] leading-relaxed text-foreground">{testimonial.comment}</blockquote>
+                    <figcaption className="mt-3 text-[13px] font-semibold text-muted-foreground">{testimonial.authorName}</figcaption>
+                  </figure>
                 ))}
               </div>
-            </section>
+            </TripSection>
           )}
+
+          <PhotoCredits trip={trip} />
         </div>
 
-        {/*
-          The booking panel (calendar + passenger counts + price) can run
-          taller than the viewport on trips with many months of departures.
-          Plain `sticky` pins the top edge but has no way to reach its own
-          bottom once it's taller than the screen; a naive permanent
-          scroll-box fights the page's own scroll the whole way down. This
-          follows the pattern booking sites use instead: the box scrolls
-          normally until it would run off-screen, LOCKS in place with its
-          own internal scrollbar for as long as it's taller than the room
-          available, then releases and scrolls away once the (much longer)
-          itinerary column to its left has nothing further below it.
-        */}
-        <div className="hidden scroll-mt-28 lg:block">
-          <StickyHandoffSidebar topOffset={124} bottomGap={20}>
-            <TripSidebar
-              trip={trip}
-              bankDetails={siteSettings?.bankDetails}
-              selectedDate={activeDepartureDate}
-              onDepartureChange={setChosenDepartureDate}
-            />
-            <MessengerButton tripSlug={trip.slug} tripId={trip.id} className="mt-3 w-full" />
-            <EnquiryTrustNote />
+        <aside className="hidden lg:block" aria-label="Захиалга">
+          <StickyHandoffSidebar topOffset={148} bottomGap={20}>
+            {sidebar}
           </StickyHandoffSidebar>
-        </div>
+        </aside>
       </div>
 
-      <PhotoCredits trip={trip} />
-
       {related.length > 0 && (
-        <section className="mt-12" data-print="hide">
-          <h2 className="text-lg font-bold">Санал болгох аялалууд</h2>
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
+        <section aria-labelledby="related-title" className="site-container mt-20 border-t border-border pt-16" data-print="hide">
+          <p className="eyebrow">Төстэй аялал</p>
+          <h2 id="related-title" className="display-2 mt-3 text-foreground">Эдгээр аялал ч таалагдаж магадгүй</h2>
+          <ul className="mt-10 grid grid-cols-2 gap-x-3 gap-y-9 sm:gap-x-5 lg:grid-cols-4 lg:gap-x-6">
             {related.map((candidate) => (
-              <TripCard key={candidate.id} trip={candidate} />
+              <li key={candidate.id}>
+                <TripCard trip={candidate} />
+              </li>
             ))}
-          </div>
+          </ul>
         </section>
       )}
-    </div>
-  );
-}
 
-function InfoList({
-  icon,
-  title,
-  items,
-}: {
-  icon: ReactNode;
-  title: string;
-  items: string[];
-}) {
-  return (
-    <div className="rounded-2xl border border-border p-5">
-      <h2 className="flex items-center gap-2 text-base font-bold">
-        {icon}
-        {title}
-      </h2>
-      <ul className="mt-3 space-y-2">
-        {items.map((item) => (
-          <li key={item} className="text-sm leading-relaxed text-muted-foreground">
-            {item}
-          </li>
-        ))}
-      </ul>
-    </div>
+      <MobileTripBar
+        tripId={trip.id}
+        tripSlug={trip.slug}
+        price={hasKnownTripPrice(fromPrice) ? fromPrice : null}
+        priceLabel={status.kind === "full" ? "Бүх огноо дүүрсэн" : "-с эхлэн · нэг том хүн"}
+        status={status.kind}
+      />
+    </article>
   );
 }

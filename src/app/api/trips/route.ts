@@ -3,10 +3,11 @@ import type { Prisma } from "@prisma/client";
 import { prisma, withPrismaRetry } from "@/server/prisma";
 import { requireAdmin } from "@/server/auth";
 import { handler, json, publicCache, readJson, safeText } from "@/server/http";
-import { cached, invalidateCatalog } from "@/server/cache";
+import { revalidateStorefront } from "@/server/revalidate";
 import { queueTripSync, deliverTripSync } from "@/server/tripSyncQueue";
 import { sweepTripSyncSoon } from "@/server/tripSyncSweep";
-import { listTrip } from "@/lib/publicTrip";
+import { getCachedTripSummaries } from "@/server/catalog";
+import { matchesQuery } from "@/lib/catalogFilters";
 import {
   TRIP_INCLUDE,
   assertTitle,
@@ -50,35 +51,14 @@ export const GET = handler(async (req: Request) => {
     return json(trips);
   }
 
-  const key = `trips:list:${categoryId ?? "all"}:${featured ?? "0"}:${search ?? ""}`;
+  // Card-sized records: the full trip (itinerary, fare tables) is served by
+  // /api/trips/[id] to the one page that draws it.
+  const trips = (await getCachedTripSummaries()).filter((trip) =>
+    (!categoryId || trip.categoryId === categoryId || trip.categories.some((category) => category.id === categoryId)) &&
+    (featured !== "true" || trip.isFeatured) &&
+    (!search || matchesQuery(trip, search)));
 
-  const trips = await cached(key, 20_000, () =>
-    withPrismaRetry(() =>
-      prisma.trip.findMany({
-        where: {
-          isPublished: true,
-          ...(categoryId
-            ? { OR: [{ categoryId }, { categories: { some: { id: categoryId } } }] }
-            : {}),
-          ...(featured === "true" ? { isFeatured: true } : {}),
-          ...(search
-            ? {
-                OR: [
-                  { title: { contains: search, mode: "insensitive" as const } },
-                  { summary: { contains: search, mode: "insensitive" as const } },
-                  { country: { contains: search, mode: "insensitive" as const } },
-                  { city: { contains: search, mode: "insensitive" as const } },
-                ],
-              }
-            : {}),
-        },
-        include: TRIP_INCLUDE,
-        orderBy: { createdAt: "desc" },
-      }),
-    ),
-  );
-
-  return publicCache(NextResponse.json(trips.map(listTrip)));
+  return publicCache(NextResponse.json(trips));
 });
 
 /** POST /api/trips — create a trip (admin). */
@@ -178,7 +158,7 @@ export const POST = handler(async (req: Request) => {
   }));
   await deliverTripSync(trip.id);
 
-  invalidateCatalog();
+  revalidateStorefront();
 
   return json(await withPrismaRetry(() => prisma.trip.findUnique({ where: { id: trip.id }, include: TRIP_INCLUDE })), { status: 201 });
 });

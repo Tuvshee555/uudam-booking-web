@@ -8,7 +8,7 @@ import { checkupItemCount, type CheckupList } from "@/lib/healthCheckup";
 function Note({ text }: { text: string }) {
   const Icon = /бэлэг|бэлгэн/i.test(text) ? Gift : Info;
   return (
-    <p className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-950">
+    <p className="flex items-start gap-2 rounded-lg bg-gold/10 px-3 py-2 text-xs leading-relaxed text-foreground">
       <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
       {text}
     </p>
@@ -26,20 +26,14 @@ export default function HealthCheckupSection({ lists, fallbackText }: { lists: C
   if (!list && !fallbackText?.trim()) return null;
 
   return (
-    <section id="checkup" className="mt-8 scroll-mt-28 rounded-2xl border border-primary/25 bg-primary/5 p-4 sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
-            <Stethoscope className="h-5 w-5" />
-          </span>
-          <div>
-            <h2 className="text-lg font-bold leading-tight">Эрүүл мэндийн шинжилгээ</h2>
-            {list && (
-              <p className="mt-0.5 text-sm text-muted-foreground">
-                {checkupItemCount(list)} төрлийн үзлэг, шинжилгээ
-              </p>
-            )}
-          </div>
+    <section id="checkup" aria-labelledby="checkup-title" className="scroll-mt-36 border-t border-border pt-12 lg:scroll-mt-40">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="eyebrow">
+            <Stethoscope className="h-3.5 w-3.5" aria-hidden="true" />
+            {list ? `${checkupItemCount(list)} төрлийн үзлэг, шинжилгээ` : "Үзлэг, шинжилгээ"}
+          </p>
+          <h2 id="checkup-title" className="display-2 mt-3 text-foreground">Эрүүл мэндийн шинжилгээ</h2>
         </div>
 
         {lists.length > 1 && (
@@ -67,13 +61,13 @@ export default function HealthCheckupSection({ lists, fallbackText }: { lists: C
       </div>
 
       {list ? (
-        <div role={lists.length > 1 ? "tabpanel" : undefined} className="mt-5 gap-3 sm:columns-2">
+        <div role={lists.length > 1 ? "tabpanel" : undefined} className="mt-6 gap-3 sm:columns-2">
           {list.groups.map((group, index) => (
-            <div key={`${group.title}-${index}`} className="mb-3 break-inside-avoid rounded-xl border border-border bg-background p-4">
+            <div key={`${group.title}-${index}`} className="mb-3 break-inside-avoid rounded-xl border border-border bg-card p-5">
               {group.items.length > 0 && (
                 <>
                   {group.title && (
-                    <h3 className="flex items-baseline justify-between gap-2 text-sm font-bold text-primary">
+                    <h3 className="flex items-baseline justify-between gap-2 text-[14px] font-semibold text-foreground">
                       {group.title}
                       <span className="text-xs font-medium text-muted-foreground">{group.items.length}</span>
                     </h3>
@@ -81,7 +75,7 @@ export default function HealthCheckupSection({ lists, fallbackText }: { lists: C
                   <ul className={(group.title ? "mt-2.5 " : "") + "space-y-2"}>
                     {group.items.map((item, itemIndex) => (
                       <li key={`${item.label}-${itemIndex}`} className="flex items-start gap-2 text-sm leading-snug">
-                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" />
                         <span>
                           {item.label}
                           {item.detail && <span className="mt-0.5 block text-xs text-muted-foreground">{item.detail}</span>}

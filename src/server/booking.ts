@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 
-import { prisma } from "@/server/prisma";
+import { prisma, withPrismaRetry } from "@/server/prisma";
 import { checkInvoice } from "@/server/qpay";
 import { hasMissingPassengerFare, lineTotal, resolvePrices, totalHeadcount } from "@/lib/pricing";
 import { hasVariablePricing } from "@/lib/tripPriceOptions";
@@ -22,6 +22,9 @@ export const SEAT_HOLDING_STATUSES = [
 
 /** How long an unpaid booking keeps its seats before the sweep releases them. */
 export const HOLD_MINUTES = 60;
+
+/** A repeat of the same booking inside this window is the same booking. */
+const DUPLICATE_WINDOW_MS = 10 * 60 * 1000;
 
 /**
  * The public booking-status lookup — shared by GET /api/bookings/:reference
@@ -101,7 +104,11 @@ export async function createBooking(input: CreateBookingInput) {
 
   if (seats < 1) throw new BookingError("Хамгийн багадаа нэг хүн сонгоно уу");
 
-  return prisma.$transaction(async (tx) => {
+  // A connection Neon dropped while the site sat idle stalls the first
+  // attempt until the transaction times out (P2028), with nothing written: it
+  // rolls back. One more try on a fresh connection; the duplicate check below
+  // keeps even the retry of an attempt that did commit from booking twice.
+  return withPrismaRetry(() => prisma.$transaction(async (tx) => {
     // Locks the departure row for the rest of this transaction. Without this,
     // "read how many seats are taken, then insert if there's room" is not
     // atomic under Postgres's default READ COMMITTED isolation: two
@@ -112,6 +119,28 @@ export async function createBooking(input: CreateBookingInput) {
     // departure block here until this one commits or rolls back, so the next
     // one in line re-reads the true, post-commit count.
     await tx.$queryRaw`SELECT id FROM "Departure" WHERE id = ${input.departureId} FOR UPDATE`;
+
+    // A double tap, a retry after a slow network or a resubmitted form must
+    // not hold the same seats twice: the same phone booking the same date for
+    // the same party within a few minutes gets the booking it already made.
+    // Checked under the row lock, so two identical requests at the same
+    // instant queue here and the second one sees the first.
+    const duplicate = await tx.booking.findFirst({
+      where: {
+        departureId: input.departureId,
+        phone: input.phone,
+        adults: input.adults,
+        children: input.children,
+        infants: input.infants,
+        status: { in: ["HELD", "PENDING_PAYMENT"] },
+        createdAt: { gte: new Date(Date.now() - DUPLICATE_WINDOW_MS) },
+      },
+      orderBy: { createdAt: "desc" },
+      include: { payments: true },
+    });
+    // A retry can find the booking its own first attempt committed after all:
+    // that one is still this request's new booking, not a repeat.
+    if (duplicate) return Object.assign(duplicate, { duplicate: duplicate.reference !== input.reference });
 
     const departure = await tx.departure.findUnique({
       where: { id: input.departureId },
@@ -227,7 +256,7 @@ export async function createBooking(input: CreateBookingInput) {
       include: { payments: true },
     });
 
-    return booking;
+    return Object.assign(booking, { duplicate: false });
   }, {
     // Concurrent bookings for the same departure now queue on the FOR UPDATE
     // lock rather than racing, so a burst of simultaneous requests spends
@@ -237,7 +266,7 @@ export async function createBooking(input: CreateBookingInput) {
     // rather than hang.
     timeout: 10_000,
     maxWait: 10_000,
-  });
+  }), { attempts: 2, retryCodes: ["P2028", "P2034"] });
 }
 
 /**

@@ -5,12 +5,11 @@ import { Heart } from "lucide-react";
 
 import { useTrips } from "@/hooks/useTrips";
 import { useSavedTrips } from "@/lib/saved";
-import { useI18n } from "@/components/i18n/ClientI18nProvider";
+import { canonicalPath } from "@/lib/locales";
 import TripCard from "@/components/trip/TripCard";
 import type { Trip } from "@/types/trip";
 
 export default function SavedPageClient({ initialTrips }: { initialTrips?: Trip[] }) {
-  const { locale } = useI18n();
   const { slugs } = useSavedTrips();
   const { data: trips } = useTrips(undefined, initialTrips);
 
@@ -20,34 +19,29 @@ export default function SavedPageClient({ initialTrips }: { initialTrips?: Trip[
     .filter((trip): trip is Trip => Boolean(trip));
 
   return (
-    <div className="uudam-container py-8">
-      <header>
-        <h1 className="text-2xl font-bold md:text-3xl">Хадгалсан аялал</h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          Энэ жагсаалт зөвхөн энэ төхөөрөмж дээр хадгалагдана.
-        </p>
-      </header>
-
+    <div className="site-container pb-20 pt-10">
       {saved.length === 0 ? (
-        <div className="mt-10 rounded-2xl border border-dashed border-border py-16 text-center">
-          <Heart className="mx-auto h-8 w-8 text-muted-foreground" />
-          <p className="mt-3 text-sm font-medium">Хадгалсан аялал алга</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Аяллын зураг дээрх ♡ товчийг дарж дараа үзэхээр хадгална уу.
+        <div className="rounded-xl border border-dashed border-border px-6 py-16 text-center">
+          <Heart className="mx-auto h-9 w-9 text-gold-text" aria-hidden="true" />
+          <p className="display-3 mt-5 text-foreground">Хадгалсан аялал алга</p>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+            Сонирхсон аяллынхаа зураг дээрх ♡ товчийг дарвал энд хадгалагдана — харьцуулах, дараа нь эргэж үзэхэд хялбар.
           </p>
-          <Link
-            href={`/${locale}/trips`}
-            className="mt-5 inline-block rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-          >
+          <Link href={canonicalPath("/trips")} className="mt-6 inline-flex h-11 items-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground focus-ring">
             Аялал үзэх
           </Link>
         </div>
       ) : (
-        <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {saved.map((trip) => (
-            <TripCard key={trip.id} trip={trip} />
-          ))}
-        </div>
+        <>
+          <p className="text-[14px] text-muted-foreground"><span className="font-semibold text-foreground">{saved.length}</span> аялал хадгалсан</p>
+          <ul className="mt-6 grid grid-cols-2 gap-x-3 gap-y-9 sm:gap-x-5 lg:grid-cols-4 lg:gap-x-6 lg:gap-y-12">
+            {saved.map((trip) => (
+              <li key={trip.id}>
+                <TripCard trip={trip} />
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </div>
   );

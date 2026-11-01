@@ -19,12 +19,28 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        // Storefront. The gold is the logo's sun: the one call to act on a page.
+        gold:
+          "rounded-full bg-gold font-semibold text-navy-night shadow-sm hover:bg-[hsl(41_88%_55%)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        ink:
+          "rounded-full bg-primary font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        light:
+          "rounded-full bg-white font-semibold text-navy-night hover:bg-white/90 focus-visible:ring-2 focus-visible:ring-gold",
+        outlineLight:
+          "rounded-full border border-white/45 bg-white/5 font-semibold text-white backdrop-blur-sm hover:bg-white hover:text-navy-night focus-visible:ring-2 focus-visible:ring-gold",
+        quiet:
+          "rounded-full border border-border bg-card font-semibold text-foreground hover:border-foreground/35 hover:bg-card focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
       },
       size: {
         default: "h-9 px-4 py-2",
         sm: "h-8 rounded-md px-3 text-xs",
         lg: "h-10 rounded-md px-8",
         icon: "h-9 w-9",
+        // Storefront sizes leave the corner radius to the variant.
+        site: "h-11 px-6 text-sm",
+        siteSm: "h-9 px-4 text-[13px]",
+        siteLg: "h-12 px-7 text-[15px]",
+        siteIcon: "h-11 w-11",
       },
     },
     defaultVariants: {

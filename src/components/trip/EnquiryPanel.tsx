@@ -1,84 +1,35 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
-import {
-  Check,
-  Facebook,
-  Loader2,
-  MessageCircle,
-  Minus,
-  Phone,
-  Plus,
-} from "lucide-react";
+import { Check, Loader2, ShieldCheck } from "lucide-react";
 
 import { api, apiErrorMessage } from "@/lib/api";
-import { CONTACT, hasLink } from "@/lib/contact";
 import { getVisitorId, track } from "@/lib/analytics";
 import { ageBandsFor, formatMnt, formatTripStartingPrice, hasKnownTripPrice, hasMissingPassengerFare, lineTotal, passengerFareLabel, resolvePrices } from "@/lib/pricing";
 import { availability, upcomingDepartures } from "@/lib/departures";
 import { saleBadgeLabel } from "@/lib/tripMarketing";
 import { datePriceOptions, formatAdultOption } from "@/lib/tripPriceOptions";
+import { formatPhoneInput, nameError, phoneError } from "@/lib/formValidation";
+import { canonicalPath } from "@/lib/locales";
+import { channel } from "@/lib/channels";
 import DepartureDatePicker from "./DepartureDatePicker";
+import { Counter } from "./BookingPanel";
 import { departureDateKey } from "@/lib/departureDate";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import FormField, { inputClass, revealConfirmation, useSubmitGuard } from "@/components/site/FormField";
+import Honeypot from "@/components/site/Honeypot";
+import { ChannelLink } from "@/components/site/channels";
+import { cn } from "@/lib/utils";
 import type { Trip } from "@/types/trip";
 
 function pricedHint(age: string, price: number | null | undefined) {
   return [age, !hasKnownTripPrice(price) ? "Үнэ лавлах" : formatMnt(price)].filter(Boolean).join(" · ");
 }
 
-function Counter({
-  label,
-  hint,
-  value,
-  onChange,
-  min = 0,
-}: {
-  label: string;
-  hint: string;
-  value: number;
-  onChange: (next: number) => void;
-  min?: number;
-}) {
-  return (
-    <div className="flex items-center justify-between py-2.5">
-      <div>
-        <div className="text-sm font-medium">{label}</div>
-        <div className="text-xs text-muted-foreground">{hint}</div>
-      </div>
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => onChange(Math.max(min, value - 1))}
-          disabled={value <= min}
-          className="flex h-8 w-8 items-center justify-center rounded-full border border-border disabled:opacity-40"
-          aria-label={`${label} хасах`}
-        >
-          <Minus className="h-3.5 w-3.5" />
-        </button>
-        <span className="w-6 text-center text-sm font-semibold tabular-nums">{value}</span>
-        <button
-          type="button"
-          onClick={() => onChange(value + 1)}
-          className="flex h-8 w-8 items-center justify-center rounded-full border border-border"
-          aria-label={`${label} нэмэх`}
-        >
-          <Plus className="h-3.5 w-3.5" />
-        </button>
-      </div>
-    </div>
-  );
-}
-
 /**
- * The trip page's conversion panel.
- *
- * The agency sells on the phone, so this collects just enough to make a good
- * call-back — who, what trip, when, how many — and never pretends to be a
- * checkout. The price shown is explicitly an estimate.
+ * "Ask a person": who, which trip, when, how many — enough for a good call
+ * back, and never presented as a booking. The estimate is labelled as one.
  */
 export default function EnquiryPanel({ trip, initialSelection, variablePricing = false, selectedDate, onDepartureChange }: {
   trip: Trip;
@@ -87,6 +38,9 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
   initialSelection?: { departureId: string; message: string; adults: number; children: number; infants: number } | null;
   variablePricing?: boolean;
 }) {
+  // The page mounts one panel for phones and one for the desktop column.
+  const uid = useId();
+  const fieldId = (name: string) => `${uid}-enq-${name}`;
   const [departureId, setDepartureId] = useState<string | null>(initialSelection?.departureId ??
     trip.departures.find((departure) => departureDateKey(departure.startDate) === selectedDate)?.id ?? null);
   const [adults, setAdults] = useState(initialSelection?.adults ?? 2);
@@ -96,8 +50,10 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
   const [firstName, setFirstName] = useState("");
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState(initialSelection?.message ?? "");
+  const [website, setWebsite] = useState("");
+  const [showErrors, setShowErrors] = useState(false);
 
-  const [busy, setBusy] = useState(false);
+  const { busy, run } = useSubmitGuard();
   const [sentReference, setSentReference] = useState<string | null>(null);
 
   // Frozen at mount: reading the clock during render makes the component
@@ -129,145 +85,121 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
     ? [ageBands.adult, `${formatAdultOption(option)} / хүн`].filter(Boolean).join(" · ")
     : pricedHint(ageBands.adult, option?.adult ?? prices.adult);
 
+  const errors = { firstName: nameError(firstName), phone: phoneError(phone) };
+
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
-
-    if (!firstName.trim()) {
-      toast.error("Нэрээ оруулна уу");
-      return;
-    }
-    if (phone.replace(/\D/g, "").length < 6) {
-      toast.error("Утасны дугаараа зөв оруулна уу");
+    if (errors.firstName || errors.phone) {
+      setShowErrors(true);
+      document.getElementById(fieldId(errors.firstName ? "name" : "phone"))?.focus();
       return;
     }
 
-    setBusy(true);
-    try {
-      const { data } = await api.post("/enquiries", {
-        tripId: trip.id,
-        departureId: selected?.id ?? null,
-        firstName: firstName.trim(),
-        phone: phone.trim(),
-        adults,
-        children,
-        infants,
-        message: message.trim() || undefined,
-        source: typeof window !== "undefined" ? window.location.pathname : undefined,
-        // Ties the lead back to its page views, so the admin can see how many
-        // people looked at this trip for every one who actually called.
-        visitorId: getVisitorId(),
-        referrer: typeof document !== "undefined" ? document.referrer || undefined : undefined,
-      });
-
-      setSentReference(data.reference);
-    } catch (err) {
-      toast.error(apiErrorMessage(err, "Илгээхэд алдаа гарлаа"));
-    } finally {
-      setBusy(false);
-    }
+    await run(async () => {
+      try {
+        const { data } = await api.post("/enquiries", {
+          tripId: trip.id,
+          departureId: selected?.id ?? null,
+          firstName: firstName.trim(),
+          phone: phone.trim(),
+          adults,
+          children,
+          infants,
+          message: message.trim() || undefined,
+          website,
+          source: typeof window !== "undefined" ? window.location.pathname : undefined,
+          // Ties the lead back to its page views, so the admin can see how many
+          // people looked at this trip for every one who actually called.
+          visitorId: getVisitorId(),
+          referrer: typeof document !== "undefined" ? document.referrer || undefined : undefined,
+        });
+        track("enquiry_submit", { tripId: trip.id });
+        setSentReference(data.reference);
+      } catch (err) {
+        toast.error(apiErrorMessage(err, "Илгээхэд алдаа гарлаа. Дахин оролдоно уу."));
+      }
+    });
   };
 
   if (sentReference) {
+    const phoneChannel = channel("phone");
     return (
-      <div className="rounded-2xl border border-border bg-card p-6 text-center shadow-sm">
-        <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
-          <Check className="h-6 w-6" />
+      <div ref={revealConfirmation} className="scroll-mt-24 rounded-xl border border-border bg-card p-6 shadow-panel">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-success/10 text-success">
+          <Check className="h-6 w-6" aria-hidden="true" />
         </span>
-        <h2 className="mt-4 text-lg font-bold">Хүсэлт илгээгдлээ</h2>
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          Манай ажилтан удахгүй тантай холбогдоно. Хүсэлтийн дугаар:
+        <h2 tabIndex={-1} className="display-3 mt-5 text-foreground focus:outline-none">Хүсэлт илгээгдлээ</h2>
+        <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
+          Манай ажилтан ажлын цагаар тантай холбогдож огноо, үнэ, нөхцөлийг тодруулна. Энэ нь захиалга биш — суудал ажилтантай ярьсны дараа баталгаажна.
         </p>
-        <div className="mt-2 text-lg font-bold tracking-wider text-primary">{sentReference}</div>
-
+        <div className="mt-5 rounded-lg bg-secondary/80 p-4">
+          <div className="text-[12px] text-muted-foreground">Хүсэлтийн дугаар</div>
+          <div className="mt-1 text-[1.5rem] font-bold tracking-[0.08em] text-foreground">{sentReference}</div>
+        </div>
         <div className="mt-5 grid gap-2">
-          {hasLink(CONTACT.phone) && (
-            <Button asChild variant="outline">
-              <a href={CONTACT.phoneHref} onClick={() => track("phone_click", { tripId: trip.id })}>
-                <Phone className="mr-2 h-4 w-4" />
-                {CONTACT.phone}
-              </a>
-            </Button>
+          {phoneChannel && (
+            <ChannelLink channelKey="phone" tripId={trip.id} from="enquiry-done" className="flex h-11 items-center justify-center rounded-full bg-primary text-[14px] font-semibold text-primary-foreground focus-ring">
+              Одоо залгах · {phoneChannel.value}
+            </ChannelLink>
           )}
-          {hasLink(CONTACT.messenger) && (
-            <Button asChild variant="ghost">
-              <a
-                href={CONTACT.messenger}
-                target="_blank"
-                rel="noreferrer"
-                onClick={() => track("messenger_click", { tripId: trip.id })}
-              >
-                <MessageCircle className="mr-2 h-4 w-4" />
-                Messenger-ээр бичих
-              </a>
-            </Button>
-          )}
+          <ChannelLink channelKey="messenger" tripId={trip.id} from="enquiry-done" className="flex h-11 items-center justify-center rounded-full border border-border text-[14px] font-semibold text-foreground focus-ring">
+            Messenger-ээр бичих
+          </ChannelLink>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="rounded-md border border-border bg-card p-4">
-      <div className="flex items-end justify-between">
+    <div className="rounded-xl border border-border bg-card p-5 shadow-panel sm:p-6">
+      <div className="flex items-start justify-between gap-3">
         <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold-text">Ажилтанд хүсэлт</p>
           {hasKnownTripPrice(trip.price) && trip.oldPrice && trip.oldPrice > trip.price && (
-            <div className="text-sm text-muted-foreground line-through">
-              {formatMnt(trip.oldPrice)}
-            </div>
+            <div className="mt-2 text-[13px] text-muted-foreground line-through">{formatMnt(trip.oldPrice)}</div>
           )}
           {option?.packageId && (
-            <div className="mb-1 inline-flex rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold text-primary-foreground">
-              {option.packageId}
-            </div>
+            <div className="mt-2 inline-flex rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold text-primary-foreground">{option.packageId}</div>
           )}
-          <div className="text-xl font-bold text-primary">{variablePricing
-            ? optionLabel
-            : formatTripStartingPrice(prices.adult)}</div>
-          <div className="text-xs text-muted-foreground">
+          <div className="mt-2 text-[1.6rem] font-bold leading-none tabular-nums text-foreground">
+            {variablePricing ? optionLabel : formatTripStartingPrice(prices.adult)}
+          </div>
+          <div className="mt-1.5 text-[12.5px] text-muted-foreground">
             {variablePricing ? "нэг том хүний үнэ" : hasPrice ? "нэг том хүн" : "ажилтнаас тодруулна"}
           </div>
         </div>
-        {saleLabel && (
-          <span className="rounded-full bg-destructive px-2.5 py-1 text-xs font-bold text-destructive-foreground">
-            {saleLabel}
-          </span>
-        )}
+        {saleLabel && <span className="shrink-0 rounded-full bg-destructive px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-white">{saleLabel}</span>}
       </div>
 
-      {!variablePricing && <div className="mt-4 space-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
-        <div className="flex justify-between">
-          <span>Хүүхэд</span>
-          <span className="font-medium text-foreground">{childFareLabel}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Нярай</span>
-          <span className="font-medium text-foreground">{infantFareLabel}</span>
-        </div>
-        {typeof trip.singleSupplement === "number" && trip.singleSupplement > 0 && (
-          <div className="flex justify-between">
-            <span>Ганц хүний өрөөний нэмэгдэл</span>
-            <span className="font-medium text-foreground">{formatMnt(trip.singleSupplement)}</span>
-          </div>
-        )}
-      </div>}
-      {variablePricing && option?.singleSupplement != null && <div className="mt-3 flex justify-between gap-3 text-xs text-muted-foreground">
-        <span>Ганц хүний өрөөний нэмэгдэл</span>
-        <span className="font-medium text-foreground">{formatMnt(option.singleSupplement)}</span>
-      </div>}
-      {trip.excluded.length > 0 && (
-        <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-          Дээрх үнэнд юу ороогүйг доорх &ldquo;Багцад ороогүй&rdquo; жагсаалтаас нягтална уу — виз, хувийн зардал зэрэг зарим зүйл ихэвчлэн үнэд ороогүй байдаг.
+      {!variablePricing && (
+        <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-1 border-t border-border pt-3 text-[12.5px]">
+          <dt className="text-muted-foreground">Хүүхэд{ageBands.child ? ` (${ageBands.child})` : ""}</dt>
+          <dd className="text-right font-semibold text-foreground">{childFareLabel}</dd>
+          <dt className="text-muted-foreground">Нярай{ageBands.infant ? ` (${ageBands.infant})` : ""}</dt>
+          <dd className="text-right font-semibold text-foreground">{infantFareLabel}</dd>
+          {typeof trip.singleSupplement === "number" && trip.singleSupplement > 0 && (
+            <>
+              <dt className="text-muted-foreground">Ганц хүний өрөө</dt>
+              <dd className="text-right font-semibold text-foreground">+{formatMnt(trip.singleSupplement)}</dd>
+            </>
+          )}
+        </dl>
+      )}
+      {variablePricing && option?.singleSupplement != null && (
+        <p className="mt-3 flex justify-between gap-3 text-[12.5px] text-muted-foreground">
+          <span>Ганц хүний өрөө</span>
+          <span className="font-semibold text-foreground">+{formatMnt(option.singleSupplement)}</span>
         </p>
       )}
       {option?.packageId && option.packageNote && (
-        <div className="mt-3 rounded-md border border-primary/30 bg-primary/5 p-3">
-          <div className="text-xs font-bold uppercase tracking-wide text-primary">Сонгосон аяллын төрөл</div>
-          <div className="mt-1 text-sm font-semibold">{option.packageId}</div>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{option.packageNote}</p>
+        <div className="mt-3 rounded-lg border border-primary/25 bg-primary/5 p-3">
+          <div className="text-[11px] font-bold uppercase tracking-wide text-primary">Сонгосон аяллын төрөл</div>
+          <div className="mt-1 text-[13px] font-semibold text-foreground">{option.packageId}</div>
+          <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{option.packageNote}</p>
         </div>
       )}
 
-      <form onSubmit={submit} className="mt-5">
+      <form onSubmit={submit} noValidate className="relative mt-5">
         <DepartureDatePicker key={selectedDepartureId ?? "no-departure"} departures={openDepartures} selectedId={selectedDepartureId} basePrice={trip.price}
           onSelect={(departure) => {
             setDepartureId(departure.id);
@@ -276,88 +208,69 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
             track("departure_select", { tripId: trip.id, properties: { departureId: departure.id } });
           }} />
 
-        <div className="mt-4 divide-y divide-border border-t border-border">
+        <div className="mt-5 divide-y divide-border border-t border-border">
           <Counter label="Том хүн" hint={adultHint} value={adults} onChange={setAdults} min={1} />
           <Counter label="Хүүхэд" hint={[ageBands.child, childFareLabel].filter(Boolean).join(" · ")} value={children} onChange={setChildren} />
           <Counter label="Нярай" hint={[ageBands.infant, infantFareLabel].filter(Boolean).join(" · ")} value={infants} onChange={setInfants} />
         </div>
 
-        {!variablePricing && <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
-          <span className="text-sm text-muted-foreground">Ойролцоо дүн</span>
-          <span className="text-xl font-bold text-primary">{hasPrice && estimate !== null ? formatMnt(estimate) : "Үнэ лавлах"}</span>
-        </div>}
-        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-          Урьдчилсан тооцоо. Эцсийн үнийг ажилтан тодруулж хэлнэ.
+        {!variablePricing && (
+          <div className="mt-2 flex items-baseline justify-between gap-3 rounded-lg bg-secondary/70 p-4">
+            <span className="text-[13px] text-muted-foreground">Ойролцоо дүн</span>
+            <span className="text-[17px] font-bold tabular-nums text-foreground">{hasPrice && estimate !== null ? formatMnt(estimate) : "Үнэ лавлах"}</span>
+          </div>
+        )}
+        <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">Урьдчилсан тооцоо. Эцсийн үнийг ажилтан тодруулна.</p>
+
+        <div className="mt-5 grid gap-4 border-t border-border pt-5">
+          <FormField id={fieldId("name")} label="Таны нэр" required error={showErrors ? errors.firstName : null}>
+            {(props) => <input {...props} value={firstName} onChange={(event) => setFirstName(event.target.value)} autoComplete="given-name" className={inputClass} />}
+          </FormField>
+          <FormField id={fieldId("phone")} label="Утасны дугаар" required error={showErrors ? errors.phone : null}>
+            {(props) => (
+              <input
+                {...props}
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                value={phone}
+                onChange={(event) => setPhone(formatPhoneInput(event.target.value))}
+                placeholder="9911 2233"
+                className={inputClass}
+              />
+            )}
+          </FormField>
+          <FormField id={fieldId("message")} label="Асуух зүйл">
+            {(props) => (
+              <textarea
+                {...props}
+                rows={3}
+                value={message}
+                onChange={(event) => setMessage(event.target.value)}
+                placeholder="Хүссэн огноо, асуулт…"
+                className={cn(inputClass, "h-auto py-3")}
+              />
+            )}
+          </FormField>
+        </div>
+        <Honeypot value={website} onChange={setWebsite} />
+
+        <p className="mt-4 flex gap-2.5 text-[12.5px] leading-relaxed text-muted-foreground">
+          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+          <span>
+            Нэр, утсыг зөвхөн энэ хүсэлтийн талаар холбогдоход ашиглана (<Link href={canonicalPath("/terms")} className="underline underline-offset-2 hover:text-foreground">нөхцөл</Link>).
+          </span>
         </p>
 
-        <div className="mt-5 space-y-3 border-t border-border pt-4">
-          <div>
-            <Label htmlFor="enq-name">Таны нэр *</Label>
-            <Input
-              id="enq-name"
-              value={firstName}
-              onChange={(event) => setFirstName(event.target.value)}
-              placeholder="Болд"
-            />
-          </div>
-          <div>
-            <Label htmlFor="enq-phone">Утасны дугаар *</Label>
-            <Input
-              id="enq-phone"
-              inputMode="tel"
-              value={phone}
-              onChange={(event) => setPhone(event.target.value)}
-              placeholder="9911 2233"
-            />
-          </div>
-          <div>
-            <Label htmlFor="enq-message">Нэмэлт мэдээлэл</Label>
-            <Input
-              id="enq-message"
-              value={message}
-              onChange={(event) => setMessage(event.target.value)}
-              placeholder="Хүссэн огноо, асуулт..."
-            />
-          </div>
-        </div>
-
-        <Button type="submit" size="lg" disabled={busy} className="mt-4 w-full">
-          {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Захиалгын хүсэлт илгээх
-        </Button>
+        <button
+          type="submit"
+          disabled={busy}
+          className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary text-[15px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-ring disabled:cursor-wait disabled:opacity-70"
+        >
+          {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+          {busy ? "Илгээж байна…" : "Хүсэлт илгээх"}
+        </button>
       </form>
-
-      <div className="mt-4 border-t border-border pt-4">
-        <p className="text-center text-xs text-muted-foreground">Эсвэл шууд холбогдоорой</p>
-        <div className="mt-2 grid gap-2">
-          {hasLink(CONTACT.phone) && (
-            <Button asChild variant="outline" className="w-full">
-              <a href={CONTACT.phoneHref}>
-                <Phone className="mr-2 h-4 w-4" />
-                {CONTACT.phone}
-              </a>
-            </Button>
-          )}
-          <div className="grid grid-cols-2 gap-2">
-            {hasLink(CONTACT.messenger) && (
-              <Button asChild variant="ghost" size="sm">
-                <a href={CONTACT.messenger} target="_blank" rel="noreferrer">
-                  <MessageCircle className="mr-1.5 h-4 w-4" />
-                  Messenger
-                </a>
-              </Button>
-            )}
-            {hasLink(CONTACT.facebook) && (
-              <Button asChild variant="ghost" size="sm">
-                <a href={CONTACT.facebook} target="_blank" rel="noreferrer">
-                  <Facebook className="mr-1.5 h-4 w-4" />
-                  Facebook
-                </a>
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

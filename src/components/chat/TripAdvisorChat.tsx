@@ -9,6 +9,7 @@ import { api } from "@/lib/api";
 import { CONTACT, hasLink } from "@/lib/contact";
 import { track } from "@/lib/analytics";
 import { formatMnt } from "@/lib/pricing";
+import { useAdvisorChat } from "@/lib/chatStore";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { isAllowedImageHost } from "@/lib/imageHosts";
 import { cn } from "@/lib/utils";
@@ -43,7 +44,8 @@ const GREETING: ChatMessage = {
  */
 export default function TripAdvisorChat() {
   const { locale } = useI18n();
-  const [open, setOpen] = useState(false);
+  const open = useAdvisorChat((state) => state.open);
+  const setOpen = useAdvisorChat((state) => state.setOpen);
   const [messages, setMessages] = useState<ChatMessage[]>([GREETING]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -79,18 +81,22 @@ export default function TripAdvisorChat() {
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-40">
+    <div className="site-theme pointer-events-none fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-50 bg-transparent lg:inset-x-auto lg:bottom-6 lg:right-6" data-print="hide">
       {open && (
-        <div className="mb-3 flex h-[min(560px,70vh)] w-[min(380px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-xl">
+        <div
+          role="dialog"
+          aria-label="Аяллын зөвлөх"
+          className="pointer-events-auto mx-3 mb-3 flex h-[min(560px,72vh)] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-panel lg:mx-0 lg:w-[380px]"
+        >
           <div className="flex items-center justify-between border-b border-border bg-background px-4 py-3">
             <div className="flex items-center gap-2">
-              <Bot className="h-4 w-4 text-primary" />
+              <Bot className="h-4 w-4 text-gold-text" aria-hidden="true" />
               <span className="text-sm font-bold text-foreground">Аяллын зөвлөх</span>
             </div>
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="rounded-lg p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
+              className="rounded-full p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground focus-ring"
               aria-label="Хаах"
             >
               <X className="h-4 w-4" />
@@ -200,11 +206,13 @@ export default function TripAdvisorChat() {
         </div>
       )}
 
+      {/* Phones open the advisor from the bottom bar; this button is the desktop's. */}
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex h-14 w-14 items-center justify-center rounded-full bg-gold text-navy-deep shadow-lg transition-transform hover:scale-105"
+        onClick={() => setOpen(!open)}
+        className="pointer-events-auto ml-auto hidden h-14 w-14 items-center justify-center rounded-full bg-gold text-navy-night shadow-lift transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:flex"
         aria-label={open ? "Зөвлөхийг хаах" : "Аяллын зөвлөхтэй ярих"}
+        aria-expanded={open}
       >
         {open ? <X className="h-6 w-6" /> : <MessageSquareText className="h-6 w-6" />}
       </button>

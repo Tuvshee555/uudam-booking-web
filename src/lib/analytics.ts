@@ -114,17 +114,34 @@ export function getRecentlyViewed(): string[] {
  * a network request before doing its actual job (opening a share sheet,
  * a tel: link, a Messenger deep link).
  */
+export type TrackedEvent =
+  | "share_click"
+  | "save_toggle"
+  | "phone_click"
+  | "messenger_click"
+  | "whatsapp_click"
+  | "email_click"
+  | "departure_select"
+  | "calendar_select"
+  | "search_submit"
+  | "filter_change"
+  | "category_select"
+  | "destination_select"
+  | "enquiry_start"
+  | "enquiry_submit"
+  | "contact_submit"
+  | "custom_trip_submit"
+  | "gift_submit"
+  | "booking_start"
+  | "booking_submit";
+
+/**
+ * Never pass what a visitor typed into a form here (names, phones, notes) —
+ * only which control they used. Search words are the one exception, clipped,
+ * because "what are people looking for" is the question they answer.
+ */
 export function track(
-  name:
-    | "share_click"
-    | "save_toggle"
-    | "phone_click"
-    | "messenger_click"
-    | "departure_select"
-    | "custom_trip_submit"
-    | "gift_submit"
-    | "booking_start"
-    | "booking_submit",
+  name: TrackedEvent,
   options?: { tripId?: string; properties?: Record<string, unknown> },
 ) {
   if (isStaffDevice()) return;

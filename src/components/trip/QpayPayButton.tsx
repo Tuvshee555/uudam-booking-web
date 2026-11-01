@@ -76,8 +76,19 @@ export default function QpayPayButton({
     );
   }
 
+  // Reopening a booking returns the invoice already raised, which carries no QR.
+  if (!invoice.qrImage) {
+    return (
+      <p className="rounded-xl border border-border p-4 text-center text-[13px] leading-relaxed text-muted-foreground">
+        Энэ захиалгад QPay нэхэмжлэл өмнө нь үүссэн байна. Нэхэмжлэлээ дахин авахын тулд ажилтантай холбогдоно уу.
+      </p>
+    );
+  }
+
   return (
     <div className="rounded-xl border border-border p-4 text-center">
+      {/* A base64 QR from QPay: nothing for next/image to resize or cache. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={`data:image/png;base64,${invoice.qrImage}`}
         alt="QPay QR код"

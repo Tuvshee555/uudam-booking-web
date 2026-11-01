@@ -13,6 +13,7 @@ import {
   safeText,
 } from "@/server/http";
 import { generateReference } from "@/server/reference";
+import { isBotSubmission } from "@/server/spam";
 import { sendEmail } from "@/server/mail";
 import { enquiryReceivedEmail, enquiryStaffEmail } from "@/server/emailTemplates";
 import { lineTotal, resolvePrices } from "@/lib/pricing";
@@ -51,6 +52,9 @@ export const POST = handler(async (req: Request) => {
   rateLimit(`enquiry:${clientIp(req)}`, { windowMs: 60 * 60 * 1000, max: 12 });
 
   const body = await readJson(req);
+
+  // Bots fill the hidden field; tell them it worked and store nothing.
+  if (isBotSubmission(body)) return json({ ok: true, reference: generateReference() }, { status: 201 });
 
   const firstName = safeText(body.firstName, 120);
   const phone = normalizePhone(body.phone);
@@ -117,6 +121,23 @@ export const POST = handler(async (req: Request) => {
   const estimatedTotal = trip
     ? lineTotal({ adults, children, infants }, resolvePrices(trip, departure))
     : null;
+
+  // The same request sent twice (a double tap, a retry on a slow connection)
+  // is one lead for staff, not two: answer with the reference already given.
+  const repeat = await prisma.enquiry.findFirst({
+    where: {
+      phone,
+      kind,
+      tripId: trip?.id ?? null,
+      departureId: departure?.id ?? null,
+      message: safeText(body.message, 2000),
+      status: "NEW",
+      createdAt: { gte: new Date(Date.now() - 10 * 60 * 1000) },
+    },
+    orderBy: { createdAt: "desc" },
+    select: { reference: true },
+  });
+  if (repeat) return json({ ok: true, reference: repeat.reference, duplicate: true }, { status: 200 });
 
   const enquiry = await prisma.enquiry.create({
     data: {

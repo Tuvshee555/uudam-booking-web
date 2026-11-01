@@ -1,48 +1,47 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
-import { prisma } from "@/server/prisma";
+import PageHero from "@/components/site/PageHero";
+import CatalogBrowser from "@/components/catalog/CatalogBrowser";
+import CatalogSkeleton from "@/components/catalog/CatalogSkeleton";
+import { getTripSummaries } from "@/server/catalog";
+import { getPriceRanges } from "@/server/priceRanges";
+import { renderTime } from "@/server/clock";
+import { destinationCounts } from "@/lib/destinations";
+import { ulaanbaatarDay } from "@/lib/calendar";
+import { canonicalPath } from "@/lib/locales";
 import { shareMetadata } from "@/lib/seo";
-import { TRIP_INCLUDE } from "@/server/tripInput";
-import { listTrip } from "@/lib/publicTrip";
-import type { Trip } from "@/types/trip";
-import TripsPageClient from "./TripsPageClient";
 
 export const metadata: Metadata = {
   title: "Бүх аялал",
   description:
-    "Uudam Travel-ийн бүх аяллын багц нэг дороос. Чиглэл, үнэ, хугацаагаар шүүж өөрт тохирох аялалаа олоорой.",
-  ...shareMetadata("/trips", "Бүх аялал · Uudam Travel", "Чиглэл, үнэ, хугацаагаар шүүж өөрт тохирох аялалаа олоорой."),
+    "Uudam Travel-ийн бүх аяллын багц нэг дороос. Чиглэл, хөдлөх сар, үнэ, хугацаагаар шүүж өөрт тохирох аяллаа олоорой.",
+  ...shareMetadata("/trips", "Бүх аялал · Uudam Travel", "Чиглэл, хөдлөх сар, үнэ, хугацаагаар шүүж өөрт тохирох аяллаа олоорой."),
 };
 
 /**
- * Same query and ordering as the unfiltered `GET /api/trips`, so the value
- * handed to the client is identical to what its first fetch would have
- * returned. Without this the catalogue rendered an empty shell — no cards, no
- * result count, and not even the destination/month controls, since those are
- * derived from the trips themselves.
- */
-async function publishedTrips(): Promise<Trip[]> {
-  const trips = await prisma.trip.findMany({
-    where: { isPublished: true },
-    include: TRIP_INCLUDE,
-    orderBy: { createdAt: "desc" },
-  });
-
-  // Matches NextResponse.json: Dates become ISO strings, as the client type expects.
-  return JSON.parse(JSON.stringify(trips.map(listTrip))) as Trip[];
-}
-
-/**
- * Without this the page is prerendered once at build time and its data is
- * frozen until the next deploy — staff edit trips daily, and the departures
- * cutoff is a `new Date()` that would freeze with it.
- *
- * Saving a trip revalidates this path immediately (see revalidateTripPages
- * in /api/trips/[id]), so this timer is a safety net, not the only way an
- * edit reaches a visitor.
+ * Saving a trip refreshes this page at once (revalidateStorefront); the timer
+ * is a safety net, and it also moves the "upcoming" cut-off along.
  */
 export const revalidate = 300;
 
 export default async function TripsPage() {
-  return <TripsPageClient initialTrips={await publishedTrips()} />;
+  const [trips, prices] = await Promise.all([getTripSummaries(), getPriceRanges()]);
+  const now = renderTime();
+  const places = destinationCounts(trips);
+
+  return (
+    <>
+      <PageHero
+        compact
+        crumbs={[{ label: "Нүүр", href: canonicalPath("") }, { label: "Аялалууд" }]}
+        eyebrow="Аяллын каталог"
+        title="Бүх аялал"
+        lede={`${trips.length} аяллын багц, ${places.length} чиглэл. Чиглэл, хөдлөх сар, үнэ, хугацаагаар шүүж өөрт тохирохоо олоорой.`}
+      />
+      <Suspense fallback={<CatalogSkeleton />}>
+        <CatalogBrowser initialTrips={trips} prices={prices} now={now} currentYear={Number(ulaanbaatarDay(now).slice(0, 4))} />
+      </Suspense>
+    </>
+  );
 }

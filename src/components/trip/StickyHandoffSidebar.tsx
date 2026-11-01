@@ -23,6 +23,7 @@ export default function StickyHandoffSidebar({
   return (
     <div
       style={{ top: topOffset, maxHeight: `calc(100vh - ${topOffset + bottomGap}px)` }}
+      data-scroll-column
       className="lg:sticky lg:overflow-y-auto lg:pb-1 lg:pr-1"
     >
       {children}
