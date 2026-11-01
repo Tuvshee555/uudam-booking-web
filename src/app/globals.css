@@ -355,10 +355,13 @@
   color: hsl(var(--ink));
 }
 
+/* Hero text is readable from the first frame and settles into place: starting
+   it fully transparent kept the page's main content "not painted" until the
+   animation ran, which held back what visitors (and LCP) count as loaded. */
 @keyframes site-rise {
   from {
-    opacity: 0;
-    transform: translate3d(0, 18px, 0);
+    opacity: 0.4;
+    transform: translate3d(0, 14px, 0);
   }
   to {
     opacity: 1;
