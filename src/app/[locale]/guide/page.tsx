@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 };
 
 /** Saving a post refreshes this page at once (revalidateGuidePages in /api/posts). */
-export const revalidate = 300;
+export const revalidate = 86400;
 
 export default async function GuideIndexPage() {
   const posts = await withPrismaRetry(() =>

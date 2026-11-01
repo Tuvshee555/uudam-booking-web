@@ -18,11 +18,12 @@ export const metadata: Metadata = {
 };
 
 /**
- * Saving a trip refreshes this page at once (revalidateStorefront). The timer
- * also moves "today" along: the calendar opens on the current Ulaanbaatar
- * month and never lists a departure that has already left.
+ * Saving a trip, or a booking that fills or reopens a date, refreshes this
+ * page at once (server/revalidate.ts). The daily cron (00:00 UTC, when dates
+ * stored at UTC midnight roll over) moves "today" along: the calendar opens on
+ * the current Ulaanbaatar month and never lists a departure that has left.
  */
-export const revalidate = 300;
+export const revalidate = 86400;
 
 export default async function DeparturesPage() {
   const now = renderTime();

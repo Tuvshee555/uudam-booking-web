@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   ...shareMetadata("/terms", "Үйлчилгээний нөхцөл · Uudam Travel", "Аяллын захиалга, төлбөр, цуцлалт, хувийн мэдээллийн нөхцөл."),
 };
 
-export const revalidate = 300;
+export const revalidate = 86400;
 
 export default async function TermsPage() {
   const settings = await getSiteSettings();

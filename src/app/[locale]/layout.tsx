@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
-import { unstable_cache } from "next/cache";
 
 import ClientI18nProvider from "@/components/i18n/ClientI18nProvider";
 import QueryProvider from "./QueryProvider";
@@ -8,7 +7,7 @@ import { AuthProvider } from "./provider/AuthProvider";
 import Providers from "@/components/Providers";
 import AppShellClient from "@/components/AppShellClient";
 import SiteFooter from "@/components/layout/SiteFooter";
-import { getSiteNav } from "@/server/catalog";
+import { getCachedSiteNav } from "@/server/siteNavCache";
 import { LOCALES } from "@/lib/locales";
 
 export function generateStaticParams() {
@@ -16,13 +15,13 @@ export function generateStaticParams() {
 }
 
 /**
- * Every storefront page carries the menu's live trip and category counts, so
- * every page refreshes at least this often; a trip save refreshes them at once
- * (revalidateTag("site-nav") in the trip routes).
+ * Storefront pages are rebuilt when what they show changes (server/revalidate.ts)
+ * and once a day by the cron, which moves "today" along. This day is the
+ * longest any page goes without a rebuild; a page's own export can only
+ * shorten it. Every page carries the menu, so a change that moves the menu
+ * refreshes them all.
  */
-export const revalidate = 300;
-
-const siteNav = unstable_cache(getSiteNav, ["site-nav"], { revalidate: 300, tags: ["site-nav"] });
+export const revalidate = 86400;
 
 export default async function LocaleLayout({
   children,
@@ -45,7 +44,7 @@ export default async function LocaleLayout({
     return notFound();
   }
 
-  const nav = await siteNav();
+  const nav = await getCachedSiteNav();
 
   return (
     <QueryProvider>

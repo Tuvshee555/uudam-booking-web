@@ -13,8 +13,8 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 };
 
-/** The list is read from the visitor's browser; this keeps the trip data under it fresh. */
-export const revalidate = 300;
+/** The list is read from the visitor's browser; the trip data under it is refreshed with every trip change (server/revalidate.ts). */
+export const revalidate = 86400;
 
 export default async function SavedPage() {
   return (

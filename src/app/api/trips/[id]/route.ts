@@ -3,7 +3,8 @@ import type { Prisma } from "@prisma/client";
 import { prisma, withPrismaRetry } from "@/server/prisma";
 import { optionalAdmin, requireAdmin } from "@/server/auth";
 import { handler, httpError, json, publicCache, readJson, safeText } from "@/server/http";
-import { revalidateStorefront } from "@/server/revalidate";
+import { revalidateTrips } from "@/server/revalidate";
+import { menuFieldsChanged } from "@/lib/siteNav";
 import { queueTripSync, deliverTripSync } from "@/server/tripSyncQueue";
 import { publicTrip } from "@/lib/publicTrip";
 import { saveDepartures } from "@/server/saveDepartures";
@@ -217,7 +218,10 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
   }, { timeout: 15_000 }));
 
   await deliverTripSync(trip.id);
-  revalidateStorefront();
+  // This trip's page (under its old address too, if the slug changed) and the
+  // lists; everything when the edit moved the menu (published, categories,
+  // destinations). Capacity and date edits land here as well.
+  revalidateTrips([existing.slug, trip.slug], { menuChanged: menuFieldsChanged(existing, trip) });
 
   return json(await withPrismaRetry(() => prisma.trip.findUnique({ where: { id }, include: TRIP_INCLUDE })));
 });
@@ -229,7 +233,7 @@ export const DELETE = handler(async (req: Request, ctx: Ctx) => {
   const source = await withPrismaRetry(() =>
     prisma.trip.findUnique({
       where: { id },
-      select: { sourceTripId: true, slug: true },
+      select: { sourceTripId: true, slug: true, isPublished: true },
     }),
   );
   if (!source) throw httpError(404, "Аялал олдсонгүй");
@@ -247,7 +251,8 @@ export const DELETE = handler(async (req: Request, ctx: Ctx) => {
     }));
     const complete = await deliverTripSync(trip.id);
 
-    revalidateStorefront();
+    // Withdrawing a published trip changes the menu on every page.
+    revalidateTrips([source.slug], { menuChanged: source.isPublished });
 
     return json({
       success: true,

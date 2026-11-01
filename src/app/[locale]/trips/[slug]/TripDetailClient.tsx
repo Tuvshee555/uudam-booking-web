@@ -20,7 +20,7 @@ import {
   X,
 } from "lucide-react";
 
-import { useTrip, useTrips, useSiteSettings } from "@/hooks/useTrips";
+import { useLiveDepartures, useTrip, useTrips, useSiteSettings } from "@/hooks/useTrips";
 import type { Trip } from "@/types/trip";
 import { recordRecentlyViewed } from "@/lib/analytics";
 import { formatCategoryName, formatTripTitle, isAllCapsTitle } from "@/lib/tripDisplay";
@@ -161,6 +161,7 @@ function TripDetailClientInner({
   selectedDate,
 }: TripDetailClientProps & { selectedDate: string | undefined }) {
   const { data: trip, isLoading } = useTrip(slug, initialTrip);
+  useLiveDepartures(slug, initialTrip);
   const { data: siteSettings } = useSiteSettings(initialSiteSettings);
   const { data: allTrips } = useTrips();
 

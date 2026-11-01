@@ -121,6 +121,36 @@ departures, most-asked-about trips), **enquiries** (filter by status, search,
 one-tap status change, tap-to-call), **trips** (publish / unpublish / feature),
 **analytics** (see below).
 
+## Page caching and seats
+
+Storefront pages are cached for a day and rebuilt when what they show changes
+(`src/server/revalidate.ts`). A rebuild costs Vercel ISR writes, so each change
+refreshes only the pages that show it:
+
+- **A trip saved here or synced by the chatbot**: that trip's page and the pages
+  that list trips. Publishing, withdrawing, recategorising or a new destination
+  moves the menu, which is on every page, so then everything.
+- **A booking, cancellation or expired hold**: the trip's page; the lists too
+  when a date fills up or reopens (lists only ever show open / few seats / full).
+- **Settings, categories, tags, price bands, posts, articles**: the pages that
+  show them.
+- **The daily cron** (00:00 UTC, `/api/cron/trip-health`): everything, which
+  moves "today" along, and releases expired holds.
+
+Changes nobody announces are still caught. The trip page re-reads its dates
+live (`/api/trips/[slug]/availability`) and the server refreshes the page
+when it was built from older dates. Behind page views, at most every five
+minutes per server instance, expired holds are released and a menu change
+made straight in the database (the chatbot withdrawing a trip) refreshes
+every page. After running a script that edits trips directly, POST
+`/api/internal/trip-changed` with no slugs to refresh everything at once.
+
+Seats are never taken from a page: `POST /api/bookings` checks and decrements
+`seatsLeft` under a row lock, and every status change (cancel, expiry, staff
+payment) moves the seats exactly once. `npm run test:db` checks this against a
+disposable local Postgres (`TEST_DATABASE_URL`, refused unless it is on
+127.0.0.1 or localhost).
+
 ## Analytics
 
 First-party, in Postgres. No Google Analytics, no third-party script, nothing

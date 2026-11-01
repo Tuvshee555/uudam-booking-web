@@ -5,14 +5,16 @@ import { requireAdmin } from "@/server/auth";
 import { handler, httpError, json, publicCache, readJson, safeText } from "@/server/http";
 import { slugify } from "@/server/tripInput";
 import { uniqueKnowledgeSlug } from "@/server/contentSlugs";
-import { LOCALES } from "@/lib/locales";
 
-/** The /discover list is ISR-cached on a long timer — this is the instant-refresh signal. */
-function revalidateDiscoverPages(slug?: string) {
-  for (const locale of LOCALES) {
-    revalidatePath(`/${locale}/discover`, "page");
-    if (slug) revalidatePath(`/${locale}/discover/${slug}`, "page");
-  }
+/**
+ * The discover pages are cached for a day; this is the instant-refresh signal.
+ * Route patterns, so a renamed article's old address is refreshed too. (A
+ * literal path with "page" appended, as before, matched no cached page at all.)
+ */
+function revalidateDiscoverPages() {
+  revalidatePath("/[locale]/discover", "page");
+  revalidatePath("/[locale]/discover/[slug]", "page");
+  revalidatePath("/sitemap.xml");
 }
 
 function toStringArray(value: unknown, max: number): string[] {
@@ -88,7 +90,7 @@ export const POST = handler(async (req: Request) => {
     },
   });
 
-  revalidateDiscoverPages(article.slug);
+  revalidateDiscoverPages();
 
   return json(article, { status: 201 });
 });

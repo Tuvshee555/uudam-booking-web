@@ -5,14 +5,16 @@ import { requireAdmin } from "@/server/auth";
 import { handler, httpError, json, publicCache, readJson, safeText } from "@/server/http";
 import { slugify } from "@/server/tripInput";
 import { uniquePostSlug } from "@/server/contentSlugs";
-import { LOCALES } from "@/lib/locales";
 
-/** The /guide list is ISR-cached on a long timer — this is the instant-refresh signal. */
-function revalidateGuidePages(slug?: string) {
-  for (const locale of LOCALES) {
-    revalidatePath(`/${locale}/guide`, "page");
-    if (slug) revalidatePath(`/${locale}/guide/${slug}`, "page");
-  }
+/**
+ * The guide pages are cached for a day; this is the instant-refresh signal.
+ * Route patterns, so a renamed post's old address is refreshed too. (A literal
+ * path with "page" appended, as before, matched no cached page at all.)
+ */
+function revalidateGuidePages() {
+  revalidatePath("/[locale]/guide", "page");
+  revalidatePath("/[locale]/guide/[slug]", "page");
+  revalidatePath("/sitemap.xml");
 }
 
 /** GET /api/posts — published guides, newest first. `?all=true` adds drafts (admin). */
@@ -73,7 +75,7 @@ export const POST = handler(async (req: Request) => {
     },
   });
 
-  revalidateGuidePages(post.slug);
+  revalidateGuidePages();
 
   return json(post, { status: 201 });
 });

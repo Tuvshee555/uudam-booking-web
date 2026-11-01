@@ -1,5 +1,6 @@
 import { prisma, withPrismaRetry } from "@/server/prisma";
 import { clientIp, handler, json, rateLimit, readJson, safeText } from "@/server/http";
+import { sweepStorefrontSoon } from "@/server/storefrontSweep";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,10 @@ function referrerHost(referrer: unknown): string | null {
  * stored, no cross-site identifier, no third-party script.
  */
 export const POST = handler(async (req: Request) => {
+  // Expired holds and menu changes nobody announced are caught behind page
+  // views (throttled, after the response): see storefrontSweep.
+  sweepStorefrontSoon();
+
   const body = await readJson(req);
 
   // navigator.sendBeacon can only ever issue a POST, and the exit beacon is the

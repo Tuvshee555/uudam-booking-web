@@ -3,6 +3,8 @@ import { sendEmail } from "@/server/mail";
 import { SITE_URL } from "@/lib/siteUrl";
 import { buildTripHealthReport } from "@/server/tripHealthReport";
 import { retryDueTripSyncs } from "@/server/tripSyncQueue";
+import { expireStaleHolds } from "@/server/booking";
+import { revalidateStorefront } from "@/server/revalidate";
 
 export const dynamic = "force-dynamic";
 
@@ -11,9 +13,9 @@ function escape(value: string) {
 }
 
 /**
- * Daily (vercel.json cron, 08:00 Ulaanbaatar): emails the office when a
- * published trip shows a customer-facing error, so problems are found before
- * customers find them. Vercel sends CRON_SECRET as a bearer token when it is
+ * Daily (vercel.json cron, 08:00 Ulaanbaatar): refreshes the storefront for
+ * the new day, and emails the office when a published trip shows a
+ * customer-facing error, so problems are found before customers find them. Vercel sends CRON_SECRET as a bearer token when it is
  * set; without it only Vercel's cron agent is accepted, at most hourly.
  */
 export const GET = handler(async (req: Request) => {
@@ -25,6 +27,13 @@ export const GET = handler(async (req: Request) => {
 
   // Queued website edits are retried before the report, so it lists only real problems.
   const sync = await retryDueTripSyncs(10).catch((error) => { console.error("Trip sync retry failed", error); return null; });
+
+  // The daily storefront refresh. Pages are otherwise rebuilt only when what
+  // they show changes, so this is what moves "today" along: dates stored at
+  // midnight UTC leave the calendar and cards now, ended sales lose their
+  // badge. Holds that ran out go back on sale first.
+  const holds = await expireStaleHolds().catch((error) => { console.error("Hold sweep failed", error); return null; });
+  revalidateStorefront();
   const report = await buildTripHealthReport();
   const to = process.env.ENQUIRY_NOTIFY_EMAIL || process.env.SMTP_USER;
   let emailed = false;
@@ -38,5 +47,5 @@ export const GET = handler(async (req: Request) => {
       html: `<p>Өнөөдрийн автомат шалгалтаар нийтэд харагдаж буй аяллуудад ${report.errors} алдаа, ${report.warnings} анхааруулга илэрлээ.</p><ul>${rows}</ul><p><a href="${site}/mn/admin/health">Бүгдийг харах</a></p>`,
     }).then(() => { emailed = true; }).catch((error) => console.error("Trip health email failed", error));
   }
-  return json({ errors: report.errors, warnings: report.warnings, fingerprint: report.fingerprint, emailed, sync });
+  return json({ errors: report.errors, warnings: report.warnings, fingerprint: report.fingerprint, emailed, sync, expiredHolds: holds?.expired ?? null });
 });

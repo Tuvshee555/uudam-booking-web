@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   ...shareMetadata("/gift", "Аяллын бэлгийн эрхийн бичиг · Uudam Travel", "Хайртай хүндээ мартагдашгүй аялал бэлэглээрэй."),
 };
 
-export const revalidate = 300;
+export const revalidate = 86400;
 
 /**
  * A request, not a purchase: there is no checkout here by design, so this

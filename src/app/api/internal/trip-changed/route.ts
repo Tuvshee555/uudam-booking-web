@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { handler, httpError, json, readJson } from "@/server/http";
-import { revalidateStorefront } from "@/server/revalidate";
+import { revalidateTrips } from "@/server/revalidate";
+import { menuChangedSinceRender } from "@/server/siteNavCache";
 
 export const dynamic = "force-dynamic";
 
@@ -17,8 +18,14 @@ const SLUG = /^[\p{L}\p{N}][\p{L}\p{N}_-]{0,199}$/u;
 
 /**
  * The chatbot calls this after its projection rewrote trips here. Website
- * saves refresh their own pages; without this a chatbot edit stayed behind
- * the five-minute page cache while the bot already quoted the new facts.
+ * saves refresh their own pages; without this a chatbot edit would wait for
+ * the daily page refresh while the bot already quotes the new facts.
+ *
+ * Only the named trips and the lists are refreshed, like a website save. The
+ * chatbot can also publish, withdraw or recategorise a trip, which moves the
+ * menu on every page; that is checked against the menu the pages were built
+ * with, and then everything is refreshed. No slugs (an older chatbot, or an
+ * unknown change) also refreshes everything.
  */
 export const POST = handler(async (req: Request) => {
   if (!authorized(req)) throw httpError(401, "Unauthorized");
@@ -26,6 +33,7 @@ export const POST = handler(async (req: Request) => {
   const slugs = (Array.isArray(body.slugs) ? body.slugs : [])
     .filter((slug): slug is string => typeof slug === "string" && SLUG.test(slug))
     .slice(0, 50);
-  revalidateStorefront();
-  return json({ ok: true, revalidated: slugs.length });
+  const menuChanged = !slugs.length || (await menuChangedSinceRender());
+  revalidateTrips(slugs, { menuChanged });
+  return json({ ok: true, revalidated: slugs.length, everything: menuChanged });
 });

@@ -1,8 +1,14 @@
 import { prisma } from "@/server/prisma";
 import { requireAdmin } from "@/server/auth";
 import { handler, httpError, json, readJson, safeText } from "@/server/http";
-import { invalidateCatalog } from "@/server/cache";
+import { revalidateTrips } from "@/server/revalidate";
 import { recomputeTripRating, toOptionalDate, toOptionalInt, toStringArray } from "@/server/tripInput";
+
+/** The home page shows recent reviews; a trip's page and its cards show its rating. */
+async function revalidateReviewPages(tripId: string | null) {
+  const trip = tripId ? await prisma.trip.findUnique({ where: { id: tripId }, select: { slug: true } }) : null;
+  revalidateTrips(trip ? [trip.slug] : []);
+}
 
 /**
  * Staff-entered customer feedback — there are no customer accounts, so this
@@ -71,7 +77,7 @@ export const POST = handler(async (req: Request) => {
   });
 
   if (testimonial.tripId) await recomputeTripRating(testimonial.tripId);
-  invalidateCatalog();
+  await revalidateReviewPages(testimonial.tripId);
 
   return json(testimonial, { status: 201 });
 });
@@ -102,7 +108,7 @@ export const PUT = handler(async (req: Request) => {
   });
 
   if (testimonial.tripId) await recomputeTripRating(testimonial.tripId);
-  invalidateCatalog();
+  await revalidateReviewPages(testimonial.tripId);
 
   return json(testimonial);
 });
@@ -117,7 +123,7 @@ export const DELETE = handler(async (req: Request) => {
   const testimonial = await prisma.testimonial.delete({ where: { id }, select: { tripId: true } });
 
   if (testimonial.tripId) await recomputeTripRating(testimonial.tripId);
-  invalidateCatalog();
+  await revalidateReviewPages(testimonial.tripId);
 
   return json({ success: true });
 });

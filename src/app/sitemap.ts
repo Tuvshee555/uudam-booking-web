@@ -22,10 +22,11 @@ const STATIC_PATHS = [
 ];
 
 /**
- * Built once at deploy otherwise. A trip save refreshes it at once
- * (revalidateStorefront); the hour is the fallback for anything else.
+ * Built once at deploy otherwise. Trip, category, post and article saves
+ * refresh it at once (server/revalidate.ts and the post/article routes); the
+ * day is the fallback for anything else.
  */
-export const revalidate = 3600;
+export const revalidate = 86400;
 
 /**
  * Every published trip and category in every live locale (only Mongolian — see lib/locales.ts), plus the

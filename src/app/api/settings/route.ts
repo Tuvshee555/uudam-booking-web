@@ -4,6 +4,7 @@ import { prisma } from "@/server/prisma";
 import { requireAdmin } from "@/server/auth";
 import { handler, json, publicCache, readJson, safeText } from "@/server/http";
 import { cached, invalidate } from "@/server/cache";
+import { revalidateStorefront } from "@/server/revalidate";
 import { parseAboutValues } from "@/lib/aboutContent";
 import { parseFaqs, parseHeroImages, parseTermsSections, parseTrustFacts } from "@/lib/siteContent";
 
@@ -124,6 +125,9 @@ export const PUT = handler(async (req: Request) => {
   });
 
   invalidate("settings");
+  // Home hero, FAQ, trust facts, about and terms copy, the trip notice and bank
+  // details: pages across the whole site read these, and are cached for a day.
+  revalidateStorefront();
 
   return json({
     tripNotice: row.tripNotice,
