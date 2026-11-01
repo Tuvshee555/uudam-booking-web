@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { resolveShortLink } from "@/lib/shortLink";
-import { DEFAULT_LOCALE, LOCALES, withoutRetiredLocale } from "@/lib/locales";
+import { DEFAULT_LOCALE, LOCALES } from "@/lib/locales";
 
 const STATIC_PREFIXES = ["/_next/", "/favicon", "/images", "/api", "/public"];
 
@@ -13,21 +13,16 @@ const PUBLIC_ADMIN_PATHS = ["/admin/log-in", "/admin/forgot-password", "/admin/r
  * One middleware for both halves of the app now that the storefront and the
  * admin panel share a deployment: every path gets a locale prefix, and only
  * `/admin/*` is gated on a session cookie.
+ *
+ * It runs only where it has work (see `config.matcher`). The storefront pages
+ * under /mn passed straight through it, so they no longer reach it at all, and
+ * "/", /en and /ko are redirected in next.config.mjs before it would run.
  */
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (STATIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
     return NextResponse.next();
-  }
-
-  // /en and /ko were copies of /mn (see lib/locales.ts). Anything still
-  // pointing at them — an old search result, a shared link — lands on the real page.
-  const retired = withoutRetiredLocale(pathname);
-  if (retired) {
-    const url = request.nextUrl.clone();
-    url.pathname = retired;
-    return NextResponse.redirect(url, 308);
   }
 
   const hasLocale = LOCALES.some(
@@ -70,5 +65,12 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next|.*\\..*).*)"],
+  matcher: [
+    // The admin panel's session gate.
+    "/mn/admin/:path*",
+    // Paths without the locale: short links, and old links missing "/mn".
+    // Not /mn and its pages, the API, Next's own files or anything with a
+    // file extension.
+    "/((?!mn(?:/|$)|api|_next|.*\\..*).*)",
+  ],
 };

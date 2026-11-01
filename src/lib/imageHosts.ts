@@ -1,9 +1,9 @@
 /**
- * Hosts `next/image` is actually allowed to optimize — must match
- * `remotePatterns` in next.config.mjs exactly. Pasting a photo URL from
- * anywhere else doesn't error loudly; it just serves a broken image on every
- * page that trip appears on, so the admin form validates against this list
- * before ever saving the URL.
+ * Hosts whose photos the site's image loader resizes (src/lib/imageLoader.ts),
+ * and the only hosts an old /_next/image link is redirected to
+ * (api/legacy-image). A photo from anywhere else would be served full size,
+ * unresized, on every page its trip appears on, so the admin form validates
+ * against this list before ever saving the URL.
  */
 const ALLOWED_IMAGE_HOSTS = ["images.unsplash.com", "res.cloudinary.com"];
 
