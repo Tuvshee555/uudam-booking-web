@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Manrope, Noto_Serif_Display } from "next/font/google";
+import { preconnect } from "react-dom";
 import "./globals.css";
 import JsonLd from "@/components/content/JsonLd";
 import { CONTACT, hasLink } from "@/lib/contact";
@@ -88,6 +89,9 @@ const businessJsonLd = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // Every page leads with a Cloudinary photo: open that connection while the
+  // HTML is still arriving, not after the image tag is parsed.
+  preconnect("https://res.cloudinary.com");
   return (
     <html lang="mn" suppressHydrationWarning>
       <body className={`${manrope.variable} ${displaySerif.variable} font-sans antialiased`}>
