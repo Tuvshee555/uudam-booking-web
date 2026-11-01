@@ -117,7 +117,7 @@ export default function SiteFooter({ nav }: { nav: SiteNav }) {
         </div>
 
         <div className="flex flex-col gap-6 border-t border-white/10 py-8 md:flex-row md:items-center md:justify-between">
-          <Link href={canonicalPath("")} aria-label="Нүүр хуудас" className="w-fit rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">
+          <Link href={canonicalPath("")} aria-label="Uudam Travel Agency — нүүр хуудас" className="w-fit rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">
             <Wordmark tone="light" compact />
           </Link>
           <div className="flex flex-col gap-4 text-[13px] text-white/55 md:flex-row md:items-center md:gap-6">

@@ -21,6 +21,7 @@ type Row = { trip: Trip; departure: Departure; day: DayKey; price: number | null
 
 /** How far ahead the calendar can be paged, past the last scheduled departure. */
 const LOOKAHEAD_MONTHS = 2;
+const AGENDA_PAGE = 12;
 
 export default function DeparturesPageClient({ trips, today: renderedToday, now: renderedNow }: { trips: Trip[]; today: DayKey; now: number }) {
   const searchParams = useSearchParams();
@@ -28,14 +29,16 @@ export default function DeparturesPageClient({ trips, today: renderedToday, now:
 
   // The page is cached for up to five minutes, so it can reach a visitor just
   // after midnight still saying "yesterday". Render with the server's clock
-  // (so hydration matches), then move to the visitor's own clock.
+  // (so hydration matches), then move to the visitor's own clock — only when
+  // the date has changed: re-rendering the whole month on every visit for a
+  // few minutes' difference was the page's longest task on a phone.
   const [clock, setClock] = useState({ today: renderedToday, now: renderedNow });
   useEffect(() => {
     const current = Date.now();
     const currentDay = ulaanbaatarDay(current);
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (currentDay !== renderedToday || current - renderedNow > 60_000) setClock({ today: currentDay, now: current });
-  }, [renderedToday, renderedNow]);
+    if (currentDay !== renderedToday) setClock({ today: currentDay, now: current });
+  }, [renderedToday]);
   const { today, now } = clock;
   const currentMonth = monthOf(today);
 
@@ -118,6 +121,10 @@ export default function DeparturesPageClient({ trips, today: renderedToday, now:
     ? visibleRows.filter((row) => row.open && compareMonths(monthOf(row.day), month) > 0).slice(0, 6)
     : [];
   const shown = selectedDay ? byDay.get(selectedDay) ?? [] : monthRows.length ? monthRows : comingUp;
+  // A busy month lists dozens of departures; the first dozen, then the rest on request.
+  const listKey = `${month}|${selectedDay ?? ""}|${destinationFilter ?? ""}`;
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const listed = selectedDay || expandedKey === listKey ? shown : shown.slice(0, AGENDA_PAGE);
   const tripCount = new Set(monthRows.map((row) => row.trip.id)).size;
 
   return (
@@ -180,7 +187,7 @@ export default function DeparturesPageClient({ trips, today: renderedToday, now:
           <div className="grid grid-cols-7 border-b border-border pb-2 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground" aria-hidden="true">
             {WEEKDAYS_MN.map((day) => <span key={day}>{day}</span>)}
           </div>
-          <div role="grid" aria-label={monthTitle(month)} className="mt-2 grid grid-cols-7 gap-1 sm:gap-1.5">
+          <div role="group" aria-label={monthTitle(month)} className="mt-2 grid grid-cols-7 gap-1 sm:gap-1.5">
             {monthGrid(month).map((cell, index) => {
               if (!cell) return <span key={`blank-${index}`} aria-hidden="true" />;
               const dayRows = byDay.get(cell.key) ?? [];
@@ -193,10 +200,9 @@ export default function DeparturesPageClient({ trips, today: renderedToday, now:
                 <button
                   key={cell.key}
                   type="button"
-                  role="gridcell"
+                  data-day={cell.key}
                   disabled={past || dayRows.length === 0}
-                  aria-selected={active}
-                  aria-label={`${dayTitle(cell.key)}${dayRows.length ? `: ${dayRows.length} хөдлөлт${allFull ? ", бүгд дүүрсэн" : ""}` : ""}`}
+                  aria-pressed={active}
                   onClick={() => {
                     setParams({ date: active ? null : cell.key });
                     if (!active) track("calendar_select", { properties: { day: cell.key, departures: dayRows.length } });
@@ -219,6 +225,10 @@ export default function DeparturesPageClient({ trips, today: renderedToday, now:
                     )}
                   >
                     {cell.day}
+                  </span>
+                  {/* Named by what it shows plus the full date, so the spoken name contains the visible one. */}
+                  <span className="sr-only">
+                    {`, ${dayTitle(cell.key)}${dayRows.length ? `: ${dayRows.length} хөдлөлт${allFull ? ", бүгд дүүрсэн" : ""}` : ""}`}
                   </span>
                   {dayRows.length > 0 && (
                     <>
@@ -294,11 +304,11 @@ export default function DeparturesPageClient({ trips, today: renderedToday, now:
             </div>
           ) : (
             <ol className="divide-y divide-border">
-              {shown.map((row) => (
+              {listed.map((row) => (
                 <li key={`${row.trip.id}:${row.departure.id}`}>
                   <Link
                     href={`${canonicalPath(`/trips/${row.trip.slug}`)}?departure=${row.day}`}
-                    className={cn("group flex gap-4 py-4 focus-ring", !row.open && "opacity-70")}
+                    className="group flex gap-4 py-4 focus-ring"
                   >
                     <span className="relative h-20 w-16 shrink-0 overflow-hidden rounded-md bg-sand sm:w-20">
                       {row.trip.image && <Image src={row.trip.image} alt="" fill sizes="80px" className="object-cover" />}
@@ -311,7 +321,7 @@ export default function DeparturesPageClient({ trips, today: renderedToday, now:
                       <span className="mt-1 flex flex-wrap items-center gap-x-2 text-[12.5px] text-muted-foreground">
                         {row.trip.durationDays} хоног
                         <span aria-hidden="true">·</span>
-                        <span className={cn("font-medium", !row.open ? "text-destructive line-through" : row.tight ? "text-warning" : "text-success")}>{row.label}</span>
+                        <span className={cn("font-medium", !row.open ? "text-destructive" : row.tight ? "text-warning" : "text-success")}>{row.label}</span>
                       </span>
                     </span>
                     <span className="shrink-0 text-right">
@@ -322,6 +332,15 @@ export default function DeparturesPageClient({ trips, today: renderedToday, now:
                 </li>
               ))}
             </ol>
+          )}
+          {listed.length < shown.length && (
+            <button
+              type="button"
+              onClick={() => setExpandedKey(listKey)}
+              className="mt-2 inline-flex h-11 w-full items-center justify-center rounded-full border border-border bg-card text-[14px] font-semibold text-foreground transition-colors hover:border-foreground/40 focus-ring"
+            >
+              Бүх {shown.length} хөдлөлтийг харах
+            </button>
           )}
         </section>
       </div>

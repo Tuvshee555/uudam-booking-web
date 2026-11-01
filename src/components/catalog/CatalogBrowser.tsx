@@ -254,6 +254,7 @@ export default function CatalogBrowser({
               </div>
             ) : (
               <>
+                <h2 className="sr-only">Аяллын жагсаалт</h2>
                 <ul className="grid grid-cols-2 gap-x-3 gap-y-9 sm:gap-x-5 lg:grid-cols-3 lg:gap-x-6 lg:gap-y-12">
                   {results.slice(0, limit).map((trip, index) => (
                     <li key={trip.id}>

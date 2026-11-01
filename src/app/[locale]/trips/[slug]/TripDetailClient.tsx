@@ -106,12 +106,13 @@ function HotelNameLink({ hotel }: { hotel: HotelProfile }) {
 
 function Fact({ icon: Icon, label, value }: { icon: typeof Clock; label: string; value: ReactNode }) {
   return (
-    <div className="flex gap-3">
-      <Icon className="mt-0.5 h-[18px] w-[18px] shrink-0 text-gold-text" aria-hidden="true" />
-      <div className="min-w-0">
-        <dt className="text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</dt>
-        <dd className="mt-1 text-[14.5px] leading-relaxed text-foreground">{value}</dd>
-      </div>
+    // A <dl> may only wrap each dt/dd pair in one plain <div>, so the icon sits in the <dt>.
+    <div className="min-w-0">
+      <dt className="flex items-center gap-3 text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        <Icon className="h-[18px] w-[18px] shrink-0 text-gold-text" aria-hidden="true" />
+        {label}
+      </dt>
+      <dd className="mt-1 pl-[30px] text-[14.5px] leading-relaxed text-foreground">{value}</dd>
     </div>
   );
 }

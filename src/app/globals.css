@@ -20,7 +20,8 @@
     --uudam-navy-deep: 207 82% 18%; /* #082f52 */
     --uudam-gold: 41 87% 62%; /* #f2bd4a */
     /* The same gold as readable type on a light surface (5.1:1 on white; the bright gold is 1.7:1). */
-    --uudam-gold-text: 41 90% 30%;
+    /* 27% keeps small gold labels above 4.5:1 on paper and sand. */
+    --uudam-gold-text: 41 90% 27%;
     --uudam-gold-soft: 41 80% 90%;
     /* The deepest navy, for the storefront's dark bands and footer. */
     --uudam-night: 211 70% 11%;

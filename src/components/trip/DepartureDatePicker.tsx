@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { availability, formatDepartureDate } from "@/lib/departures";
 import { departureDateKey } from "@/lib/departureDate";
-import { monthTitle, WEEKDAYS_MN } from "@/lib/calendar";
+import { dayTitle, monthTitle, WEEKDAYS_MN } from "@/lib/calendar";
 import type { Departure } from "@/types/trip";
 import { cn } from "@/lib/utils";
 
@@ -80,7 +80,6 @@ export default function DepartureDatePicker({
           const full = departure && !seats?.selectable;
           return departure ? (
             <button key={day} type="button" disabled={!seats?.selectable} onClick={() => onSelect(departure)}
-              aria-label={`${current}-${String(day).padStart(2, "0")}, ${seats?.label}${price > 0 ? `, нэг том хүн ${price.toLocaleString("en-US")} төгрөг` : ""}`}
               aria-pressed={active}
               className={cn("relative flex h-11 flex-col items-center justify-center rounded-lg border text-[12px] leading-tight transition-colors focus-ring",
                 active ? "border-primary bg-primary font-semibold text-primary-foreground" : "border-border bg-card text-foreground hover:border-foreground/40",
@@ -92,6 +91,10 @@ export default function DepartureDatePicker({
               <span className="font-semibold">{day}</span>
               <span className={cn("text-[9.5px] tabular-nums", active ? "text-primary-foreground/85" : "text-muted-foreground")}>
                 {full ? "Дүүрсэн" : price > 0 ? shortPrice(price) : "—"}
+              </span>
+              {/* The spoken name keeps the visible day and adds what the cell abbreviates. */}
+              <span className="sr-only">
+                {`, ${dayTitle(`${current}-${String(day).padStart(2, "0")}`)}, ${seats?.label}${price > 0 ? `, нэг том хүн ${price.toLocaleString("en-US")}₮` : ""}`}
               </span>
             </button>
           ) : <span key={day} className="flex h-11 items-center justify-center text-[12px] text-muted-foreground/45">{day}</span>;
