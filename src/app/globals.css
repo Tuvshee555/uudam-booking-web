@@ -122,6 +122,8 @@
    */
   .site-theme {
     --background: 40 38% 96%;
+    /* A deeper red: small "Суудал дүүрсэн" labels on paper need 4.5:1 (5.4 here). */
+    --destructive: 0 72% 45%;
     --foreground: 211 58% 14%;
     --card: 0 0% 100%;
     --card-foreground: 211 58% 14%;
