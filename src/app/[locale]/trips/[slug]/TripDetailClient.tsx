@@ -406,7 +406,8 @@ function TripDetailClientInner({
             />
           </TripSection>
 
-          <div id="booking" className="scroll-mt-36 lg:hidden">
+          {/* The date picker and quote form are no use on paper; the price list above prints instead. */}
+          <div id="booking" className="scroll-mt-36 lg:hidden print:hidden">
             <h2 className="sr-only">Захиалга</h2>
             {sidebar}
           </div>

@@ -150,6 +150,7 @@ export default function TripGallery({ trip }: { trip: Trip }) {
           "no-scrollbar -mx-4 flex snap-x snap-mandatory overflow-x-auto sm:-mx-6",
           "lg:mx-0 lg:grid lg:h-[30rem] lg:snap-none lg:gap-2 lg:overflow-hidden lg:rounded-xl xl:h-[34rem]",
           layout,
+          "print:mx-0 print:block print:h-auto print:overflow-visible",
         )}
         onScroll={(event) => {
           const element = event.currentTarget;
@@ -166,6 +167,8 @@ export default function TripGallery({ trip }: { trip: Trip }) {
               "group relative aspect-[4/3] w-full shrink-0 snap-center overflow-hidden bg-sand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold sm:aspect-[16/9] lg:aspect-auto lg:w-auto",
               position === 0 && mosaicCount >= 3 && "lg:col-span-2 lg:row-span-2",
               position >= mosaicCount && "lg:hidden",
+              // On paper only the cover: the day photos print beside their days.
+              position > 0 && "print:hidden",
             )}
           >
             <Image
@@ -181,11 +184,11 @@ export default function TripGallery({ trip }: { trip: Trip }) {
           </button>
         ))}
       </div>
-      <div className="pointer-events-none absolute bottom-3 left-0 rounded-full bg-black/55 px-3 py-1 text-[12px] font-semibold tabular-nums text-white backdrop-blur lg:hidden">
+      <div className="pointer-events-none absolute bottom-3 left-0 rounded-full bg-black/55 px-3 py-1 text-[12px] font-semibold tabular-nums text-white backdrop-blur lg:hidden print:hidden">
         {Math.min(visible + 1, images.length)} / {images.length}
       </div>
 
-      <div className="absolute bottom-3 right-3 flex gap-2 sm:bottom-4 sm:right-4">
+      <div className="absolute bottom-3 right-3 flex gap-2 sm:bottom-4 sm:right-4 print:hidden">
         {firstVideo >= 0 && (
           <button type="button" onClick={() => show(firstVideo)} className="inline-flex h-10 items-center gap-2 rounded-full bg-white/95 px-4 text-[13px] font-semibold text-navy-night shadow-sm backdrop-blur focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">
             <Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" /> Бичлэг
