@@ -25,7 +25,9 @@ const manrope = Manrope({
  */
 const displaySerif = Noto_Serif_Display({
   variable: "--font-display",
-  weight: ["400", "500"],
+  // One weight: each extra weight is three more font files (latin, cyrillic,
+  // cyrillic-ext) racing the hero photo on a slow connection.
+  weight: ["500"],
   subsets: ["latin", "cyrillic", "cyrillic-ext"],
   display: "swap",
 });

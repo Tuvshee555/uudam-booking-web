@@ -58,6 +58,7 @@ export default function TripCard({
             sizes={sizes}
             quality={75}
             priority={eager}
+            fetchPriority={eager ? "high" : undefined}
             className="photo-zoom object-cover"
           />
         ) : (

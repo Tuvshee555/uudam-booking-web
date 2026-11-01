@@ -173,6 +173,7 @@ export default function TripGallery({ trip }: { trip: Trip }) {
               alt={slide.alt}
               fill
               priority={position === 0}
+              fetchPriority={position === 0 ? "high" : undefined}
               sizes={position === 0 ? "(max-width: 1024px) 100vw, 820px" : "(max-width: 1024px) 100vw, 25vw"}
               quality={75}
               className="photo-zoom object-cover"

@@ -91,7 +91,7 @@ export default function ArticleLayout({
       {article.coverImage && (
         <div className="site-container mt-10 max-w-5xl">
           <div className="relative aspect-[16/9] overflow-hidden rounded-xl bg-sand">
-            <Image src={article.coverImage} alt={article.title} fill priority sizes="(max-width: 1024px) 100vw, 1024px" quality={75} className="object-cover" />
+            <Image src={article.coverImage} alt={article.title} fill priority fetchPriority="high" sizes="(max-width: 1024px) 100vw, 1024px" quality={75} className="object-cover" />
           </div>
         </div>
       )}

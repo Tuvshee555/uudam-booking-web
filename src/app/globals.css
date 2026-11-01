@@ -264,7 +264,7 @@
      lighter cut, with lining, evenly spaced digits. */
   .numeral {
     font-family: var(--font-display), Georgia, serif;
-    font-weight: 400;
+    font-weight: 500;
     font-synthesis: none;
     letter-spacing: -0.02em;
     font-variant-numeric: lining-nums tabular-nums;

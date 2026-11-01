@@ -178,6 +178,7 @@ export default function HomeHero({
                   sizes="100vw"
                   quality={70}
                   priority={index === 0}
+                  fetchPriority={index === 0 ? "high" : undefined}
                   className={cn("object-cover", index === active && "hero-settle")}
                 />
               </div>

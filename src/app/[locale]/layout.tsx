@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { unstable_cache } from "next/cache";
-import { GoogleOAuthProvider } from "@react-oauth/google";
 
 import ClientI18nProvider from "@/components/i18n/ClientI18nProvider";
 import QueryProvider from "./QueryProvider";
@@ -49,18 +48,16 @@ export default async function LocaleLayout({
   const nav = await siteNav();
 
   return (
-    <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? ""}>
-      <QueryProvider>
-        <ClientI18nProvider locale={locale} messages={messages}>
-          <AuthProvider>
-            <Providers>
-              <AppShellClient nav={nav} footer={<SiteFooter nav={nav} />}>
-                {children}
-              </AppShellClient>
-            </Providers>
-          </AuthProvider>
-        </ClientI18nProvider>
-      </QueryProvider>
-    </GoogleOAuthProvider>
+    <QueryProvider>
+      <ClientI18nProvider locale={locale} messages={messages}>
+        <AuthProvider>
+          <Providers>
+            <AppShellClient nav={nav} footer={<SiteFooter nav={nav} />}>
+              {children}
+            </AppShellClient>
+          </Providers>
+        </AuthProvider>
+      </ClientI18nProvider>
+    </QueryProvider>
   );
 }

@@ -32,7 +32,7 @@ export default function PageHero({
   if (image) {
     return (
       <section className="relative isolate overflow-hidden surface-night">
-        <Image src={image} alt={imageAlt} fill priority sizes="100vw" quality={75} className="-z-10 object-cover opacity-60" />
+        <Image src={image} alt={imageAlt} fill priority fetchPriority="high" sizes="100vw" quality={75} className="-z-10 object-cover opacity-60" />
         <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[hsl(var(--uudam-night))] via-[hsl(var(--uudam-night)/0.75)] to-[hsl(var(--uudam-night)/0.2)]" />
         <div className={cn("site-container", compact ? "pb-12 pt-10 md:pb-16 md:pt-14" : "pb-16 pt-12 md:pb-24 md:pt-16")}>
           <Breadcrumbs items={crumbs} tone="dark" />
