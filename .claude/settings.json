@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git diff:*)",
+      "Bash(git branch:*)",
+      "Bash(git fetch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git clone:*)",
+      "Bash(npm ci:*)",
+      "Bash(npm install:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx prisma generate:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx eslint:*)",
+      "Bash(node:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(wc:*)",
+      "Bash(grep:*)",
+      "Bash(sed -n:*)",
+      "Bash(curl -sS https://uudamtravel.mn/*)",
+      "mcp__Vercel__list_projects",
+      "mcp__Vercel__list_deployments",
+      "mcp__Vercel__get_deployment",
+      "mcp__Vercel__get_runtime_logs",
+      "mcp__Vercel__get_runtime_errors",
+      "mcp__Vercel__list_teams",
+      "mcp__Vercel__get_project"
+    ]
+  }
+}
