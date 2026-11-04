@@ -91,6 +91,7 @@ export function Notice({
   children,
   action,
   className,
+  id,
 }: {
   tone?: "info" | "success" | "warning" | "danger";
   icon?: ComponentType<{ className?: string }>;
@@ -98,9 +99,12 @@ export function Notice({
   children?: ReactNode;
   action?: ReactNode;
   className?: string;
+  /** For scrolling the notice into view when it is raised from elsewhere on the page. */
+  id?: string;
 }) {
   return (
     <div
+      id={id}
       role={tone === "danger" ? "alert" : "status"}
       className={cn("flex flex-col gap-3 rounded-xl border p-4 text-sm sm:flex-row sm:items-start", ALERT_TONE[tone], className)}
     >

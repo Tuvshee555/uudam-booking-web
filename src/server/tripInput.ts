@@ -2,6 +2,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
 import { httpError } from "./http";
 import { extractUrl, parseMediaItems } from "@/lib/media";
+import { findNegativeFare } from "@/lib/tripFareValidation";
+import { departureDateKey } from "@/lib/departureDate.js";
 
 /**
  * Parsing + validation for the trip payloads the admin panel sends.
@@ -237,8 +239,17 @@ export function normalizeDepartures(value: unknown): DepartureInput[] {
       } satisfies DepartureInput;
     })
     .filter((dep): dep is DepartureInput => dep !== null)
+    // One row per calendar day: a payload naming the same date twice would
+    // otherwise update the same stored row twice, the last one silently winning.
+    .filter((dep, index, all) => all.findLastIndex((other) => departureDateKey(other.startDate) === departureDateKey(dep.startDate)) === index)
     .sort((a, b) => a.startDate.getTime() - b.startDate.getTime())
     .slice(0, 120);
+}
+
+/** Refuses a save that carries a negative fare, naming the field for staff. */
+export function assertFaresNotNegative(body: Record<string, unknown>) {
+  const negative = findNegativeFare(body);
+  if (negative) throw httpError(400, `Үнэ сөрөг байж болохгүй: ${negative}`);
 }
 
 /**

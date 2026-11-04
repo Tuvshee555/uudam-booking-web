@@ -20,6 +20,7 @@ export const SYNC_ERROR_TEXT: Record<string, string> = {
 export const IGNORED_REASON_TEXT: Record<string, string> = {
   fare_below_1000: "1,000₮-өөс бага үнэ — буруу бичсэн байж магадгүй",
   open_conflict: "өмнөх шийдээгүй зөрүүтэй",
+  recurring_schedule: "chatbot энэ аяллын огноог долоо хоногийн дүрмээр хадгалдаг («Пүрэв гараг бүр» гэх мэт) — огноог chatbot админ дээр засна уу",
   status_owned_by_chatbot: "төлвийг chatbot удирддаг",
   not_applied: "chatbot хүлээж аваагүй",
 };

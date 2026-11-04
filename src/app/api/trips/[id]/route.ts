@@ -11,6 +11,7 @@ import { saveDepartures } from "@/server/saveDepartures";
 import { saveItinerary } from "@/server/saveItinerary";
 import {
   TRIP_INCLUDE,
+  assertFaresNotNegative,
   normalizeDepartures,
   normalizeItinerary,
   reconcilePricing,
@@ -81,6 +82,7 @@ export const PUT = handler(async (req: Request, ctx: Ctx) => {
   );
   if (!existing) throw httpError(404, "Аялал олдсонгүй");
 
+  assertFaresNotNegative(body);
   const { price, oldPrice, discount } = reconcilePricing(body);
 
   const title = typeof body.title === "string" && body.title.trim()

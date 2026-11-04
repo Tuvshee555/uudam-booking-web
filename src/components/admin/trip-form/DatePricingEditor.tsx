@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Plus, Search, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { pricingDateRows, pricingDates, patchPricingDate, renamePricingDate, passengerPricingRows, passengerName, applyFaresToSameOption, sameOptionDates, type PricingGroup } from "@/lib/adminDatePricing";
 import { formatMnt } from "@/lib/pricing";
 import { Input } from "@/components/ui/input";
@@ -21,7 +22,9 @@ type Props = {
 
 const record = (value: unknown): PricingGroup => value && typeof value === "object" && !Array.isArray(value) ? value as PricingGroup : {};
 const amount = (value: unknown) => typeof value === "number" ? String(value) : "";
-const fare = (value: string) => value.trim() && Number.isFinite(Number(value)) ? Number(value) : null;
+// No fare is ever negative: a stray "-" reads as "no price typed", never as a price.
+const fare = (value: string) => value.trim() && Number.isFinite(Number(value)) && Number(value) >= 0 ? Number(value) : null;
+const STATUS_TEXT = Object.fromEntries(STATUS_OPTIONS.map((option) => [option.value, option.label]));
 const infant = (row: PricingGroup) => /нярай|infant|сар|month|\b0\s*[-–]\s*2\b/i.test(`${row.label} ${row.age_range}`);
 
 export default function DatePricingEditor({ metadata, departures, defaultPrice, defaultRows, adultPriceMissing, onChange }: Props) {
@@ -46,6 +49,12 @@ export default function DatePricingEditor({ metadata, departures, defaultPrice, 
   if (!groups.length) groups.push({ dates: [], adult_price: basePrice, passenger_prices: defaultRows });
   const rows = pricingDateRows(groups);
   const key = (row: typeof rows[number]) => `${row.date}|${row.groupIndex}`;
+  // "Цуцлагдсан", "Дүүрсэн"… next to a date in the list, so a closed date is
+  // tellable apart from an open one without selecting it.
+  const statusOf = (date: string) => {
+    const status = departures.find((dep) => dep.startDate === date)?.status;
+    return status && status !== "OPEN" ? STATUS_TEXT[status] ?? status : "";
+  };
   const visible = rows.filter((row) => [row.date, groups[row.groupIndex].hotel, groups[row.groupIndex].package_id, groups[row.groupIndex].note].join(" ").toLowerCase().includes(search.toLowerCase()));
   const selected = rows.find((row) => key(row) === selection) || rows[0];
   const group = groups[selected.groupIndex];
@@ -110,7 +119,14 @@ export default function DatePricingEditor({ metadata, departures, defaultPrice, 
   }
 
   function add(date: string) {
-    if (!date || departures.some((dep) => dep.startDate === date) || rows.some((row) => row.date === date)) return;
+    if (!date) return;
+    const existing = rows.find((row) => row.date === date);
+    if (existing || departures.some((dep) => dep.startDate === date)) {
+      // Silently doing nothing here read as "adding a date is broken".
+      if (existing) setSelection(key(existing));
+      toast.info(`${date} огноо аль хэдийн жагсаалтад байна — доороос сонгоод үнийг нь засна уу.`);
+      return;
+    }
     const copy: PricingGroup = { ...group, dates: [date], date_keys: [date], display_dates: [date], passenger_prices: passengers.map((row) => ({ ...row })) };
     delete copy.id;
     const next = [...groups, copy];
@@ -122,14 +138,14 @@ export default function DatePricingEditor({ metadata, departures, defaultPrice, 
   return <div className="grid min-w-0 gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
     <div className="min-w-0">
       <label className="block text-sm lg:hidden">Гарах огноо<select aria-label="Гарах огноо сонгох" value={key(selected)} onChange={(e) => setSelection(e.target.value)} className="mt-1 h-10 w-full rounded-md border border-input bg-background px-2 text-sm">
-        {rows.map((row) => <option key={key(row)} value={key(row)}>{row.date || "Үндсэн үнэ"} · {String(groups[row.groupIndex].package_id || groups[row.groupIndex].hotel || groups[row.groupIndex].note || "")} · {typeof groups[row.groupIndex].adult_price === "number" ? Number(groups[row.groupIndex].adult_price).toLocaleString("mn-MN") : "—"}</option>)}
+        {rows.map((row) => <option key={key(row)} value={key(row)}>{row.date || "Үндсэн үнэ"}{statusOf(row.date) ? ` (${statusOf(row.date)})` : ""} · {String(groups[row.groupIndex].package_id || groups[row.groupIndex].hotel || groups[row.groupIndex].note || "")} · {typeof groups[row.groupIndex].adult_price === "number" ? Number(groups[row.groupIndex].adult_price).toLocaleString("mn-MN") : "—"}</option>)}
       </select></label>
       <div className="relative mb-2 hidden lg:block"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input aria-label="Огноо хайх" placeholder="Огноо хайх" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" /></div>
       <div className="hidden max-h-[420px] overflow-y-auto border-y border-border lg:block" role="list" aria-label="Гарах огноонууд">
         {visible.map((row) => {
           const value = groups[row.groupIndex];
           return <button key={key(row)} type="button" aria-pressed={key(selected) === key(row)} onClick={() => setSelection(key(row))} className={cn("flex w-full items-center justify-between gap-3 border-b border-border px-3 py-3 text-left text-sm last:border-0", key(selected) === key(row) ? "border-l-2 border-l-primary bg-secondary" : "hover:bg-secondary/50")}>
-            <span className="min-w-0"><span className="block font-medium">{row.date || "Үндсэн үнэ"}</span><span className="block truncate text-xs text-muted-foreground">{String(value.package_id || value.hotel || value.note || "")}</span></span>
+            <span className="min-w-0"><span className="block font-medium">{row.date || "Үндсэн үнэ"}</span><span className="block truncate text-xs text-muted-foreground">{[statusOf(row.date), String(value.package_id || value.hotel || value.note || "")].filter(Boolean).join(" · ")}</span></span>
             <span className="shrink-0 text-xs tabular-nums">{typeof value.adult_price === "number" ? value.adult_price.toLocaleString("mn-MN") : "—"}</span>
           </button>;
         })}

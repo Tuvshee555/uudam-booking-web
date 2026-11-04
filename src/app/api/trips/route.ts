@@ -11,6 +11,7 @@ import { getCachedTripSummaries } from "@/server/catalog";
 import { matchesQuery } from "@/lib/catalogFilters";
 import {
   TRIP_INCLUDE,
+  assertFaresNotNegative,
   assertTitle,
   normalizeDepartures,
   normalizeItinerary,
@@ -68,6 +69,7 @@ export const POST = handler(async (req: Request) => {
 
   const body = await readJson(req);
   const title = assertTitle(body.title);
+  assertFaresNotNegative(body);
 
   const { price, oldPrice, discount } = reconcilePricing(body);
 
