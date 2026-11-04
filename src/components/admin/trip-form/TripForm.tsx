@@ -8,7 +8,8 @@ import { toast } from "sonner";
 import { AlertTriangle, Archive, CalendarDays, Check, ClipboardList, ExternalLink, Eye, Images, Info, Loader2, Plus, RefreshCw, Save, Scale, Trash2, Wallet } from "lucide-react";
 
 import { api, apiErrorMessage } from "@/lib/api";
-import { changedTripFields, mergeTripEdit } from "@/lib/tripEditPatch";
+import { changedTripFields, describeConflictPath, describeConflictValue, mergeTripEdit } from "@/lib/tripEditPatch";
+import { editableDepartures } from "@/lib/tripEditDepartures";
 import { departureDateKey } from "@/lib/departureDate";
 import { ageBandsFor } from "@/lib/pricing";
 import { isAllowedImageHost } from "@/lib/imageHosts";
@@ -422,7 +423,9 @@ function tripToForm(trip: Trip): FormState {
       image: day.image ?? "",
       video: day.video ?? "",
     })),
-    departures: trip.departures.map((dep) => {
+    // A date removed here or by the chatbot stays in the database as a cancelled
+    // row (bookings keep their history); it must not come back into the editor.
+    departures: editableDepartures(trip).map((dep) => {
       const startDate = toDateInput(dep.startDate);
       const fares = datedPassengerFares(trip.sourceMetadata, startDate);
       return {
@@ -462,6 +465,23 @@ function lowestDatePrice(form: FormState): number | undefined {
 
 function FieldError({ show, children }: { show: boolean; children: React.ReactNode }) {
   return show ? <p role="alert" className="mt-1 text-xs font-medium text-destructive">{children}</p> : null;
+}
+
+type TripPayload = ReturnType<typeof buildPayload>;
+
+/** A save refused because a colleague changed the same values: what each side typed. */
+type EditConflict = {
+  latest: Trip;
+  items: { label: string; mine: string; theirs: string }[];
+};
+
+function conflictItems(details: { path: string; mine: unknown; theirs: unknown }[]): EditConflict["items"] {
+  const seen = new Map<string, EditConflict["items"][number]>();
+  for (const detail of details) {
+    const label = describeConflictPath(detail.path);
+    if (!seen.has(label)) seen.set(label, { label, mine: describeConflictValue(detail.mine), theirs: describeConflictValue(detail.theirs) });
+  }
+  return [...seen.values()];
 }
 
 function buildPayload(form: FormState) {
@@ -600,6 +620,10 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
   const [missingField, setMissingField] = useState<string | null>(null);
   // Which tab holds the field a failed save pointed at, so that tab shows a red dot.
   const [invalidSection, setInvalidSection] = useState<string | null>(null);
+  // A save a colleague's save collided with, waiting for this editor's decision.
+  const [conflict, setConflict] = useState<EditConflict | null>(null);
+  // The version this form was filled from, so a newer one saved elsewhere can be noticed.
+  const [loadedVersion, setLoadedVersion] = useState<string | null>(null);
   const originalForm = useRef<FormState | null>(null);
   const originalUpdatedAt = useRef<string | undefined>(undefined);
   const hydrated = useRef<string | undefined>(undefined);
@@ -607,6 +631,19 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
   const categoryOptions = flattenCategories(categoryTree ?? []);
   const isDirty = baseline !== null && JSON.stringify(form) !== baseline;
   const loadingTrip = tripPending || (mode === "edit" && baseline === null);
+  // Someone else saved this trip since the form was filled, and the form holds
+  // edits of its own: say so before the save, not after.
+  const savedElsewhere = mode === "edit" && isDirty && !conflict && Boolean(loadedVersion && existingTrip && existingTrip.id === tripId && existingTrip.updatedAt !== loadedVersion);
+
+  /** Fill the form from a trip and treat that as the saved state. */
+  function hydrate(trip: Trip) {
+    const next = tripToForm(trip);
+    originalForm.current = next;
+    originalUpdatedAt.current = trip.updatedAt;
+    setLoadedVersion(trip.updatedAt);
+    setForm(next);
+    setBaseline(JSON.stringify(next));
+  }
 
   // Fill the form only from data fetched after this editor opened, never from a
   // cached copy. A newer version (usually the chatbot sync) replaces the form
@@ -619,10 +656,18 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
     const initial = tripToForm(existingTrip);
     originalForm.current = initial;
     originalUpdatedAt.current = existingTrip.updatedAt;
+    setLoadedVersion(existingTrip.updatedAt);
     setForm(initial);
     setBaseline(JSON.stringify(initial));
     hydrated.current = tripId;
   }, [mode, existingTrip, tripId, isFetchedAfterMount, isDirty]);
+
+  // The decision panel sits above the tabs; the save button that raised it is
+  // at the bottom of a long form, so bring the panel to the person.
+  useEffect(() => {
+    if (!conflict) return;
+    document.getElementById("trip-edit-conflict")?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [conflict]);
 
   useEffect(() => {
     if (!isDirty) return;
@@ -656,76 +701,97 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
     });
   }
 
+  /**
+   * Re-applies this editor's changes onto the trip as it is now (saved elsewhere
+   * since the form was filled — a colleague, or the chatbot sync). `keepMine`
+   * is the editor's explicit choice after seeing a same-field conflict; without
+   * it a conflict stops the save and is shown for a decision.
+   */
+  async function saveOnto(latest: Trip, fullPayload: TripPayload, keepMine: boolean): Promise<Trip> {
+    const theirs = buildPayload(tripToForm(latest));
+    const { merged, details } = mergeTripEdit(buildPayload(originalForm.current!), fullPayload, theirs);
+    if (details.length && !keepMine) {
+      setConflict({ latest, items: conflictItems(details) });
+      throw new Error("Өөр ажилтан таны зассан талбарыг мөн өөрчилжээ. Аль утгыг хадгалахаа дээрх мэдэгдлээс сонгоно уу.");
+    }
+    const rebased = changedTripFields(theirs, merged);
+    if (!Object.keys(rebased).length) return latest;
+    const { data } = await api.put(`/trips/${tripId}`, { ...rebased, expectedUpdatedAt: latest.updatedAt });
+    return data as Trip;
+  }
+
   const saveMutation = useMutation({
-    mutationFn: async (current: FormState) => {
+    mutationFn: async ({ current, keepMine = false }: { current: FormState; keepMine?: boolean }) => {
       const fullPayload = buildPayload(current);
-      const payload = mode === "edit" && originalForm.current
+      if (mode === "create") {
+        const { data } = await api.post("/trips", fullPayload);
+        return data as Trip;
+      }
+      const payload = originalForm.current
         ? { ...changedTripFields(buildPayload(originalForm.current), fullPayload), expectedUpdatedAt: originalUpdatedAt.current }
         : fullPayload;
-      if (mode === "create") {
-        const { data } = await api.post("/trips", payload);
-        return data as Trip;
+      // Resolving a shown conflict: save straight onto the version it was shown
+      // for, with this editor's values where the two disagreed.
+      if (keepMine && conflict) {
+        try {
+          return await saveOnto(conflict.latest, fullPayload, true);
+        } catch (error) {
+          if (!axios.isAxiosError(error) || error.response?.status !== 409) throw error;
+          // Newer again meanwhile: start over against that version below.
+        }
       }
       try {
         const { data } = await api.put(`/trips/${tripId}`, payload);
         return data as Trip;
       } catch (error) {
         if (!originalForm.current || !axios.isAxiosError(error) || error.response?.status !== 409) throw error;
-        // Saved elsewhere since this form opened — usually the chatbot sync, not a
-        // person. Re-apply this editor's changes onto the latest trip unless both
-        // changed the same value.
         const latest = (await api.get(`/trips/${tripId}`)).data as Trip;
-        const theirs = buildPayload(tripToForm(latest));
-        const { merged, conflicts } = mergeTripEdit(buildPayload(originalForm.current), fullPayload, theirs);
-        if (conflicts.length) {
-          throw new Error(`Энэ аяллыг өөр газар засчээ, таны засвартай давхцаж байна (${conflicts.slice(0, 3).join(", ")}). Хуудсаа дахин ачаалаад засвараа дахин оруулна уу.`);
-        }
-        const rebased = changedTripFields(theirs, merged);
-        if (!Object.keys(rebased).length) return latest;
-        const { data } = await api.put(`/trips/${tripId}`, { ...rebased, expectedUpdatedAt: latest.updatedAt });
-        return data as Trip;
+        return saveOnto(latest, fullPayload, false);
       }
     },
     onSuccess: (saved) => {
-      setBaseline(JSON.stringify(tripToForm(saved)));
+      setConflict(null);
       queryClient.invalidateQueries({ queryKey: ["admin", "trips"] });
       queryClient.invalidateQueries({ queryKey: ["trips"] });
       queryClient.invalidateQueries({ queryKey: ["trip", tripId] });
-      if (saved.sourceMetadata?.websiteSyncPending) {
-        toast.warning("Аялал хадгалагдлаа. Chatbot руу хараахан илгээгдээгүй — дээд талын «Дахин илгээх» товчийг дарж болно.");
-        originalForm.current = tripToForm(saved);
-        originalUpdatedAt.current = saved.updatedAt;
-        setForm(originalForm.current);
-        setBaseline(JSON.stringify(originalForm.current));
-        if (mode === "create") router.push(`/${locale}/admin/trips/${saved.id}/edit`);
-        return;
-      }
-      toast.success(mode === "create" ? "Аялал үүсгэлээ" : "Аялал хадгаллаа");
       if (mode === "create") {
+        toast.success("Аялал үүсгэлээ");
         router.push(`/${locale}/admin/trips/${saved.id}/edit`);
         return;
       }
-      // Editing stays on this same trip — staff fixing several draft trips in a
-      // row (adding a missing price, say) were bounced back to the list and had
-      // to re-search for the next one every single save.
-      originalForm.current = tripToForm(saved);
-      originalUpdatedAt.current = saved.updatedAt;
-      setForm(originalForm.current);
-      setBaseline(JSON.stringify(originalForm.current));
+      // Editing stays on this same trip, on the same tab — staff fixing several
+      // draft trips in a row (adding a missing price, say) were bounced back to
+      // the list and had to re-search for the next one every single save.
+      hydrate(saved);
+      if (saved.sourceMetadata?.websiteSyncPending) {
+        toast.warning("Аялал хадгалагдлаа. Chatbot руу хараахан илгээгдээгүй — дээд талын «Дахин илгээх» товчийг дарж болно.");
+        return;
+      }
+      toast.success("Өөрчлөлт амжилттай хадгалагдлаа");
     },
     onError: (err) => toast.error(apiErrorMessage(err, "Хадгалахад алдаа гарлаа")),
   });
+
+  /** Drop this form's edits and show the version a colleague saved. */
+  async function loadLatest(latest: Trip) {
+    const ok = await confirm({
+      title: "Тэдний хувилбарыг ачаалах уу?",
+      description: "Энэ хуудсан дээрх таны хадгалаагүй өөрчлөлт устаж, өөр ажилтны хадгалсан сүүлийн хувилбар харагдана.",
+      confirmLabel: "Ачаалах",
+      cancelLabel: "Үлдэх",
+      tone: "danger",
+    });
+    if (!ok) return;
+    setConflict(null);
+    hydrate(latest);
+    queryClient.invalidateQueries({ queryKey: ["trip", tripId] });
+  }
 
   const retrySync = useMutation({
     mutationFn: async () => (await api.post("/admin/trip-sync", { id: tripId })).data as { complete: boolean; trip: Trip },
     onSuccess: ({ complete, trip }) => {
       if (!complete) { toast.warning("Chatbot руу хараахан илгээгдсэнгүй. Таны хадгалсан мэдээлэл сайт дээр бүрэн хадгалагдсан — дараа дахин оролдоно уу."); return; }
-      if (originalForm.current && JSON.stringify(form) === JSON.stringify(originalForm.current)) {
-        originalForm.current = tripToForm(trip);
-        originalUpdatedAt.current = trip.updatedAt;
-        setForm(originalForm.current);
-        setBaseline(JSON.stringify(originalForm.current));
-      }
+      if (originalForm.current && JSON.stringify(form) === JSON.stringify(originalForm.current)) hydrate(trip);
       queryClient.invalidateQueries({ queryKey: ["trip", tripId] });
       toast.success("Chatbot руу амжилттай илгээлээ");
     },
@@ -749,6 +815,11 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (saveMutation.isPending) return;
+    if (mode === "edit" && !isDirty) {
+      toast.info("Өөрчлөлт байхгүй — бүгд хадгалагдсан байна.");
+      return;
+    }
 
     // The empty box turns red and comes into view, so the toast is never the
     // only clue — it used to name a field hidden inside a collapsed panel.
@@ -802,7 +873,7 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
 
     setMissingField(null);
     setInvalidSection(null);
-    saveMutation.mutate(toSave);
+    saveMutation.mutate({ current: toSave });
   }
 
   async function deleteTrip() {
@@ -906,6 +977,51 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
           onRetry={() => retrySync.mutate()}
           onOpenComparison={() => setActiveSection("review")}
         />
+      )}
+
+      {conflict && (
+        <Notice
+          tone="danger"
+          icon={AlertTriangle}
+          className="scroll-mt-20"
+          id="trip-edit-conflict"
+          title="Өөр ажилтан таны зассан талбарыг мөн өөрчилсөн байна"
+          action={
+            <span className="flex flex-wrap gap-2">
+              <Button type="button" size="sm" variant="outline" disabled={saveMutation.isPending} onClick={() => loadLatest(conflict.latest)}>
+                Тэдний хувилбарыг ачаалах
+              </Button>
+              <Button type="button" size="sm" disabled={saveMutation.isPending} onClick={() => saveMutation.mutate({ current: form, keepMine: true })}>
+                {saveMutation.isPending ? <Loader2 className="animate-spin" /> : <Save />}
+                Миний утгаар хадгалах
+              </Button>
+            </span>
+          }
+        >
+          <p>Таны өөрчлөлт хадгалагдаагүй. Аль утга зөвийг сонгоно уу — бусад талбарын өөрчлөлт хоёулангийнх нь хадгалагдана.</p>
+          <ul className="mt-1.5 list-disc space-y-0.5 pl-4">
+            {conflict.items.map((item) => (
+              <li key={item.label}>
+                <span className="font-medium">{item.label}</span>: таных <span className="font-medium">{item.mine}</span>, тэднийх <span className="font-medium">{item.theirs}</span>
+              </li>
+            ))}
+          </ul>
+        </Notice>
+      )}
+
+      {savedElsewhere && existingTrip && (
+        <Notice
+          tone="info"
+          icon={Info}
+          title={`Өөр ажилтан энэ аяллыг ${formatRelative(existingTrip.updatedAt)} хадгалсан байна`}
+          action={
+            <Button type="button" size="sm" variant="outline" onClick={() => loadLatest(existingTrip)}>
+              Тэдний хувилбарыг харах
+            </Button>
+          }
+        >
+          Таны өөрчлөлт хадгалахад тэдний хувилбар дээр нэмэгдэнэ. Хоёулаа нэг талбарыг зассан бол хадгалахын өмнө аль утгыг авахыг асууна.
+        </Notice>
       )}
 
       {tripIssues.length > 0 && (
@@ -1316,11 +1432,13 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
             <span className="sm:hidden">Буцах</span>
             <span className="hidden sm:inline">{isDirty ? "Хадгалахгүй гарах" : "Жагсаалт руу буцах"}</span>
           </Button>
+          {/* Always clickable: a greyed-out button at the bottom of a long form read
+              as "the save button is gone". With nothing to save it only says so. */}
           <Button
             type="submit"
-            disabled={saveMutation.isPending || deleteMutation.isPending || !isDirty}
-            title={!isDirty ? "Өөрчлөлт хийгээгүй байна" : undefined}
-            className="gap-1.5"
+            disabled={saveMutation.isPending || deleteMutation.isPending}
+            title={!isDirty && mode === "edit" ? "Өөрчлөлт хийгээгүй байна" : undefined}
+            className={cn("gap-1.5", !isDirty && mode === "edit" && "opacity-70")}
           >
             {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {saveMutation.isPending ? "Хадгалж байна…" : mode === "create" ? "Аялал үүсгэх" : "Хадгалах"}

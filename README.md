@@ -151,6 +151,38 @@ payment) moves the seats exactly once. `npm run test:db` checks this against a
 disposable local Postgres (`TEST_DATABASE_URL`, refused unless it is on
 127.0.0.1 or localhost).
 
+## Trip editor: saving, colleagues and the chatbot
+
+Saving a trip keeps you on that trip and on the tab you were on; the Save
+button is always clickable (with nothing to save it just says so) and is
+locked only while a save is in flight, so a double click never sends twice.
+Leaving with unsaved changes asks first.
+
+Two staff members may edit the same trip at once:
+
+- Every save carries the version the form was filled from. A save onto a
+  newer version is merged field by field (`src/lib/tripEditPatch.ts`); only a
+  value both people changed is a conflict.
+- A conflict never saves silently and never throws the edit away: a panel
+  names the field with both values, and the editor chooses "Миний утгаар
+  хадгалах" or loads the colleague's version.
+- While you edit, a notice says when someone else has saved the trip (the
+  editor re-reads it on focus and every 45 s); with nothing unsaved the form
+  simply updates.
+
+A date removed in the editor is kept in the database as `CANCELLED` (bookings
+keep their history) and dropped from the fare table; the editor lists only
+dates that are not cancelled or still carry a fare (`tripEditDepartures.ts`).
+Negative fares are refused by the API with the field named.
+
+The on-site advisor (`/api/ai/chat`) reads the same `Trip` and `Departure` rows
+the pages render and quotes the same "-с эхлэн" price and next open dates
+(`src/lib/tripAdvisor.ts`, shared with the trip cards through `lib/departures`).
+It never confirms a booking or a payment; those go to staff. The Messenger
+chatbot is a separate project with its own canonical trip table in the same
+database; website saves are delivered to it by `src/server/tripSyncQueue.ts`,
+and the editor's "Chatbot-той харьцуулах" tab shows what it did not take.
+
 ## Analytics
 
 First-party, in Postgres. No Google Analytics, no third-party script, nothing

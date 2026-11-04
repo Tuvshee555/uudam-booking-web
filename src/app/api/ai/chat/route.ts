@@ -1,44 +1,45 @@
 import { clientIp, handler, httpError, json, rateLimit, readJson } from "@/server/http";
 import { loadSearchableTrips, searchTrips, type SearchableTrip } from "@/server/tripSearch";
-import { formatMnt } from "@/lib/pricing";
+import { asksToBook, describeOffer, questionMonth, STAFF_CONFIRM_LINE, tripOffer, type NextDeparture } from "@/lib/tripAdvisor";
 import { openaiJson } from "@/server/openai";
+import { formatMnt } from "@/lib/pricing";
 
 type ChatItem = {
   id: string;
   slug: string;
   name: string;
-  price: number;
+  /** The "-с эхлэн" price the trip card shows: the cheapest date still open. */
+  price: number | null;
   image: string | null;
   durationDays: number;
   country: string | null;
+  nextDepartures: NextDeparture[];
+  openCount: number;
 };
 
-function toItem(trip: SearchableTrip): ChatItem {
+function toItem(trip: SearchableTrip, now: number, month: number | null): ChatItem {
+  const offer = tripOffer(trip, now, 3, month);
   return {
     id: trip.id,
     slug: trip.slug,
     name: trip.title,
-    price: trip.price,
+    price: offer.fromPrice,
     image: trip.image || null,
     durationDays: trip.durationDays,
     country: trip.country,
+    nextDepartures: offer.nextDepartures,
+    openCount: offer.openCount,
   };
 }
 
 /** Reply written from the catalog alone — no model involved. */
-function localReply(items: ChatItem[], question: string) {
-  if (!items.length) {
+function localReply(trips: SearchableTrip[], question: string, now: number, month: number | null) {
+  if (!trips.length) {
     return `"${question}" гэсэн хайлтад тохирох аялал олдсонгүй. Өөр газар эсвэл огноо хэлж өгвөл хайж өгье.`;
   }
-
-  const lines = items
-    .map(
-      (item) =>
-        `• ${item.name} — ${item.durationDays} хоног, ${formatMnt(item.price)}-с эхэлнэ`,
-    )
-    .join("\n");
-
-  return `Танд эдгээр аялал тохирч магадгүй:\n${lines}`;
+  const lines = trips.map((trip) => `• ${describeOffer(trip, tripOffer(trip, now, 3, month))}`).join("\n");
+  const handoff = asksToBook(question) ? `\n${STAFF_CONFIRM_LINE}` : "";
+  return `Танд эдгээр аялал тохирч магадгүй:\n${lines}${handoff}`;
 }
 
 function extractFirstJson(text: string) {
@@ -54,9 +55,11 @@ function extractFirstJson(text: string) {
 /**
  * POST /api/ai/chat — trip advisor.
  *
- * The catalog search runs first and always produces an answer. The model is
- * only used to phrase that answer more naturally, so an expired or
- * rate-limited API key degrades the wording rather than breaking the feature.
+ * The catalog search runs first and always produces an answer, from the same
+ * trip and departure rows the website pages render. The model is only used to
+ * phrase that answer more naturally and may quote nothing beyond the facts it
+ * is given, so an expired or rate-limited API key degrades the wording rather
+ * than the facts. Booking and payment are never confirmed here: staff do that.
  */
 export const POST = handler(async (req: Request) => {
   rateLimit(`ai:${clientIp(req)}`, { windowMs: 15 * 60 * 1000, max: 30 });
@@ -66,12 +69,15 @@ export const POST = handler(async (req: Request) => {
 
   if (!message) throw httpError(400, "Асуултаа бичнэ үү");
 
+  const now = Date.now();
   const trips = await loadSearchableTrips();
-  const matches = searchTrips(message, trips);
-  const items = matches.map((match) => toItem(match.trip));
+  const matches = searchTrips(message, trips, now);
+  const shortlist = matches.map((match) => match.trip);
+  const month = questionMonth(message);
+  const items = shortlist.map((trip) => toItem(trip, now, month));
 
   if (!process.env.OPENAI_API_KEY) {
-    return json({ reply: localReply(items, message), items, source: "catalog" });
+    return json({ reply: localReply(shortlist, message, now, month), items, source: "catalog" });
   }
 
   const history = (Array.isArray(body.history) ? body.history : [])
@@ -81,30 +87,38 @@ export const POST = handler(async (req: Request) => {
     )
     .join("\n");
 
-  // Only the shortlist is sent to the model, so it can't invent a trip that
-  // isn't for sale.
-  const context = matches
-    .map(
-      ({ trip }) =>
-        `ID:${trip.id} | НЭР:${trip.title.replace(/[\n\r]/g, " ")} | ҮНЭ:${trip.price} | ХОНОГ:${trip.durationDays} | ГАЗАР:${[trip.country, trip.city].filter(Boolean).join(", ")}`,
-    )
+  // Only the shortlist is sent to the model, with the same facts the pages
+  // show, so it can't invent a trip, a price or a date that isn't for sale.
+  const context = shortlist
+    .map((trip) => {
+      const offer = tripOffer(trip, now, 3, month);
+      // Dates and amounts already written the way the site writes them, so the
+      // model copies "12-р сарын 1 (2,890,000₮)" instead of restyling it.
+      const dates = offer.nextDepartures.length
+        ? offer.nextDepartures.map((entry) => `${entry.label}${entry.price !== null ? ` (${formatMnt(entry.price)})` : ""}`).join(", ") + (offer.openCount > offer.nextDepartures.length ? ` ба өөр ${offer.openCount - offer.nextDepartures.length} огноо` : "")
+        : "нээлттэй огноо алга";
+      return `ID:${trip.id} | НЭР:${trip.title.replace(/[\n\r]/g, " ")} | ҮНЭ:${offer.fromPrice !== null ? `${formatMnt(offer.fromPrice)}-с эхэлнэ` : "ажилтнаас лавлана"} | ХОНОГ:${trip.durationDays} | ОЙРЫН ОГНОО:${dates} | ГАЗАР:${[trip.country, trip.city].filter(Boolean).join(", ")}`;
+    })
     .join("\n");
 
-  const prompt = `Чи бол Uudam Travel аялалын агентлагийн туслах. Зөвхөн доорх жагсаалтаас санал болго.
+  const prompt = `Чи бол Uudam Travel аялалын агентлагийн вэбсайтын туслах. Зөвхөн доорх жагсаалтаас санал болго.
 
 Ярианы түүх:
 ${history}
 
-Боломжит аялалууд:
+Боломжит аялалууд (өнөөдрийн бодит мэдээлэл):
 ${context || "(тохирох аялал олдсонгүй)"}
 
 Хэрэглэгч: ${message}
 
 Дүрэм:
-- Зөвхөн монголоор, найрсаг, 2-3 өгүүлбэрээр хариул.
-- Дээрх жагсаалтад байхгүй аялал, үнэ, огноо ЗОХИОЖ БОЛОХГҮЙ.
+- Зөвхөн монголоор, найрсаг, 2-4 өгүүлбэрээр хариул.
+- Дээрх жагсаалтад байхгүй аялал, үнэ, огноо ЗОХИОЖ БОЛОХГҮЙ. Үнэ, огноог жагсаалтад бичигдсэн хэлбэрээр нь яг хуул (жишээ: "12-р сарын 1 (2,890,000₮)").
+- Аялал бүрийн үнэ, огноог тухайн аяллын нэрийн хамт хэл; өөр өөр аяллын үнийг нэг өгүүлбэрт холихгүй.
+- Огноо, гаралт асуувал ОЙРЫН ОГНОО талбарын огноонуудыг үнэтэй нь хэл. "Нээлттэй огноо алга" бол огноог ажилтнаас лавлахыг зөвлө.
 - Хамгийн ихдээ 3 аялал санал болго.
 - Жагсаалт хоосон бол өөр газар/огноо тодруулж асуу.
+- Чи захиалга авдаггүй, суудал хадгалдаггүй, төлбөр авдаггүй. "Төлбөр төлөх боломжтой", "захиалга баталгаажлаа" гэх мэт үг ХЭЗЭЭ Ч бүү хэл: захиалга, суудал, төлбөрийг зөвхөн ажилтан утас эсвэл Messenger-ээр баталгаажуулна гэж хэл.
 
 Яг нэг JSON объект буцаа, өөр юу ч бичихгүй:
 {"reply":"хариу текст","ids":["tripId"]}`;
@@ -114,7 +128,7 @@ ${context || "(тохирох аялал олдсонгүй)"}
 
     const parsed = extractFirstJson(text);
     if (!parsed?.reply) {
-      return json({ reply: localReply(items, message), items, source: "catalog" });
+      return json({ reply: localReply(shortlist, message, now, month), items, source: "catalog" });
     }
 
     // Trust the wording, not the ids: anything the model returned that isn't
@@ -124,13 +138,16 @@ ${context || "(тохирох аялал олдсонгүй)"}
       ? items.filter((item) => modelIds.includes(item.id))
       : items;
 
+    // The handoff line is appended here, not left to the model: a booking or
+    // payment question always ends with who actually confirms it.
+    const reply = asksToBook(message) && !parsed.reply.includes("ажилтан") ? `${parsed.reply.trim()} ${STAFF_CONFIRM_LINE}` : parsed.reply;
     return json({
-      reply: parsed.reply,
+      reply,
       items: validItems.length ? validItems : items,
       source: "ai",
     });
   } catch (err) {
     console.error("AI chat degraded to catalog search:", err);
-    return json({ reply: localReply(items, message), items, source: "catalog" });
+    return json({ reply: localReply(shortlist, message, now, month), items, source: "catalog" });
   }
 });

@@ -44,9 +44,11 @@ export function useTrips(
  * and Messenger unfurlers saw an empty shell.
  */
 /**
- * `admin: true` (the trip editor) always refetches on open and on focus: the
- * chatbot can rewrite a trip at any time, and an editor opened on a cached
- * copy showed staff prices that were no longer true.
+ * `admin: true` (the trip editor) always refetches on open, on focus and every
+ * 45 seconds while the tab is visible: the chatbot or another staff member can
+ * rewrite a trip at any time, and an editor opened on a cached copy showed
+ * staff prices that were no longer true. The editor only replaces what is on
+ * screen while nothing is unsaved; otherwise it says a newer version exists.
  */
 export function useTrip(idOrSlug?: string, initialData?: Trip, options?: { admin?: boolean }) {
   return useQuery<Trip>({
@@ -58,7 +60,7 @@ export function useTrip(idOrSlug?: string, initialData?: Trip, options?: { admin
     },
     initialData,
     staleTime: options?.admin ? 0 : 60_000,
-    ...(options?.admin ? { refetchOnMount: "always" as const, refetchOnWindowFocus: true } : {}),
+    ...(options?.admin ? { refetchOnMount: "always" as const, refetchOnWindowFocus: true, refetchInterval: 45_000, refetchIntervalInBackground: false } : {}),
   });
 }
 

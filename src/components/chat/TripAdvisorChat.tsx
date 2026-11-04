@@ -18,10 +18,14 @@ type ChatItem = {
   id: string;
   slug: string;
   name: string;
-  price: number;
+  /** The "-с эхлэн" price the trip card shows; null when the price is quoted by staff. */
+  price: number | null;
   image: string | null;
   durationDays: number;
   country: string | null;
+  /** The next open dates and their fares, as the trip page lists them. */
+  nextDepartures?: { date: string; label: string; price: number | null }[];
+  openCount?: number;
 };
 
 type ChatMessage = {
@@ -132,8 +136,14 @@ export default function TripAdvisorChat() {
                           <div className="min-w-0">
                             <div className="truncate text-xs font-semibold text-foreground">{item.name}</div>
                             <div className="text-[11px] text-muted-foreground">
-                              {item.durationDays} хоног · {formatMnt(item.price)}
+                              {item.durationDays} хоног · {item.price !== null ? `${formatMnt(item.price)}-с` : "Үнэ лавлах"}
                             </div>
+                            {item.nextDepartures && item.nextDepartures.length > 0 && (
+                              <div className="truncate text-[11px] text-muted-foreground">
+                                Ойрын огноо: {item.nextDepartures.slice(0, 2).map((entry) => entry.label).join(", ")}
+                                {(item.openCount ?? 0) > 2 ? ` +${(item.openCount ?? 0) - 2}` : ""}
+                              </div>
+                            )}
                           </div>
                         </Link>
                       ))}
