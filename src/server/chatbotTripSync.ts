@@ -1,4 +1,5 @@
 import { httpError } from "@/server/http";
+import { recordError } from "@/server/errorLog";
 
 const timeoutMs = 20_000;
 
@@ -46,6 +47,8 @@ async function post(body: unknown): Promise<{ response: Response; data: Record<s
     });
   } catch (error) {
     const timedOut = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+    recordError({ source: "server", level: "error", method: "POST", path: "chatbot-sync",
+      message: timedOut ? `Chatbot did not answer within ${timeoutMs / 1000} s` : "Chatbot unreachable" });
     throw new ChatbotSyncError(timedOut ? `No answer within ${timeoutMs / 1000} s` : "Chatbot unreachable", null, timedOut ? "timeout" : "network");
   }
   const data = await response.json().catch(() => ({})) as Record<string, unknown>;
@@ -56,6 +59,8 @@ function failure(response: Response, data: Record<string, unknown>, what: string
   const code = typeof data.error === "string" ? data.error : "http_error";
   const detail = typeof data.message === "string" ? `: ${data.message.slice(0, 200)}` : "";
   console.error(`Chatbot ${what} failed`, response.status, code);
+  recordError({ source: "server", level: "error", method: "POST", path: "chatbot-sync", status: response.status,
+    message: `Chatbot ${what}: ${code}${detail}` });
   return new ChatbotSyncError(`HTTP ${response.status} ${code}${detail}`, response.status, code);
 }
 
@@ -67,11 +72,24 @@ function failure(response: Response, data: Record<string, unknown>, what: string
 export async function syncTripToChatbot(trip: unknown, previousTrip?: unknown, changedFields?: string[]): Promise<ChatbotSyncReport> {
   const { response, data } = await post({ trip, previousTrip, ...(changedFields ? { changedFields } : {}) });
   if (!response.ok) throw failure(response, data, "trip sync");
-  return {
+  const report = {
     applied: list<string>(data.applied),
     conflicts: list<Record<string, unknown>>(data.conflicts),
     ignored: list<{ field: string; reason: string }>(data.ignored),
   };
+  // A "saved" answer that did not take every field: what made edits silently revert (2026-11-02/03).
+  if (report.ignored.length || report.conflicts.length) {
+    recordError({
+      source: "server", level: "warn", method: "POST", path: "chatbot-sync", status: response.status,
+      message: [
+        ...report.ignored.map((entry) => `${entry.field}: ${entry.reason}`),
+        ...(report.conflicts.length ? [`${report.conflicts.length} шинэ зөрүү`] : []),
+      ].join("; "),
+      details: { sourceTripId: (trip as { sourceTripId?: unknown })?.sourceTripId ?? null, changedFields: changedFields ?? null,
+        ignored: report.ignored, conflictFields: report.conflicts.map((conflict) => conflict.field) },
+    });
+  }
+  return report;
 }
 
 export async function deleteTripFromChatbot(sourceTripId: string | null) {

@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { bodyFieldNames, cleanStack, shouldRecordResponse } from "@/lib/errorLogRules";
+import { recordError, requestUserEmail } from "./errorLog";
 
 /**
  * Small helpers shared by every route handler, replacing what Express
@@ -41,15 +43,24 @@ export function handler<Ctx>(
   fn: (req: Request, ctx: Ctx) => Promise<Response>,
 ) {
   return async (req: Request, ctx: Ctx): Promise<Response> => {
+    const path = new URL(req.url).pathname;
+    // Kept only to name the fields a failed write sent (the body is read once by the route).
+    const copy = req.method === "GET" || req.method === "HEAD" ? null : req.clone();
     try {
-      return await fn(req, ctx);
+      const res = await fn(req, ctx);
+      if (shouldRecordResponse(req.method, path, res.status)) {
+        const body = await res.clone().json().catch(() => ({})) as { message?: unknown; error?: unknown };
+        record(req, copy, path, res.status, body.message ?? body.error ?? `HTTP ${res.status}`, null);
+      }
+      return res;
     } catch (err) {
       const e = err as ApiError;
       const status = typeof e?.status === "number" ? e.status : 500;
 
       if (status >= 500) {
-        console.error(`API ${req.method} ${new URL(req.url).pathname} failed:`, err);
+        console.error(`API ${req.method} ${path} failed:`, err);
       }
+      if (shouldRecordResponse(req.method, path, status)) record(req, copy, path, status, e?.message ?? err, status >= 500 ? e : null);
 
       return NextResponse.json(
         {
@@ -60,6 +71,28 @@ export function handler<Ctx>(
       );
     }
   };
+}
+
+/** The three-day error log (src/server/errorLog.ts): what failed, for whom, with which fields. */
+function record(req: Request, copy: Request | null, path: string, status: number, message: unknown, error: ApiError | null) {
+  const email = requestUserEmail(req);
+  recordError(async () => {
+    const fields = copy ? bodyFieldNames(await copy.json().catch(() => null)) : [];
+    return {
+      source: "server",
+      level: status >= 500 ? "error" : "warn",
+      method: req.method,
+      path,
+      status,
+      message,
+      userEmail: email,
+      details: {
+        ...(fields.length ? { fields } : {}),
+        ...(error?.code ? { code: error.code } : {}),
+        ...(error?.stack ? { stack: cleanStack(error.stack) } : {}),
+      },
+    };
+  });
 }
 
 export async function readJson<T = Record<string, unknown>>(req: Request): Promise<T> {

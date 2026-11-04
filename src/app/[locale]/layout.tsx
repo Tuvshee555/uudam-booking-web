@@ -7,6 +7,7 @@ import QueryProvider from "./QueryProvider";
 import { AuthProvider } from "./provider/AuthProvider";
 import Providers from "@/components/Providers";
 import AppShellClient from "@/components/AppShellClient";
+import ErrorReporter from "@/components/ErrorReporter";
 import SiteFooter from "@/components/layout/SiteFooter";
 import { getSiteNav } from "@/server/catalog";
 import { LOCALES } from "@/lib/locales";
@@ -49,6 +50,7 @@ export default async function LocaleLayout({
 
   return (
     <QueryProvider>
+      <ErrorReporter />
       <ClientI18nProvider locale={locale} messages={messages}>
         <AuthProvider>
           <Providers>

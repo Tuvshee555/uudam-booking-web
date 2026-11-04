@@ -569,6 +569,29 @@ model SiteSettings {
 /// submitted. TripView already answers "views vs. enquiries" by itself — this
 /// fills the gap between the two, which is currently invisible: whether the
 /// page is being used at all before someone decides not to enquire.
+/// Something that went wrong for a visitor or a staff member: a failed API call,
+/// a chatbot sync that did not take every field, a page that crashed in the browser.
+/// Vercel's own logs on this plan last an hour; these rows last three days and are
+/// deleted automatically (src/server/errorLog.ts). Never holds form values.
+model ErrorLog {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  /// "server" (an API route) or "browser" (the visitor's page).
+  source    String
+  /// "error" or "warn".
+  level     String
+  method    String   @default("")
+  /// The API path, or the page the visitor was on.
+  path      String   @default("")
+  status    Int?
+  message   String   @default("")
+  /// The signed-in staff member, when there was one.
+  userEmail String?
+  details   Json?
+
+  @@index([createdAt])
+}
+
 model AnalyticsEvent {
   id   String @id @default(uuid())
   name String

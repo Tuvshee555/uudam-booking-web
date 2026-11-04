@@ -1,4 +1,5 @@
 import axios from "axios";
+import { reportClientError } from "./clientErrorReporter";
 
 /**
  * Shared API client.
@@ -25,6 +26,20 @@ api.interceptors.request.use((config) => {
     }
   }
   return config;
+});
+
+// A request that never got an answer (offline, timeout, blocked) leaves no trace on the
+// server, so the browser reports it to the three-day error log; refused ones are logged there.
+api.interceptors.response.use(undefined, (error) => {
+  if (axios.isAxiosError(error) && !error.response && error.code !== "ERR_CANCELED") {
+    reportClientError({
+      kind: "network",
+      message: error.message || "Network error",
+      method: (error.config?.method || "").toUpperCase(),
+      request: `${error.config?.baseURL ?? ""}${error.config?.url ?? ""}`,
+    });
+  }
+  return Promise.reject(error);
 });
 
 /**

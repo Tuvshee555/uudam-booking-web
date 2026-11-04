@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { RotateCw, TriangleAlert } from "lucide-react";
+import { reportClientError } from "@/lib/clientErrorReporter";
 
 /**
  * Catches render/data errors anywhere under a locale segment so a broken
@@ -19,6 +20,7 @@ export default function LocaleError({
 }) {
   useEffect(() => {
     console.error(error);
+    reportClientError({ kind: "page", message: error.message, stack: error.stack, digest: error.digest });
   }, [error]);
 
   return (

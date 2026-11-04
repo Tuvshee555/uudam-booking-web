@@ -6,6 +6,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
+  Bug,
   Coins,
   ExternalLink,
   FolderTree,
@@ -114,6 +115,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
           badgeTone: "danger",
           badgeLabel: "алдаа илэрсэн",
         },
+        { href: `${base}/errors`, label: "Алдааны бүртгэл", icon: Bug },
         { href: `${base}/staff`, label: "Ажилтнууд", icon: Users },
         { href: `${base}/settings`, label: "Тохиргоо", icon: Settings },
       ],
