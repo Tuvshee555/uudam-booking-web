@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, CalendarX2, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowRight, CalendarX2, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 
 import type { Departure, Trip } from "@/types/trip";
 import { availability, upcomingDepartures } from "@/lib/departures";
@@ -16,6 +16,7 @@ import { formatMnt, hasKnownTripPrice } from "@/lib/pricing";
 import { track } from "@/lib/analytics";
 import { formatTripTitle } from "@/lib/tripDisplay";
 import { cn } from "@/lib/utils";
+import Listbox from "@/components/ui/listbox";
 
 type Row = { trip: Trip; departure: Departure; day: DayKey; price: number | null; open: boolean; tight: boolean; label: string };
 
@@ -156,19 +157,24 @@ export default function DeparturesPageClient({ trips, today: renderedToday, now:
             </button>
           )}
         </div>
-        <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
+        <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
           Чиглэл
-          <select
+          <Listbox
             value={destinationFilter ?? ""}
-            onChange={(event) => setParams({ dest: event.target.value || null, date: null })}
-            className="h-10 rounded-full border border-border bg-card px-4 text-[13px] font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
+            options={[{ value: "", label: "Бүх чиглэл" }, ...destinationOptions.map(([key, entry]) => ({ value: key, label: entry.label, hint: String(entry.count) }))]}
+            onChange={(dest) => setParams({ dest: dest || null, date: null })}
+            ariaLabel="Чиглэл"
+            align="right"
+            className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-card pl-4 pr-3 text-[13px] font-semibold text-foreground transition-colors hover:border-foreground/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 aria-expanded:border-foreground/40"
           >
-            <option value="">Бүх чиглэл</option>
-            {destinationOptions.map(([key, entry]) => (
-              <option key={key} value={key}>{entry.label} ({entry.count})</option>
-            ))}
-          </select>
-        </label>
+            {(selected, open) => (
+              <>
+                <span className="max-w-[10rem] truncate">{selected?.label ?? "Бүх чиглэл"}</span>
+                <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", open && "rotate-180")} aria-hidden="true" />
+              </>
+            )}
+          </Listbox>
+        </div>
       </div>
 
       <p className="mt-4 text-[14px] text-muted-foreground">

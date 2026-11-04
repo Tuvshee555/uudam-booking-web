@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDownUp, Loader2, RotateCcw, Search, SlidersHorizontal, X } from "lucide-react";
+import { Loader2, RotateCcw, Search, SlidersHorizontal, X } from "lucide-react";
 
 import { useTrips } from "@/hooks/useTrips";
 import TripCard from "@/components/trip/TripCard";
 import FilterPanel from "@/components/catalog/FilterPanel";
+import SortMenu from "@/components/catalog/SortMenu";
 import { SunMark } from "@/components/site/SunMark";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import {
@@ -188,19 +189,11 @@ export default function CatalogBrowser({
                 Шүүлтүүр
                 {count > 0 && <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] text-primary-foreground">{count}</span>}
               </button>
-              <label className="relative inline-flex items-center">
-                <span className="sr-only">Эрэмбэлэх</span>
-                <ArrowDownUp className="pointer-events-none absolute left-3.5 h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                <select
-                  value={filters.sort}
-                  onChange={(event) => onFilter({ ...filters, sort: event.target.value as SortKey }, "sort", event.target.value)}
-                  className="h-10 w-[8.75rem] appearance-none truncate rounded-full border border-border bg-card pl-10 pr-3 text-[13px] font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30 sm:w-auto sm:pr-4"
-                >
-                  {SORTS.map((option) => (
-                    <option key={option.key} value={option.key}>{option.label}</option>
-                  ))}
-                </select>
-              </label>
+              <SortMenu
+                value={filters.sort}
+                options={SORTS}
+                onChange={(sort: SortKey) => onFilter({ ...filters, sort }, "sort", sort)}
+              />
             </div>
           </div>
 

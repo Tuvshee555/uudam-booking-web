@@ -12,6 +12,7 @@ import { formatMnt } from "@/lib/pricing";
 import { formatTripTitle } from "@/lib/tripDisplay";
 import type { HeroSlide } from "@/lib/homeSections";
 import { cn } from "@/lib/utils";
+import Listbox from "@/components/ui/listbox";
 
 const SLIDE_MS = 7000;
 
@@ -50,26 +51,26 @@ function Field({
   options: Option[];
 }) {
   return (
-    <label htmlFor={id} className="group relative flex min-w-0 flex-1 cursor-pointer flex-col justify-center px-5 py-3 transition-colors focus-within:bg-secondary/70 hover:bg-secondary/50 lg:py-4">
-      <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-        <Icon className="h-3.5 w-3.5 text-gold-text" aria-hidden="true" />
-        {label}
-      </span>
-      <select
-        id={id}
+    <div id={id} className="relative flex min-w-0 flex-1">
+      <Listbox
         value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="mt-1 w-full cursor-pointer appearance-none truncate bg-transparent pr-6 text-[15px] font-semibold text-foreground focus:outline-none"
+        options={[{ value: "", label: placeholder }, ...options.map((option) => ({ value: option.value, label: option.label, hint: String(option.count) }))]}
+        onChange={onChange}
+        ariaLabel={label}
+        className="group flex min-w-0 flex-1 cursor-pointer flex-col justify-center px-5 py-3 text-left transition-colors hover:bg-secondary/50 focus:outline-none focus-visible:bg-secondary/70 aria-expanded:bg-secondary/70 lg:py-4"
       >
-        <option value="">{placeholder}</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label} ({option.count})
-          </option>
-        ))}
-      </select>
-      <span aria-hidden="true" className="pointer-events-none absolute bottom-[1.1rem] right-5 h-1.5 w-1.5 rotate-45 border-b border-r border-muted-foreground lg:bottom-[1.35rem]" />
-    </label>
+        {(selected) => (
+          <>
+            <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              <Icon className="h-3.5 w-3.5 text-gold-text" aria-hidden="true" />
+              {label}
+            </span>
+            <span className="mt-1 block w-full truncate pr-6 text-[15px] font-semibold text-foreground">{selected?.label ?? placeholder}</span>
+            <span aria-hidden="true" className="pointer-events-none absolute bottom-[1.1rem] right-5 h-1.5 w-1.5 rotate-45 border-b border-r border-muted-foreground lg:bottom-[1.35rem]" />
+          </>
+        )}
+      </Listbox>
+    </div>
   );
 }
 
