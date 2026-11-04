@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   ...shareMetadata("/custom-trip", "Захиалгат аялал · Uudam Travel", "Өөрийн огноо, өөрийн хүмүүстэй аялал зохион байгуулна."),
 };
 
-export const revalidate = 300;
+export const revalidate = 86400;
 
 const STEPS = [
   { icon: MessageSquareText, title: "Хүсэлтээ үлдээнэ", text: "Хаашаа, хэзээ, хэдүүлээ явахаа бичнэ. Тодорхой огноо мэдэхгүй бол «уян хатан» гэж бичихэд болно." },

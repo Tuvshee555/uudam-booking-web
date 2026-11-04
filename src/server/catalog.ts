@@ -62,9 +62,11 @@ const SUMMARY_SELECT = {
   reviewCount: true,
   createdAt: true,
   updatedAt: true,
-  category: true,
-  categories: { orderBy: { categoryName: "asc" } },
-  tags: { orderBy: { name: "asc" } },
+  // Cards, filters and search read a category's id and name and a tag's
+  // name, never a category's description, image or place in the tree.
+  category: { select: { id: true, categoryName: true, slug: true } },
+  categories: { select: { id: true, categoryName: true, slug: true }, orderBy: { categoryName: "asc" } },
+  tags: { select: { id: true, name: true, slug: true }, orderBy: { name: "asc" } },
 } satisfies Prisma.TripSelect;
 
 async function loadSummaries(where: Prisma.TripWhereInput): Promise<Trip[]> {
@@ -74,9 +76,15 @@ async function loadSummaries(where: Prisma.TripWhereInput): Promise<Trip[]> {
       where,
       select: {
         ...SUMMARY_SELECT,
+        // What a card, the filters and the calendar read off a date: when,
+        // the fare, and whether it is still bookable (availability() in
+        // lib/departures). End dates, child and infant fares and seat totals
+        // belong to the trip page, which loads the full trip; carrying them
+        // here sent every list page all 239 dates in full.
         departures: {
           where: { startDate: { gte: cutoff }, status: { notIn: ["CANCELLED", "DEPARTED"] } },
           orderBy: { startDate: "asc" },
+          select: { id: true, startDate: true, price: true, status: true, seatsLeft: true },
         },
       },
       orderBy: { createdAt: "desc" },

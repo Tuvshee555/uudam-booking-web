@@ -12,6 +12,37 @@ export type SiteNav = {
 
 export const EMPTY_NAV: SiteNav = { tripCount: 0, categories: [], destinations: [] };
 
+type MenuFields = {
+  isPublished: boolean;
+  title: string;
+  country?: string | null;
+  city?: string | null;
+  destinations?: string[] | null;
+  categoryId?: string | null;
+  categories?: { id: string }[];
+};
+
+/**
+ * Whether a trip edit changes the menu: the published trip count, which
+ * categories have trips, and the destinations (worked out from the title,
+ * country, city and destination list — see tripDestinations). The menu is on
+ * every page, so such an edit refreshes them all (server/revalidate.ts).
+ */
+export function menuFieldsChanged(before: MenuFields | null, after: MenuFields | null): boolean {
+  if (!before?.isPublished && !after?.isPublished) return false;
+  if (!before || !after || before.isPublished !== after.isPublished) return true;
+  const facts = (trip: MenuFields) =>
+    JSON.stringify([
+      trip.title,
+      trip.country ?? null,
+      trip.city ?? null,
+      [...(trip.destinations ?? [])].sort(),
+      trip.categoryId ?? null,
+      (trip.categories ?? []).map((category) => category.id).sort(),
+    ]);
+  return facts(before) !== facts(after);
+}
+
 export const GUIDE_LINKS = [
   { href: canonicalPath("/guide"), label: "Аялалд бэлтгэх", text: "Бичиг баримт, ачаа, мөнгө — явахын өмнөх жагсаалт" },
   { href: canonicalPath("/discover"), label: "Танин мэдэхүй", text: "Очих газруудын түүх, сонирхолтой баримт" },

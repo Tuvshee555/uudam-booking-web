@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   ...shareMetadata("/contact", "Холбоо барих · Uudam Travel", "Утас, Messenger, WhatsApp, и-мэйлээр холбогдож аяллын талаар асууж, захиалга өгнө үү."),
 };
 
-export const revalidate = 300;
+export const revalidate = 86400;
 
 const HINTS: Record<string, string> = {
   phone: "Хамгийн хурдан — ажлын цагаар",

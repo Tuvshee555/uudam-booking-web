@@ -45,12 +45,17 @@ export default function CatalogBrowser({
   prices: PriceRange[];
   now: number;
   currentYear: number;
-  /** A category page: always filtered to this category, with its facet hidden. */
+  /**
+   * A category page: always filtered to this category, with its facet hidden.
+   * Its page sends only this category's trips, so they are cached under the
+   * category's own query: under the shared one, this short list would stand
+   * in for the whole catalogue on the next page.
+   */
   lockedCategory?: { id: string; name: string };
 }) {
   const searchParams = useSearchParams();
   const pathname = usePathname() ?? canonicalPath("/trips");
-  const { data, isError, refetch, isFetching } = useTrips(undefined, initialTrips);
+  const { data, isError, refetch, isFetching } = useTrips(lockedCategory ? { category: lockedCategory.id } : undefined, initialTrips);
   const trips = useMemo(() => data ?? [], [data]);
 
   // The URL is the source of truth: filters are shareable in Messenger, survive

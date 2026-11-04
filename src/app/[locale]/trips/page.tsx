@@ -20,10 +20,11 @@ export const metadata: Metadata = {
 };
 
 /**
- * Saving a trip refreshes this page at once (revalidateStorefront); the timer
- * is a safety net, and it also moves the "upcoming" cut-off along.
+ * Saving a trip, or a booking that fills or reopens a date, refreshes this
+ * page at once (server/revalidate.ts); the daily cron moves the "upcoming"
+ * cut-off along. The day is a safety net.
  */
-export const revalidate = 300;
+export const revalidate = 86400;
 
 export default async function TripsPage() {
   const [trips, prices] = await Promise.all([getTripSummaries(), getPriceRanges()]);

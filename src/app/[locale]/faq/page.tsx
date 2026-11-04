@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   ...shareMetadata("/faq", "Түгээмэл асуулт · Uudam Travel", "Захиалга, төлбөр, бичиг баримт, цуцлалтын талаарх түгээмэл асуултын хариулт."),
 };
 
-export const revalidate = 300;
+export const revalidate = 86400;
 
 const OTHER = "Бусад";
 

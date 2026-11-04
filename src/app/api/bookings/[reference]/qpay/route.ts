@@ -1,6 +1,6 @@
 import { prisma } from "@/server/prisma";
 import { handler, httpError, json } from "@/server/http";
-import { confirmQpayInvoicePayment } from "@/server/booking";
+import { confirmQpayInvoicePayment, markAwaitingQpay } from "@/server/booking";
 import { createInvoice, qpayConfigured } from "@/server/qpay";
 import { SITE_URL } from "@/lib/siteUrl";
 
@@ -57,6 +57,13 @@ export const POST = handler(async (_req: Request, ctx: Ctx) => {
     callbackUrl: `${SITE_URL}/api/webhooks/qpay`,
   });
 
+  // The hold can run out while QPay answers. Only a booking still waiting for
+  // payment moves on; an expired one stays expired, because its seats may
+  // already be someone else's, and this invoice is never shown.
+  if (!(await markAwaitingQpay(booking.id))) {
+    throw httpError(409, "Захиалгын хугацаа дууссан байна. Дахин захиална уу");
+  }
+
   await prisma.payment.create({
     data: {
       bookingId: booking.id,
@@ -67,11 +74,6 @@ export const POST = handler(async (_req: Request, ctx: Ctx) => {
       provider: "qpay",
       providerRef: invoice.invoiceId,
     },
-  });
-
-  await prisma.booking.update({
-    where: { id: booking.id },
-    data: { status: "PENDING_PAYMENT" },
   });
 
   return json({

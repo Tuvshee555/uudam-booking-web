@@ -22,10 +22,11 @@ import ReviewsSection from "@/components/trust/ReviewsSection";
 import RecentlyViewedStrip from "@/components/trip/RecentlyViewedStrip";
 
 /**
- * Rendered on the server from the live catalogue; saving a trip refreshes it
- * at once (revalidateStorefront), so this timer is only a safety net.
+ * Rendered on the server from the live catalogue. A trip save, a booking that
+ * fills or reopens a date, and the daily cron refresh it at once
+ * (server/revalidate.ts); the day is only a safety net.
  */
-export const revalidate = 300;
+export const revalidate = 86400;
 
 export const metadata: Metadata = {
   title: { absolute: "Uudam Travel Agency — Аяллын багц, хөдлөх хуваарь, онлайн захиалга" },

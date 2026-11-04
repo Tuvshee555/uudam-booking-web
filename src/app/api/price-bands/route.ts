@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/server/prisma";
 import { requireAdmin } from "@/server/auth";
 import { handler, httpError, json, publicCache, readJson, safeText } from "@/server/http";
-import { cached, invalidateCatalog } from "@/server/cache";
+import { cached } from "@/server/cache";
+import { revalidateCatalogFilters } from "@/server/revalidate";
 import { toOptionalNumber } from "@/server/tripInput";
 
 /**
@@ -58,7 +59,7 @@ export const POST = handler(async (req: Request) => {
     data: { name, minPrice, maxPrice, sortOrder: (last?.sortOrder ?? -1) + 1 },
   });
 
-  invalidateCatalog();
+  revalidateCatalogFilters();
 
   return json(await listBands(), { status: 201 });
 });
@@ -88,7 +89,7 @@ export const PUT = handler(async (req: Request) => {
     data: { name, minPrice, maxPrice, sortOrder },
   });
 
-  invalidateCatalog();
+  revalidateCatalogFilters();
 
   return json(await listBands());
 });
@@ -101,7 +102,7 @@ export const DELETE = handler(async (req: Request) => {
   if (!id) throw httpError(400, "ID шаардлагатай");
 
   await prisma.priceBand.delete({ where: { id } });
-  invalidateCatalog();
+  revalidateCatalogFilters();
 
   return json({ success: true });
 });

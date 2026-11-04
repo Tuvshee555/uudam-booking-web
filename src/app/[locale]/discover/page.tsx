@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 };
 
 /** Saving an article refreshes this page at once (revalidateDiscoverPages in /api/knowledge). */
-export const revalidate = 300;
+export const revalidate = 86400;
 
 export default async function DiscoverIndexPage() {
   const [articles, trips] = await Promise.all([

@@ -14,6 +14,7 @@ import {
 } from "@/server/http";
 import { generateReference } from "@/server/reference";
 import { BookingError, createBooking, expireStaleHolds } from "@/server/booking";
+import { revalidateSeatChanges } from "@/server/revalidate";
 import { qpayConfigured } from "@/server/qpay";
 import { isBotSubmission } from "@/server/spam";
 import { sendEmail } from "@/server/mail";
@@ -49,8 +50,10 @@ export const GET = handler(async (req: Request) => {
   await requireAdmin(req);
 
   // Cheap and keeps the list honest without a cron: anything whose hold ran
-  // out is relabelled before staff see it.
-  await expireStaleHolds();
+  // out is relabelled before staff see it, and a date it reopens shows as
+  // bookable again on the storefront.
+  const swept = await expireStaleHolds();
+  revalidateSeatChanges(swept.seatChanges);
 
   const url = new URL(req.url);
   // One status, or several comma-separated ("HELD,PENDING_PAYMENT,PARTIALLY_PAID"
@@ -139,6 +142,10 @@ export const POST = handler(async (req: Request) => {
       reference,
       paymentReference: reference,
     });
+
+    // The transaction has committed: the trip's page shows the seats it left,
+    // and the lists too when this booking filled the date.
+    revalidateSeatChanges([booking.seatChange]);
 
     const trip = await prisma.trip.findUnique({
       where: { id: tripId },

@@ -3,7 +3,8 @@ import type { Prisma } from "@prisma/client";
 import { prisma, withPrismaRetry } from "@/server/prisma";
 import { requireAdmin } from "@/server/auth";
 import { handler, json, publicCache, readJson, safeText } from "@/server/http";
-import { revalidateStorefront } from "@/server/revalidate";
+import { revalidateTrips } from "@/server/revalidate";
+import { menuFieldsChanged } from "@/lib/siteNav";
 import { queueTripSync, deliverTripSync } from "@/server/tripSyncQueue";
 import { sweepTripSyncSoon } from "@/server/tripSyncSweep";
 import { getCachedTripSummaries } from "@/server/catalog";
@@ -158,7 +159,9 @@ export const POST = handler(async (req: Request) => {
   }));
   await deliverTripSync(trip.id);
 
-  revalidateStorefront();
+  // A new published trip changes the menu (counts, destinations) on every
+  // page; a draft only needs its own address and the lists.
+  revalidateTrips([trip.slug], { menuChanged: menuFieldsChanged(null, trip) });
 
   return json(await withPrismaRetry(() => prisma.trip.findUnique({ where: { id: trip.id }, include: TRIP_INCLUDE })), { status: 201 });
 });

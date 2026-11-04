@@ -1,5 +1,4 @@
 import { cache, Suspense } from "react";
-import { unstable_cache } from "next/cache";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -27,19 +26,22 @@ export async function generateStaticParams() {
   return categories.map((category) => ({ id: category.slug ?? category.id }));
 }
 
-/** Saving a trip or a category refreshes this page at once (revalidateStorefront). */
-export const revalidate = 300;
+/**
+ * Saving a trip or a category, or a booking that fills or reopens a date,
+ * refreshes this page at once (server/revalidate.ts); the day is a safety net.
+ */
+export const revalidate = 86400;
 
-const findCategory = cache(
-  unstable_cache(
-    async (idOrSlug: string) =>
-      prisma.category.findFirst({
-        where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
-        select: { id: true, categoryName: true, description: true, image: true, slug: true },
-      }),
-    ["category-detail"],
-    { revalidate: 300, tags: ["site-nav"] },
-  ),
+/**
+ * Read once per render (React's cache shares it between the metadata and the
+ * page). The page itself is the cache: a separate data cache under it only
+ * added a second write each time the page was rebuilt.
+ */
+const findCategory = cache(async (idOrSlug: string) =>
+  prisma.category.findFirst({
+    where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
+    select: { id: true, categoryName: true, description: true, image: true, slug: true },
+  }),
 );
 
 function inCategory(id: string) {
@@ -93,7 +95,7 @@ export default async function CategoryPage({ params }: Props) {
       />
       <Suspense fallback={<CatalogSkeleton />}>
         <CatalogBrowser
-          initialTrips={trips}
+          initialTrips={own}
           prices={prices}
           now={now}
           currentYear={Number(ulaanbaatarDay(now).slice(0, 4))}

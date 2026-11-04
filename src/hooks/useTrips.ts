@@ -1,7 +1,9 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { departureDigest } from "@/lib/departureDigest";
 import type { CategoryNode, Trip } from "@/types/trip";
 
 /**
@@ -58,6 +60,38 @@ export function useTrip(idOrSlug?: string, initialData?: Trip, options?: { admin
     staleTime: options?.admin ? 0 : 60_000,
     ...(options?.admin ? { refetchOnMount: "always" as const, refetchOnWindowFocus: true } : {}),
   });
+}
+
+/**
+ * The trip page is cached for up to a day, so once it opens its dates are
+ * read again live (/api/trips/:slug/availability): the booking panel shows the
+ * seats and fares the database has now. The page sends the dates it was built
+ * with, so the server can tell when the cached page is behind and refresh it.
+ * Nothing changes on screen unless the dates differ.
+ */
+export function useLiveDepartures(slug: string, initialTrip?: Trip) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!initialTrip) return;
+    let cancelled = false;
+    const seen = departureDigest(initialTrip.departures);
+
+    api
+      .get<{ departures: Trip["departures"]; digest: string }>(`/trips/${encodeURIComponent(slug)}/availability`, { params: { seen } })
+      .then(({ data }) => {
+        if (cancelled || data.digest === seen) return;
+        queryClient.setQueryData<Trip>(["trip", slug], (current) => (current ? { ...current, departures: data.departures } : current));
+      })
+      .catch(() => {
+        // The page keeps the dates it was built with; the booking itself is
+        // checked against the database either way.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, initialTrip, queryClient]);
 }
 
 export type FlatCategory = {

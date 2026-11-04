@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   ...shareMetadata("/about", "Бидний тухай · Uudam Travel", "Аяллын багцаа нэг дор: нислэг, буудал, өдөр тутмын хөтөлбөр."),
 };
 
-export const revalidate = 300;
+export const revalidate = 86400;
 
 export default async function AboutPage() {
   const [settings, trips, categories] = await Promise.all([getSiteSettings(), getTripSummaries(), getCategoryTree()]);

@@ -1,9 +1,11 @@
-import type { Prisma } from "@prisma/client";
+import type { BookingStatus, Prisma } from "@prisma/client";
 
 import { prisma, withPrismaRetry } from "@/server/prisma";
 import { checkInvoice } from "@/server/qpay";
+import { availability } from "@/lib/departures";
 import { hasMissingPassengerFare, lineTotal, resolvePrices, totalHeadcount } from "@/lib/pricing";
 import { hasVariablePricing } from "@/lib/tripPriceOptions";
+import type { Departure } from "@/types/trip";
 
 /**
  * Statuses that are actively holding a seat out of sale.
@@ -25,6 +27,94 @@ export const HOLD_MINUTES = 60;
 
 /** A repeat of the same booking inside this window is the same booking. */
 const DUPLICATE_WINDOW_MS = 10 * 60 * 1000;
+
+const HOLDING = new Set<string>(SEAT_HOLDING_STATUSES);
+
+/**
+ * Every transaction that moves seats queues on the departure row (see
+ * createBooking), so a burst of simultaneous requests spends real time
+ * waiting rather than failing instantly. Defaults (5s/2s) were too tight for
+ * that queue to drain under a handful of concurrent requests; still short
+ * enough to fail fast under genuine overload rather than hang.
+ */
+const SEAT_TRANSACTION = { timeout: 10_000, maxWait: 10_000 };
+const SEAT_RETRY = { attempts: 2, retryCodes: ["P2028", "P2034"] };
+
+/**
+ * What a change did to a date's seats, so the caller can refresh the pages
+ * that show it. Null when no seat moved.
+ */
+export type SeatChange = {
+  slug: string;
+  /**
+   * The date went from bookable to sold out or back. Lists, cards and the
+   * calendar only ever show that, never a count (see availability() in
+   * lib/departures), so only then do they need refreshing too.
+   */
+  availabilityChanged: boolean;
+};
+
+function bookable(status: string, seatsLeft: number | null) {
+  return availability({ status, seatsLeft } as Departure).selectable;
+}
+
+/** Locks the departure row and returns its seat count as it stands under the lock. */
+async function lockDeparture(tx: Prisma.TransactionClient, departureId: string) {
+  const [row] = await tx.$queryRaw<{ seatsLeft: number | null }[]>`
+    SELECT "seatsLeft" FROM "Departure" WHERE id = ${departureId} FOR UPDATE`;
+  return row ?? null;
+}
+
+/** Compares a date's seats now (inside the same transaction) with `before`. */
+async function describeSeatChange(
+  tx: Prisma.TransactionClient,
+  departureId: string,
+  before: number | null,
+): Promise<SeatChange | null> {
+  const row = await tx.departure.findUnique({
+    where: { id: departureId },
+    select: { seatsLeft: true, status: true, trip: { select: { slug: true } } },
+  });
+  if (!row || row.seatsLeft === before) return null;
+  return {
+    slug: row.trip.slug,
+    availabilityChanged: bookable(row.status, before) !== bookable(row.status, row.seatsLeft),
+  };
+}
+
+/**
+ * Relabel this date's holds that ran out and give their seats back. The
+ * caller holds the departure lock. Each hold changes with a conditional
+ * update, so one that became a payment a moment ago (QPay, staff) is left
+ * alone instead of having its seats released from under it.
+ */
+async function releaseExpiredHolds(tx: Prisma.TransactionClient, departureId: string) {
+  const now = new Date();
+  const stale = await tx.booking.findMany({
+    where: { departureId, status: "HELD", holdExpiresAt: { lt: now } },
+    select: { id: true, adults: true, children: true, infants: true },
+  });
+
+  let holds = 0;
+  let seats = 0;
+  for (const hold of stale) {
+    const { count } = await tx.booking.updateMany({
+      where: { id: hold.id, status: "HELD", holdExpiresAt: { lt: now } },
+      data: { status: "EXPIRED" },
+    });
+    if (!count) continue;
+    holds += 1;
+    seats += hold.adults + hold.children + hold.infants;
+  }
+
+  if (seats) {
+    await tx.departure.updateMany({
+      where: { id: departureId, seatsLeft: { not: null } },
+      data: { seatsLeft: { increment: seats } },
+    });
+  }
+  return holds;
+}
 
 /**
  * The public booking-status lookup — shared by GET /api/bookings/:reference
@@ -62,11 +152,13 @@ export async function getPublicBookingStatus(reference: string) {
 }
 
 export class BookingError extends Error {
-  constructor(
-    message: string,
-    readonly status = 400,
-  ) {
+  // A plain field rather than a constructor parameter property, so the
+  // node test runner (type stripping only) can load this module.
+  readonly status: number;
+
+  constructor(message: string, status = 400) {
     super(message);
+    this.status = status;
   }
 }
 
@@ -118,7 +210,12 @@ export async function createBooking(input: CreateBookingInput) {
     // existed. FOR UPDATE makes every other transaction booking this same
     // departure block here until this one commits or rolls back, so the next
     // one in line re-reads the true, post-commit count.
-    await tx.$queryRaw`SELECT id FROM "Departure" WHERE id = ${input.departureId} FOR UPDATE`;
+    const before = (await lockDeparture(tx, input.departureId))?.seatsLeft ?? null;
+
+    // Holds on this date that ran out but were not swept yet still count
+    // against seatsLeft. Releasing them here, under the same lock, means an
+    // abandoned checkout never turns the next customer away.
+    const released = await releaseExpiredHolds(tx, input.departureId);
 
     // A double tap, a retry after a slow network or a resubmitted form must
     // not hold the same seats twice: the same phone booking the same date for
@@ -140,7 +237,12 @@ export async function createBooking(input: CreateBookingInput) {
     });
     // A retry can find the booking its own first attempt committed after all:
     // that one is still this request's new booking, not a repeat.
-    if (duplicate) return Object.assign(duplicate, { duplicate: duplicate.reference !== input.reference });
+    if (duplicate) {
+      return Object.assign(duplicate, {
+        duplicate: duplicate.reference !== input.reference,
+        seatChange: released ? await describeSeatChange(tx, input.departureId, before) : null,
+      });
+    }
 
     const departure = await tx.departure.findUnique({
       where: { id: input.departureId },
@@ -164,6 +266,7 @@ export async function createBooking(input: CreateBookingInput) {
       where: { id: input.tripId },
       select: {
         id: true,
+        slug: true,
         isPublished: true,
         price: true,
         childPrice: true,
@@ -256,17 +359,11 @@ export async function createBooking(input: CreateBookingInput) {
       include: { payments: true },
     });
 
-    return Object.assign(booking, { duplicate: false });
-  }, {
-    // Concurrent bookings for the same departure now queue on the FOR UPDATE
-    // lock rather than racing, so a burst of simultaneous requests spends
-    // real time waiting rather than failing instantly. Defaults (5s/2s) were
-    // too tight for that queue to drain under a handful of concurrent
-    // requests; still short enough to fail fast under genuine overload
-    // rather than hang.
-    timeout: 10_000,
-    maxWait: 10_000,
-  }), { attempts: 2, retryCodes: ["P2028", "P2034"] });
+    return Object.assign(booking, {
+      duplicate: false,
+      seatChange: await describeSeatChange(tx, departure.id, before),
+    });
+  }, SEAT_TRANSACTION), SEAT_RETRY);
 }
 
 /**
@@ -319,26 +416,71 @@ export async function confirmQpayInvoicePayment(invoiceId: string): Promise<{
 }
 
 /**
- * Give a booking's seats back to its departure. Called whenever a booking
- * leaves a seat-holding status without becoming COMPLETED — an expired hold
- * or a cancellation. `seatsLeft` was decremented at creation time under a
- * row lock; giving it back takes the same lock, for the same reason: two
- * releases (or a release racing a new booking) must not corrupt the count.
+ * Move a booking to another status with its seats following along: leaving a
+ * seat-holding status gives the seats back, coming back to one takes them
+ * again — refused with a 409 when the date has no room left, rather than
+ * silently overselling it.
+ *
+ * The departure row is locked first, as createBooking does, then the booking
+ * row, and its status is read under both locks. Two cancels sent at once, or
+ * a payment recorded while the expiry sweep runs, move the seats exactly
+ * once. (Reading the status before taking the lock let a double cancel give
+ * the seats back twice, and let staff confirm a hold the sweep had just
+ * released, leaving a confirmed booking with no seats behind it.)
  */
-async function releaseSeats(bookingId: string, tx: Prisma.TransactionClient) {
-  const booking = await tx.booking.findUnique({
-    where: { id: bookingId },
-    select: { departureId: true, adults: true, children: true, infants: true },
-  });
-  if (!booking) return;
+export async function setBookingStatus(
+  bookingId: string,
+  status: BookingStatus,
+  { handledById, data = {} }: { handledById?: string; data?: { paidAmount?: number; notes?: string | null } } = {},
+) {
+  const found = await prisma.booking.findUnique({ where: { id: bookingId }, select: { departureId: true } });
+  if (!found) throw new BookingError("Захиалга олдсонгүй", 404);
 
-  const seats = booking.adults + booking.children + booking.infants;
+  return withPrismaRetry(() => prisma.$transaction(async (tx) => {
+    const before = (await lockDeparture(tx, found.departureId))?.seatsLeft ?? null;
+    const [current] = await tx.$queryRaw<{ status: BookingStatus; adults: number; children: number; infants: number }[]>`
+      SELECT status, adults, children, infants FROM "Booking" WHERE id = ${bookingId} FOR UPDATE`;
+    if (!current) throw new BookingError("Захиалга олдсонгүй", 404);
 
-  await tx.$queryRaw`SELECT id FROM "Departure" WHERE id = ${booking.departureId} FOR UPDATE`;
-  await tx.departure.updateMany({
-    where: { id: booking.departureId, seatsLeft: { not: null } },
-    data: { seatsLeft: { increment: seats } },
-  });
+    const seats = current.adults + current.children + current.infants;
+    const releasing = HOLDING.has(current.status) && !HOLDING.has(status);
+    const taking = !HOLDING.has(current.status) && HOLDING.has(status);
+
+    if (taking && before !== null && before < seats) {
+      throw new BookingError(
+        before <= 0
+          ? "Энэ огноонд суудал үлдээгүй тул захиалгыг сэргээх боломжгүй. Эхлээд аяллын суудлын тоог нэмнэ үү"
+          : `Энэ огноонд ${before} суудал үлдсэн тул ${seats} хүний захиалгыг сэргээх боломжгүй`,
+        409,
+      );
+    }
+    if (releasing || taking) {
+      await tx.departure.updateMany({
+        where: { id: found.departureId, seatsLeft: { not: null } },
+        data: { seatsLeft: releasing ? { increment: seats } : { decrement: seats } },
+      });
+    }
+
+    // A settled or cancelled booking is no longer provisional; one put back
+    // on hold gets a fresh hold window, or the sweep would expire it at once.
+    const holdExpiresAt =
+      status === "CONFIRMED" || status === "COMPLETED" || status === "CANCELLED"
+        ? null
+        : status === "HELD" && current.status !== "HELD"
+          ? new Date(Date.now() + HOLD_MINUTES * 60_000)
+          : undefined;
+
+    const updated = await tx.booking.update({
+      where: { id: bookingId },
+      data: {
+        ...data,
+        status,
+        ...(handledById ? { handledById } : {}),
+        ...(holdExpiresAt === undefined ? {} : { holdExpiresAt }),
+      },
+    });
+    return Object.assign(updated, { seatChange: await describeSeatChange(tx, found.departureId, before) });
+  }, SEAT_TRANSACTION), SEAT_RETRY);
 }
 
 /**
@@ -350,51 +492,58 @@ async function releaseSeats(bookingId: string, tx: Prisma.TransactionClient) {
  * system-initiated cancellation.
  */
 export async function cancelBooking(bookingId: string, handledById?: string) {
-  return prisma.$transaction(async (tx) => {
-    const booking = await tx.booking.findUnique({
-      where: { id: bookingId },
-      select: { status: true },
-    });
-    if (!booking) throw new BookingError("Захиалга олдсонгүй", 404);
+  const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
+  if (!booking) throw new BookingError("Захиалга олдсонгүй", 404);
 
-    if (booking.status === "CANCELLED" || booking.status === "EXPIRED") {
-      return tx.booking.findUniqueOrThrow({ where: { id: bookingId } });
-    }
+  if (booking.status === "CANCELLED" || booking.status === "EXPIRED") {
+    return Object.assign(booking, { seatChange: null });
+  }
 
-    if ((SEAT_HOLDING_STATUSES as readonly string[]).includes(booking.status)) {
-      await releaseSeats(bookingId, tx);
-    }
-
-    return tx.booking.update({
-      where: { id: bookingId },
-      data: {
-        status: "CANCELLED",
-        holdExpiresAt: null,
-        ...(handledById ? { handledById } : {}),
-      },
-    });
-  });
+  // A cancel that races another one, or the expiry sweep, is settled under
+  // the locks in setBookingStatus: the seats come back once.
+  return setBookingStatus(bookingId, "CANCELLED", { handledById });
 }
 
 /**
- * Relabel holds that ran out and give their seats back.
- *
- * One booking at a time rather than a blind `updateMany`: each release needs
- * its own row lock on that booking's departure, and a batch update can't
- * take one.
+ * Relabel holds that ran out and give their seats back: one date at a time,
+ * each under its departure lock (see releaseExpiredHolds), so a hold that was
+ * paid or cancelled while the sweep ran is never released a second time.
+ * `tripId` limits the sweep to one trip (its booking panel is about to load).
  */
-export async function expireStaleHolds(): Promise<number> {
-  const stale = await prisma.booking.findMany({
-    where: { status: "HELD", holdExpiresAt: { lt: new Date() } },
-    select: { id: true },
+export async function expireStaleHolds(
+  { tripId }: { tripId?: string } = {},
+): Promise<{ expired: number; seatChanges: SeatChange[] }> {
+  const due = await prisma.booking.findMany({
+    where: { status: "HELD", holdExpiresAt: { lt: new Date() }, ...(tripId ? { tripId } : {}) },
+    select: { departureId: true },
+    distinct: ["departureId"],
   });
 
-  for (const { id } of stale) {
-    await prisma.$transaction(async (tx) => {
-      await releaseSeats(id, tx);
-      await tx.booking.update({ where: { id }, data: { status: "EXPIRED" } });
-    });
+  let expired = 0;
+  const seatChanges: SeatChange[] = [];
+  for (const { departureId } of due) {
+    const result = await withPrismaRetry(() => prisma.$transaction(async (tx) => {
+      const before = (await lockDeparture(tx, departureId))?.seatsLeft ?? null;
+      const holds = await releaseExpiredHolds(tx, departureId);
+      return { holds, change: holds ? await describeSeatChange(tx, departureId, before) : null };
+    }, SEAT_TRANSACTION), SEAT_RETRY);
+    expired += result.holds;
+    if (result.change) seatChanges.push(result.change);
   }
 
-  return stale.length;
+  return { expired, seatChanges };
+}
+
+/**
+ * A customer opened a QPay invoice, so the booking now waits on that payment
+ * (and no longer expires). Conditional: a hold the sweep has just expired stays
+ * expired — its seats may already be someone else's — instead of being
+ * reopened without them. Returns whether the booking is now waiting.
+ */
+export async function markAwaitingQpay(bookingId: string): Promise<boolean> {
+  const { count } = await prisma.booking.updateMany({
+    where: { id: bookingId, status: { in: ["HELD", "PENDING_PAYMENT"] } },
+    data: { status: "PENDING_PAYMENT" },
+  });
+  return count === 1;
 }

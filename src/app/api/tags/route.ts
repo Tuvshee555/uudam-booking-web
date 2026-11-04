@@ -3,6 +3,7 @@ import { prisma } from "@/server/prisma";
 import { requireAdmin } from "@/server/auth";
 import { handler, httpError, json, publicCache, readJson, safeText } from "@/server/http";
 import { cached, invalidateCatalog } from "@/server/cache";
+import { revalidateAllTrips } from "@/server/revalidate";
 import { slugify } from "@/server/tripInput";
 
 /**
@@ -78,7 +79,8 @@ export const PUT = handler(async (req: Request) => {
   if (!name) throw httpError(400, "Шошгын нэр шаардлагатай");
 
   await prisma.tag.update({ where: { id }, data: { name } });
-  invalidateCatalog();
+  // The renamed tag shows on its trips' pages and cards.
+  revalidateAllTrips();
 
   return json(await listTags());
 });
@@ -91,7 +93,7 @@ export const DELETE = handler(async (req: Request) => {
   if (!id) throw httpError(400, "Шошгын ID шаардлагатай");
 
   await prisma.tag.delete({ where: { id } });
-  invalidateCatalog();
+  revalidateAllTrips();
 
   return json({ success: true });
 });

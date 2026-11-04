@@ -21,7 +21,7 @@ export async function generateStaticParams() {
   return posts.map((post) => ({ slug: post.slug }));
 }
 
-export const revalidate = 300;
+export const revalidate = 86400;
 
 const findPost = cache(
   unstable_cache(

@@ -57,11 +57,12 @@ export async function generateStaticParams() {
  * setting: no ISR, no edge caching, `Cache-Control: no-store` on every
  * response. That `?departure=` read has moved to the client component
  * (useSearchParams, which doesn't affect server caching) specifically so
- * this page can be a normal cached page again. Saving a trip revalidates
- * this path immediately (see revalidateTripPages in /api/trips/[id]), so
- * this is a safety net, matching the other catalogue pages.
+ * this page can be a normal cached page again. Saving the trip, a booking or
+ * cancellation on it, an expired hold and the chatbot's sync all refresh this
+ * path at once (server/revalidate.ts), and the booking panel re-reads its
+ * dates live (/api/trips/[id]/availability), so the day is a safety net.
  */
-export const revalidate = 300;
+export const revalidate = 86400;
 
 /**
  * Server-only lookup. Two jobs, which is why it fetches the whole trip rather
@@ -75,47 +76,34 @@ export const revalidate = 300;
  *    everything, which left crawlers a page whose only headings were the
  *    footer's.
  *
- * Wrapped in BOTH caches, for two different jobs:
- * - `unstable_cache` is what actually persists the result ACROSS requests and
- *   visitors. Without it, `export const revalidate` above does nothing at
- *   all: Next's route cache only knows how to cache `fetch()` calls (or
- *   `unstable_cache`-wrapped ones) discovered during render — a plain
- *   Prisma query is invisible to it, and since this route has no
- *   `generateStaticParams` either (so there's no pre-built HTML to serve as
- *   the cached artifact), every request rendered from scratch regardless of
- *   the revalidate export. Confirmed live: every response carried
- *   `Cache-Control: no-store` and `X-Vercel-Cache: MISS`, even on repeat
- *   requests for the identical slug, until this wrap was added.
- * - `cache` (React) still dedupes the query WITHIN a single request, so
- *   `generateMetadata` and the page body (separate invocations) share one
- *   call instead of two.
- *
- * `revalidatePath` on a trip save (see revalidateTripPages in
- * /api/trips/[id]) invalidates this the same as a `fetch`-based cache would.
+ * The rendered page is the cache (generateStaticParams above is what makes
+ * it one), so the query runs once per rebuild, not per visit. React's
+ * `cache` shares it between `generateMetadata` and the page body. A data
+ * cache under it (unstable_cache, keyed by slug) only added a second write
+ * every time the page was rebuilt.
  */
-const findPublishedTrip = cache(
-  unstable_cache(
-    async (slug: string) => {
-      return prisma.trip.findFirst({
-        where: { slug, OR: [{ isPublished: true }, { sourceMetadata: { path: ["publicInfoOnly"], equals: true } }] },
-        include: {
-          ...TRIP_INCLUDE,
-          testimonials: {
-            where: { isPublished: true },
-            orderBy: { createdAt: "desc" },
-            take: 20,
-          },
-        },
-      });
+const findPublishedTrip = cache(async (slug: string) =>
+  prisma.trip.findFirst({
+    where: { slug, OR: [{ isPublished: true }, { sourceMetadata: { path: ["publicInfoOnly"], equals: true } }] },
+    include: {
+      ...TRIP_INCLUDE,
+      testimonials: {
+        where: { isPublished: true },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+      },
     },
-    ["trip-detail"],
-    { revalidate: 300 },
-  ),
+  }),
 );
 
-/** Same gap, same fix, for the shared site settings (trip notice / bank details) this page also reads. */
+/**
+ * The trip notice and bank details are the same on every trip page, so one
+ * shared copy serves all their rebuilds. Saving the settings refreshes every
+ * page, this copy included (revalidateStorefront in /api/settings).
+ */
 const getSiteSettings = unstable_cache(getSiteSettingsUncached, ["trip-detail-site-settings"], {
-  revalidate: 300,
+  revalidate: 86400,
+  tags: ["site-settings"],
 });
 
 /**
