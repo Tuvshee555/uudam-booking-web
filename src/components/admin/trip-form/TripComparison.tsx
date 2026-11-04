@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { AlertCircle, Check, RefreshCw } from "lucide-react";
 import { api, apiErrorMessage } from "@/lib/api";
 import { formatDateTime } from "@/lib/adminFormat";
+import { startingPrice } from "@/lib/departures";
 import { syncFieldText } from "@/lib/tripSyncStatus";
 import type { Trip } from "@/types/trip";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ function PriceGroups({ value }: { value: unknown }) {
 }
 export default function TripComparison({ trip, patch, onExtraChange }: { trip: Trip; patch: unknown; onExtraChange: (base: Row, values: Row) => void }) {
   const [differencesOnly, setDifferencesOnly] = useState(false);
+  const [now] = useState(() => Date.now());
   const query = useQuery({ queryKey: ["trip-parity", trip.id], queryFn: async () => (await api.get("/admin/trip-parity", { params: { id: trip.id } })).data as { website: Trip; chatbot: Row | null } });
   if (query.isPending) return <p className="text-sm text-muted-foreground" role="status">Харьцуулалт ачаалж байна…</p>;
   if (query.isError) return <div role="alert" className="text-sm text-destructive">{apiErrorMessage(query.error, "Харьцуулалт ачаалсангүй")} <Button type="button" variant="outline" size="sm" onClick={() => query.refetch()}>Дахин ачаалах</Button></div>;
@@ -45,7 +47,31 @@ export default function TripComparison({ trip, patch, onExtraChange }: { trip: T
   const extra = object(chatbot.extra);
   const edits = object(object(patch).values);
   const editableTerms = object(edits.booking_terms ?? extra.booking_terms);
-  const rows = [
+  // What a customer is actually shown: the website card's "-с эхлэн" price and the
+  // cheapest adult fare the chatbot holds for a date that has not passed. The base
+  // price columns below are only the fallback for dates without their own fare, and
+  // the two systems round them differently, so comparing them alone misleads.
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ulaanbaatar" }).format(now);
+  // The chatbot quotes a date only when it is on its own schedule (departure_dates, or the
+  // stored day of a Mongolian spelling) or the website reports it open, and never when the
+  // website has closed it (sold out, cancelled, departed). A fare group for any other date,
+  // such as a stray later-year copy, is dead data and must not count here.
+  const isoDay = (value: unknown) => String(value ?? "").match(/^\d{4}-\d{2}-\d{2}/)?.[0] ?? "";
+  const availabilityRows = (Array.isArray(extra.website_departure_availability) ? extra.website_departure_availability : []).map(object);
+  const isOpen = (row: Row) => ["OPEN", "ALMOST_FULL"].includes(String(row.status)) && row.seatsLeft !== 0;
+  const closedDates = new Set(availabilityRows.filter((row) => !isOpen(row)).map((row) => isoDay(row.date)));
+  const offeredDates = new Set([
+    ...(Array.isArray(chatbot.departure_dates) ? chatbot.departure_dates : []).map(isoDay),
+    ...(Array.isArray(extra.departure_dates_resolved) ? extra.departure_dates_resolved : []).map((row) => isoDay(object(row).ymd)),
+    ...availabilityRows.filter(isOpen).map((row) => isoDay(row.date)),
+  ].filter(Boolean));
+  const quotable = (date: string) => date >= today && !closedDates.has(date) && (!offeredDates.size || offeredDates.has(date));
+  const chatbotDatedFares = comparablePriceGroups(extra.price_groups)
+    .filter((group) => group.dates.some(quotable))
+    .map((group) => group.adult)
+    .filter((fare): fare is number => fare !== null && fare > 0);
+  const chatbotStartingPrice = chatbotDatedFares.length ? Math.min(...chatbotDatedFares) : typeof chatbot.adult_price === "number" ? chatbot.adult_price : null;
+  const rows: Array<{ label: string; website: unknown; chatbot: unknown; note?: string }> = [
     { label: "Аяллын нэр", website: website.title, chatbot: chatbot.route_name },
     { label: "Тайлбар", website: website.description, chatbot: chatbot.notes },
     { label: "Товч тайлбар", website: website.summary, chatbot: extra.website_summary },
@@ -53,7 +79,10 @@ export default function TripComparison({ trip, patch, onExtraChange }: { trip: T
     { label: "Багтсан зүйлс", website: website.included, chatbot: extra.included_items },
     { label: "Багтаагүй зүйлс", website: website.excluded, chatbot: extra.excluded_items },
     { label: "Чухал тэмдэглэл", website: website.importantNotes, chatbot: extra.important_notes },
-    { label: "Том хүний үндсэн үнэ", website: website.price, chatbot: chatbot.adult_price },
+    { label: "Эхлэх үнэ («-с эхлэн»)", website: startingPrice(website, now), chatbot: chatbotStartingPrice,
+      note: "Үйлчлүүлэгчид харагдах үнэ: сайтын карт дээрх «-с эхлэн» үнэ ба chatbot-ын ирээдүйн огноонуудын хамгийн бага том хүний үнэ." },
+    { label: "Том хүний үндсэн үнэ", website: website.price, chatbot: chatbot.adult_price,
+      note: "Нөөц утга: огноо тус бүрийн үнэ байхгүй үед л хэрэглэгдэнэ. Сайтын карт ч, chatbot ч үүнийг шууд харуулдаггүй." },
     { label: "Хүүхдийн үндсэн үнэ", website: website.childPrice, chatbot: chatbot.child_price },
     { label: "Нярайн үндсэн үнэ", website: website.infantPrice, chatbot: chatbot.infant_price },
     { label: "Валют", website: website.currency, chatbot: chatbot.currency },
@@ -66,7 +95,7 @@ export default function TripComparison({ trip, patch, onExtraChange }: { trip: T
   return <div className="space-y-5 min-w-0">
     <div className="flex items-center justify-between gap-3 text-sm"><span className="inline-flex items-center gap-2">{differences.length ? <AlertCircle className="h-4 w-4 text-amber-600" /> : <Check className="h-4 w-4 text-emerald-600" />}{differences.length ? `${differences.length} ялгаатай талбар` : "Үндсэн мэдээлэл ижил"}</span><Button type="button" size="icon" variant="ghost" title="Харьцуулалт шинэчлэх" aria-label="Харьцуулалт шинэчлэх" onClick={() => query.refetch()}><RefreshCw className="h-4 w-4" /></Button></div>
     <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={differencesOnly} onChange={(event) => setDifferencesOnly(event.target.checked)} className="h-4 w-4 accent-primary" />Зөвхөн ялгаатай мэдээлэл</label>
-    {(differencesOnly ? differences : rows).map((row) => <details key={row.label} open={!equal(row)} className="border-t border-border"><summary className="cursor-pointer py-3 text-sm font-medium">{row.label}<span className={`ml-3 text-xs ${equal(row) ? "text-muted-foreground" : "text-amber-700"}`}>{equal(row) ? "Ижил" : "Ялгаатай"}</span></summary><div className="grid min-w-0 gap-4 pb-4 text-sm sm:grid-cols-2"><div className="min-w-0"><p className="mb-1 text-xs font-medium text-muted-foreground">Вебсайт</p>{row.label === "Үнийн хувилбарууд" ? <PriceGroups value={row.website} /> : <Value value={row.website} />}</div><div className="min-w-0"><p className="mb-1 text-xs font-medium text-muted-foreground">Chatbot</p>{row.label === "Үнийн хувилбарууд" ? <PriceGroups value={row.chatbot} /> : <Value value={row.chatbot} />}</div></div></details>)}
+    {(differencesOnly ? differences : rows).map((row) => <details key={row.label} open={!equal(row)} className="border-t border-border"><summary className="cursor-pointer py-3 text-sm font-medium">{row.label}<span className={`ml-3 text-xs ${equal(row) ? "text-muted-foreground" : "text-amber-700"}`}>{equal(row) ? "Ижил" : "Ялгаатай"}</span></summary>{row.note && <p className="pb-2 text-xs text-muted-foreground">{row.note}</p>}<div className="grid min-w-0 gap-4 pb-4 text-sm sm:grid-cols-2"><div className="min-w-0"><p className="mb-1 text-xs font-medium text-muted-foreground">Вебсайт</p>{row.label === "Үнийн хувилбарууд" ? <PriceGroups value={row.website} /> : <Value value={row.website} />}</div><div className="min-w-0"><p className="mb-1 text-xs font-medium text-muted-foreground">Chatbot</p>{row.label === "Үнийн хувилбарууд" ? <PriceGroups value={row.chatbot} /> : <Value value={row.chatbot} />}</div></div></details>)}
     {differencesOnly && !differences.length && <p className="text-sm text-muted-foreground">Ялгаатай мэдээлэл байхгүй.</p>}
     <ConflictList tripId={trip.id} conflicts={extra.shared_conflicts} projectionConflicts={website.sourceMetadata?.contentConflicts} onResolved={() => query.refetch()} />
     <h3 className="border-t border-border pt-5 text-sm font-semibold">Chatbot нэмэлт мэдээлэл</h3>

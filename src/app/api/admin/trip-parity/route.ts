@@ -11,7 +11,7 @@ export const GET = handler(async (req: Request) => {
   if (!website) throw httpError(404, "Аялал олдсонгүй");
   const canonical = website.sourceTripId ? await prisma.$queryRaw<Record<string, unknown>[]>`
     SELECT id, route_name, notes, hotel, duration_text, adult_price, child_price, infant_price, currency,
-      seats_total, seats_left, status, extra, updated_at
+      seats_total, seats_left, status, departure_dates, extra, updated_at
     FROM travel_trip_entries WHERE id=${website.sourceTripId}` : [];
   return json({ website, chatbot: canonical[0] || null });
 });
