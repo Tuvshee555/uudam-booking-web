@@ -502,7 +502,7 @@ function CategoryTripsPanel({ categoryId }: { categoryId: string }) {
       {data.trips.map((trip) => (
         <Link
           key={trip.id}
-          href={`/${locale}/admin/trips/${trip.id}/edit`}
+          href={`/${locale}/admin/trips/${trip.id}/edit`} prefetch={false}
           className="flex items-center gap-2.5 rounded-lg py-1.5 pr-2 hover:bg-muted/60"
         >
           <div className="relative h-9 w-12 shrink-0 overflow-hidden rounded-md bg-muted">

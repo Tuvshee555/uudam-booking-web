@@ -122,7 +122,7 @@ export default function AdminHealthPage() {
                           </div>
                           <div className="flex shrink-0 flex-wrap gap-2">
                             <Button asChild size="sm">
-                              <Link href={`/${locale}/admin/trips/${first.tripId}/edit`}>
+                              <Link href={`/${locale}/admin/trips/${first.tripId}/edit`} prefetch={false}>
                                 <Pencil />
                                 Аяллыг засах
                               </Link>

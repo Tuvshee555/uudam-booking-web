@@ -395,7 +395,7 @@ export default function AdminDashboard() {
                 return (
                   <li key={departure.id}>
                     <Link
-                      href={`${admin}/trips/${departure.trip.id}/edit`}
+                      href={`${admin}/trips/${departure.trip.id}/edit`} prefetch={false}
                       className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 sm:px-5"
                     >
                       <span className="flex w-12 shrink-0 flex-col items-center rounded-lg border border-border bg-muted/40 py-1.5 text-center leading-none">
@@ -437,7 +437,7 @@ export default function AdminDashboard() {
                     {trip.image && <Image src={trip.image} alt="" fill sizes="56px" className="object-cover" />}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <Link href={`${admin}/trips/${trip.id}/edit`} className="block truncate text-sm font-medium hover:text-primary hover:underline">
+                    <Link href={`${admin}/trips/${trip.id}/edit`} prefetch={false} className="block truncate text-sm font-medium hover:text-primary hover:underline">
                       {trip.title}
                     </Link>
                     <div className="mt-1 flex items-center gap-2">

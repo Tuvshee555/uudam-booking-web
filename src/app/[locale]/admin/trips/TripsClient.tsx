@@ -376,7 +376,7 @@ export default function TripsClient() {
                         aria-label={`Сонгох: ${trip.title}`}
                         className="mt-1 h-4 w-4 shrink-0 accent-primary"
                       />
-                      <Link href={editHref} tabIndex={-1} aria-hidden="true" className="relative h-14 w-20 shrink-0 overflow-hidden rounded-md bg-muted">
+                      <Link href={editHref} prefetch={false} tabIndex={-1} aria-hidden="true" className="relative h-14 w-20 shrink-0 overflow-hidden rounded-md bg-muted">
                         {trip.image ? (
                           <Image src={trip.image} alt="" fill sizes="80px" className="object-cover" />
                         ) : (
@@ -386,7 +386,7 @@ export default function TripsClient() {
 
                       <div className="grid min-w-0 flex-1 gap-x-6 gap-y-2 md:grid-cols-2 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_auto] xl:items-center">
                         <div className="min-w-0 md:col-span-2 xl:col-span-1">
-                          <Link href={editHref} className="line-clamp-2 text-sm font-semibold hover:text-primary hover:underline">
+                          <Link href={editHref} prefetch={false} className="line-clamp-2 text-sm font-semibold hover:text-primary hover:underline">
                             {trip.title}
                           </Link>
                           <p className="mt-0.5 truncate text-xs text-muted-foreground">
@@ -468,7 +468,7 @@ export default function TripsClient() {
                             <span>Онцлох</span>
                           </label>
                           <Button asChild size="sm" variant="outline" className="ml-auto xl:ml-0">
-                            <Link href={editHref}>
+                            <Link href={editHref} prefetch={false}>
                               <Pencil />
                               Засах
                             </Link>

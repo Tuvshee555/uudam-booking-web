@@ -553,7 +553,7 @@ function BookingDetail({ booking, locale, now }: { booking: Booking; locale: str
           <DetailRow label="Аялал">
             <span className="block">{booking.trip.title}</span>
             <span className="mt-1 flex flex-wrap gap-x-3 text-xs font-normal">
-              <Link href={`/${locale}/admin/trips/${booking.trip.id}/edit`} className="text-primary hover:underline">
+              <Link href={`/${locale}/admin/trips/${booking.trip.id}/edit`} prefetch={false} className="text-primary hover:underline">
                 Аяллыг засах
               </Link>
               <a href={`/${locale}/trips/${booking.trip.slug}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
