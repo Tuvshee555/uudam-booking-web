@@ -147,18 +147,30 @@ export function summarizeForecast(steps: MetStep[], timeZone: string, now = Date
 
 export async function fetchForecast(lat: number, lon: number, timeZone: string): Promise<Forecast | null> {
   const url = `${MET_URL}?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}`;
-  try {
+  const load = async (fresh: boolean) => {
     const res = await fetch(url, {
       headers: { "User-Agent": USER_AGENT, Accept: "application/json" },
-      next: { revalidate: FORECAST_REVALIDATE_SECONDS },
-      signal: AbortSignal.timeout(8000),
+      ...(fresh ? { cache: "no-store" as const } : { next: { revalidate: FORECAST_REVALIDATE_SECONDS } }),
+      signal: AbortSignal.timeout(fresh ? 12_000 : 8000),
     });
-    if (!res.ok) {
-      console.error("MET forecast failed", res.status, url);
+    if (!res.ok) return { status: res.status, body: null };
+    return { status: res.status, body: JSON.parse(await res.text()) as { properties?: { timeseries?: MetStep[] } } };
+  };
+  try {
+    let result;
+    try {
+      result = await load(false);
+    } catch (err) {
+      // A slow body cut off mid-download is cut JSON — and the fetch cache can keep serving
+      // that cut copy for the whole revalidate window (2026-11-04/05). Ask MET again, uncached.
+      if (!(err instanceof SyntaxError)) throw err;
+      result = await load(true);
+    }
+    if (!result.body) {
+      console.error("MET forecast failed", result.status, url);
       return null;
     }
-    const body = (await res.json()) as { properties?: { timeseries?: MetStep[] } };
-    return summarizeForecast(body.properties?.timeseries ?? [], timeZone);
+    return summarizeForecast(result.body.properties?.timeseries ?? [], timeZone);
   } catch (err) {
     console.error("MET forecast error", url, err);
     return null;
