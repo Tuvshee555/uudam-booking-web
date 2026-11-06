@@ -63,6 +63,13 @@ test("date and booking questions are recognised, and the written reply never con
   assert.match(describeOffer(paused, tripOffer(paused, now)), /нээлттэй огноо алга/);
 });
 
+test("the advisor states a trip's length as the site does: days and the trip's own nights", () => {
+  assert.match(describeOffer(hainan, tripOffer(hainan, now)), / — 8 өдөр, /);
+  const nights = trip("nights", "Норвел аялал", { durationDays: 9, durationNights: 7 });
+  assert.match(describeOffer(nights, tripOffer(nights, now)), / — 9 өдөр 7 шөнө, /);
+  assert.doesNotMatch(describeOffer(nights, tripOffer(nights, now)), /хоног/);
+});
+
 test("'cheap' with a named place stays on that place; without one it is the whole catalog", () => {
   const cheapElsewhere = trip("cheap", "ЭРЭЭН – БЭЭЖИН аялал", { price: 990_000, departures: [dep("c1", "2026-12-12", { price: 990_000 })] });
   const named = searchTrips("Хайнань 12 сард хямд аялал байна уу", [hainan, japan, paused, cheapElsewhere], now).map((entry) => entry.trip.id);

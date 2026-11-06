@@ -16,7 +16,7 @@ import { fold } from "@/lib/destinations";
 import { formatDepartureDate, startingPrice } from "@/lib/departures";
 import { formatMnt, hasKnownTripPrice } from "@/lib/pricing";
 import { tripStatus } from "@/lib/tripStatus";
-import { formatTripTitle } from "@/lib/tripDisplay";
+import { formatTripDuration, formatTripTitle } from "@/lib/tripDisplay";
 import { destinationHref, type SiteNav } from "@/lib/siteNav";
 import type { Trip } from "@/types/trip";
 
@@ -150,9 +150,11 @@ export default function SearchDialog({
                               <span className="line-clamp-1 text-[14px] font-semibold text-foreground group-hover:underline">{formatTripTitle(trip.title)}</span>
                               <span className="mt-0.5 flex items-center gap-1.5 text-[12px] text-muted-foreground">
                                 <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
-                                {trip.durationDays} хоног
-                                {status.kind === "open" && ` · ${formatDepartureDate(status.departure.startDate)}`}
-                                {status.kind === "full" && " · Дүүрсэн"}
+                                {[
+                                  formatTripDuration(trip.durationDays, trip.durationNights),
+                                  status.kind === "open" ? formatDepartureDate(status.departure.startDate) : "",
+                                  status.kind === "full" ? "Дүүрсэн" : "",
+                                ].filter(Boolean).join(" · ")}
                               </span>
                             </span>
                             <span className="shrink-0 text-right text-[13px] font-bold tabular-nums text-foreground">

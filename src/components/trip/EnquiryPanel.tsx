@@ -69,7 +69,9 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
   const options = selected ? datePriceOptions(trip, selected) : [];
   const selectedHotel = initialSelection?.message.match(/Буудал: ([^;]+)/)?.[1];
   const selectedPackage = initialSelection?.message.match(/Аяллын төрөл: ([^;]+)/)?.[1];
-  const option = options.find((item) => item.hotel === selectedHotel || item.packageId === selectedPackage) ?? options[0];
+  // The hotel AND package the visitor chose; one of them alone only when that is all they picked.
+  const option = options.find((item) => (!selectedHotel || item.hotel === selectedHotel) && (!selectedPackage || item.packageId === selectedPackage) && Boolean(selectedHotel || selectedPackage))
+    ?? options.find((item) => item.hotel === selectedHotel || item.packageId === selectedPackage) ?? options[0];
   const optionPrices = options.flatMap((item) => [item.adult, item.adultMax].filter((value): value is number => value != null));
   const optionLabel = (selectedHotel || selectedPackage) && option ? formatAdultOption(option)
     : optionPrices.length > 1 ? `${formatMnt(Math.min(...optionPrices))}–${formatMnt(Math.max(...optionPrices))}`
@@ -159,7 +161,7 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
             <div className="mt-2 text-[13px] text-muted-foreground line-through">{formatMnt(trip.oldPrice)}</div>
           )}
           {option?.packageId && (
-            <div className="mt-2 inline-flex rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold text-primary-foreground">{option.packageId}</div>
+            <div className="mt-2 inline-flex rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold text-primary-foreground">{option.packageLabel || option.packageId}</div>
           )}
           <div className="mt-2 text-[1.6rem] font-bold leading-none tabular-nums text-foreground">
             {variablePricing ? optionLabel : formatTripStartingPrice(prices.adult)}
@@ -194,7 +196,7 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
       {option?.packageId && option.packageNote && (
         <div className="mt-3 rounded-lg border border-primary/25 bg-primary/5 p-3">
           <div className="text-[11px] font-bold uppercase tracking-wide text-primary">Сонгосон аяллын төрөл</div>
-          <div className="mt-1 text-[13px] font-semibold text-foreground">{option.packageId}</div>
+          <div className="mt-1 text-[13px] font-semibold text-foreground">{option.packageLabel || option.packageId}</div>
           <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{option.packageNote}</p>
         </div>
       )}

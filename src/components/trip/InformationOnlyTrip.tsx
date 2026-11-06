@@ -2,7 +2,7 @@ import Link from "next/link";
 import { BedDouble, CalendarDays, Check, Clock, FileDown, X } from "lucide-react";
 
 import { formatMnt } from "@/lib/pricing";
-import { formatTripTitle } from "@/lib/tripDisplay";
+import { formatTripDuration, formatTripTitle } from "@/lib/tripDisplay";
 import { splitHealthCheckup } from "@/lib/healthCheckup";
 import { canonicalPath } from "@/lib/locales";
 import type { Trip } from "@/types/trip";
@@ -99,7 +99,7 @@ export default function InformationOnlyTrip({ trip, sourceMetadata }: { trip: Tr
           <header>
             <div className="flex flex-wrap items-center gap-3">
               <span className="rounded-full bg-gold/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-foreground">Өнгөрсөн хөтөлбөр</span>
-              <span className="flex items-center gap-1.5 text-[13px] text-muted-foreground"><Clock className="h-4 w-4" aria-hidden="true" />{days.length || trip.durationDays} өдөр</span>
+              <span className="flex items-center gap-1.5 text-[13px] text-muted-foreground"><Clock className="h-4 w-4" aria-hidden="true" />{trip.durationDays > 0 ? formatTripDuration(trip.durationDays, trip.durationNights) : formatTripDuration(days.length)}</span>
               {trip.hotel && <span className="flex items-center gap-1.5 text-[13px] text-muted-foreground"><BedDouble className="h-4 w-4" aria-hidden="true" />{trip.hotel}</span>}
             </div>
             <h1 className="display-1 mt-4 text-balance text-foreground">{title}</h1>

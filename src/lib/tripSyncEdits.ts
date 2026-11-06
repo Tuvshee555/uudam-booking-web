@@ -11,8 +11,13 @@
 type Row = Record<string, unknown>;
 const record = (value: unknown): Row => value && typeof value === "object" && !Array.isArray(value) ? value as Row : {};
 
-/** sourceMetadata keys the chatbot's bridge reads (websiteTripBridge.ts there). */
-const BRIDGE_METADATA = ["price_groups", "age_rules", "hotel_profiles", "hotel_links", "canonicalExtraPatch"];
+/**
+ * sourceMetadata keys the chatbot's bridge reads (websiteTripBridge.ts there).
+ * `itineraryMeals` is the chatbot's own per-day "not included / not stated"
+ * baseline: delivered so the bridge can keep those states, but it is not in
+ * SYNCED_METADATA, so it never counts as a staff edit.
+ */
+const BRIDGE_METADATA = ["price_groups", "age_rules", "hotel_profiles", "hotel_links", "canonicalExtraPatch", "itineraryMeals"];
 /** Fields of the chatbot's own source snapshot the bridge uses as a baseline. */
 const SOURCE_FIELDS = ["id", "operator_name", "route_name", "duration_text", "adult_price", "child_price", "infant_price", "currency", "departure_dates", "has_food", "status", "notes", "hotel", "photo_urls"];
 const SOURCE_EXTRA = ["website_summary", "included_items", "excluded_items", "important_notes", "departure_rule", "itinerary_days", "customer_visible", "price_groups", "age_rules", "hotel_profiles", "hotel_links",
@@ -21,7 +26,7 @@ const SOURCE_EXTRA = ["website_summary", "included_items", "excluded_items", "im
 /**
  * Only what the chatbot reads. A full copy carried the chatbot's own derived
  * data back to it (canonicalOffers, conflicts, the whole poster): 726 KB per
- * snapshot on the Санья trip, sent twice, so every delivery was refused as
+ * snapshot on one partner trip, sent twice, so every delivery was refused as
  * too large (HTTP 413) and the 2026-10-26 edit never arrived.
  */
 export function bridgeMetadata(value: unknown): Row {

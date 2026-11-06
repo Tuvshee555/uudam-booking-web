@@ -51,7 +51,8 @@ export function tripMetaDescription(trip: DescribableTrip, now: Date = new Date(
     .map((day) => `${Number(day.slice(5, 7))}/${Number(day.slice(8, 10))}`);
 
   const facts = [
-    trip.durationDays > 0 ? `${trip.durationDays} өдөр ${trip.durationNights} шөнө` : null,
+    // Same wording as formatTripDuration (lib/tripDisplay); a trip with no nights stored never reads "0 шөнө".
+    trip.durationDays > 0 ? `${trip.durationDays} өдөр${trip.durationNights > 0 ? ` ${trip.durationNights} шөнө` : ""}` : null,
     Number.isFinite(trip.price) && trip.price > 0 ? `Үнэ ${money(trip.price)}-с эхлэн` : null,
     nextDates.length ? `Ойрын гарах: ${nextDates.join(", ")}` : null,
   ].filter((part): part is string => Boolean(part));

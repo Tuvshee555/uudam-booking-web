@@ -490,9 +490,16 @@ function buildPayload(form: FormState) {
   const nullableText = (value: string) => value.trim() || null;
   const nullableNumber = (value: string) => numOrUndefined(value) ?? null;
   const passengerFareSummary = passengerSummary(form.passengerPrices);
+  // What the editor does not show (the chatbot's profile `id`, `stars`) is kept from the stored
+  // profile: dropping the id left every price row's `hotel_profile_ids` pointing at nothing.
+  const storedProfiles = (Array.isArray(form.sourceMetadata.hotel_profiles) ? form.sourceMetadata.hotel_profiles : [])
+    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object" && !Array.isArray(item));
+  const storedProfile = (hotel: HotelProfile) => storedProfiles.find((item) => (hotel.id && item.id === hotel.id) || (!hotel.id && item.name === hotel.name)) ?? {};
   const hotelProfiles = form.hotelProfiles
     .filter((hotel) => hotel.name.trim())
     .map((hotel) => ({
+      ...storedProfile(hotel),
+      ...(hotel.id ? { id: hotel.id } : {}),
       name: hotel.name.trim(),
       url: hotel.url.trim(),
       description: hotel.description.trim(),

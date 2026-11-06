@@ -46,9 +46,9 @@ test("public trip responses hide queued edits and staff review history without c
 
 test("a 409 rebase keeps staff's date price when the sync changed other dates and metadata", async () => {
   const { mergeTripEdit } = await import("../src/lib/tripEditPatch.ts");
-  const group = (date, child) => ({ dates: [date], hotel: "Phoenix Island + Paxton", package_id: "Хөтөлбөртэй", adult_price: 2990000, child_price: child });
+  const group = (date, child) => ({ dates: [date], hotel: "Sarnai Island + Altara", package_id: "Хөтөлбөртэй", adult_price: 2990000, child_price: child });
   const dep = (date, status) => ({ startDate: date, price: 2690000, status });
-  const base = { title: "Санья", sourceMetadata: { canonicalOffers: 1, price_groups: [group("2026-11-04", 2590000), group("2026-11-11", 2590000)] },
+  const base = { title: "Таврин", sourceMetadata: { canonicalOffers: 1, price_groups: [group("2026-11-04", 2590000), group("2026-11-11", 2590000)] },
     departures: [dep("2026-10-28", "OPEN"), dep("2026-11-04", "OPEN")] };
   // Staff raise the 11-04 child fare (GTC raised it by 200,000₮).
   const mine = structuredClone(base); mine.sourceMetadata.price_groups[0].child_price = 2790000;
@@ -69,4 +69,14 @@ test("a 409 rebase stops when both sides changed the same fare", async () => {
   const theirs = { departures: [{ startDate: "2026-11-04", childPrice: 2490000 }] };
   const { conflicts } = mergeTripEdit(base, mine, theirs);
   assert.deepEqual(conflicts, ["departures[departure:2026-11-04].childPrice"]);
+});
+
+test("catalogue payloads drop the per-day meal facts with the rest of the itinerary", async () => {
+  const { listTrip } = await import("../src/lib/publicTrip.ts");
+  const trip = { title: "Туршилт", itinerary: [{ dayNumber: 1 }], extraImages: ["x"],
+    sourceMetadata: { itineraryMeals: [{ dayNumber: 1, breakfast: true, lunch: null, dinner: false }], itinerary_days: [{}], marketingBadge: { label: "Хямдрал" } } };
+  const listed = listTrip(trip);
+  assert.deepEqual(listed.sourceMetadata, { marketingBadge: { label: "Хямдрал" } });
+  assert.deepEqual([listed.itinerary, listed.extraImages], [[], []]);
+  assert.ok(trip.sourceMetadata.itineraryMeals, "the stored trip is untouched");
 });

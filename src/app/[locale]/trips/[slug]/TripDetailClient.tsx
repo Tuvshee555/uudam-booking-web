@@ -23,7 +23,7 @@ import {
 import { useLiveDepartures, useTrip, useTrips, useSiteSettings } from "@/hooks/useTrips";
 import type { Trip } from "@/types/trip";
 import { recordRecentlyViewed } from "@/lib/analytics";
-import { formatCategoryName, formatTripTitle, isAllCapsTitle } from "@/lib/tripDisplay";
+import { formatCategoryName, formatTripDuration, formatTripTitle, isAllCapsTitle } from "@/lib/tripDisplay";
 import { availability, formatDepartureDate, startingPrice, upcomingDepartures } from "@/lib/departures";
 import { hasKnownTripPrice } from "@/lib/pricing";
 import { saleBadgeLabel } from "@/lib/tripMarketing";
@@ -33,7 +33,8 @@ import { canonicalPath } from "@/lib/locales";
 import { categoryHref } from "@/lib/siteNav";
 import { parseMediaItems } from "@/lib/media";
 import { splitHealthCheckup } from "@/lib/healthCheckup";
-import { hotelProfilesFromData, type HotelProfile } from "@/lib/hotelLinks";
+import { declaredHotelProfiles, hotelLinkTargets, stayHotelSection, type HotelProfile } from "@/lib/hotelLinks";
+import { pricedHotelOptions } from "@/lib/tripPriceOptions";
 import Breadcrumbs from "@/components/site/Breadcrumbs";
 import TripGallery from "@/components/trip/TripGallery";
 import PhotoCredits from "@/components/trip/PhotoCredits";
@@ -182,9 +183,23 @@ function TripDetailClientInner({
       .map((entry) => entry.candidate);
   }, [trip, allTrips]);
 
-  const hotelProfiles = useMemo(
-    () => trip ? hotelProfilesFromData(trip.sourceMetadata, trip.hotel, trip.hotelMedia) : [],
-    [trip],
+  // The hotels the trip is actually sold with (its price rows), each linked to
+  // its profile by the chatbot's ids or by name, plus profiles a day names; a
+  // trip priced without hotels lists its profiles.
+  const pricedHotels = useMemo(() => trip ? pricedHotelOptions(trip) : [], [trip]);
+  const staySection = useMemo(
+    () => trip
+      ? stayHotelSection(trip.sourceMetadata, trip.hotel, trip.hotelMedia, pricedHotels, trip.itinerary.map((day) => day.accommodation))
+      : { hotels: [], sharedMedia: [] },
+    [trip, pricedHotels],
+  );
+  const hotelProfiles = staySection.hotels;
+  // Every hotel page, under the names the price rows and the days use for it.
+  const hotelLinks = useMemo(
+    () => trip
+      ? hotelLinkTargets(declaredHotelProfiles(trip.sourceMetadata, trip.hotelMedia), [...pricedHotels.map((option) => option.label), ...trip.itinerary.map((day) => day.accommodation)])
+      : [],
+    [trip, pricedHotels],
   );
   const travelerMedia = useMemo(() => parseMediaItems(trip?.travelerMedia) ?? [], [trip]);
   const siteNoticeLines = useMemo(() => noticeLines(siteSettings?.tripNotice), [siteSettings?.tripNotice]);
@@ -276,6 +291,7 @@ function TripDetailClientInner({
     .filter((category): category is NonNullable<typeof category> => Boolean(category))
     .filter((category, index, all) => all.findIndex((entry) => entry.id === category.id) === index);
   const primaryCategory = categoryNames[0];
+  const duration = formatTripDuration(trip.durationDays, trip.durationNights);
   const travelers = trip.maxTravelers
     ? `${trip.minTravelers > 1 ? `${trip.minTravelers}–` : ""}${trip.maxTravelers} хүн`
     : trip.minTravelers > 1 ? `Хамгийн багадаа ${trip.minTravelers} хүн` : null;
@@ -323,10 +339,12 @@ function TripDetailClientInner({
             <h1 className={cn("mt-4 text-balance text-foreground", isAllCapsTitle(title) ? "display-2 tracking-[0.01em]" : "display-1")}>{title}</h1>
             {trip.summary && <p className="lede mt-4 max-w-3xl">{trip.summary}</p>}
             <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-3 text-[14px] text-foreground">
-              <li className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-gold-text" aria-hidden="true" />
-                {trip.durationDays} өдөр{trip.durationNights ? ` · ${trip.durationNights} шөнө` : ""}
-              </li>
+              {duration && (
+                <li className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-gold-text" aria-hidden="true" />
+                  {duration}
+                </li>
+              )}
               <li className="flex items-center gap-2">
                 <CalendarDays className="h-4 w-4 text-gold-text" aria-hidden="true" />
                 {status.kind === "open"
@@ -374,7 +392,7 @@ function TripDetailClientInner({
               </ul>
             )}
             <dl className={cn("grid gap-6 rounded-xl border border-border bg-card p-6 sm:grid-cols-2", (checkup.about.trim() || trip.highlights.length > 0) && "mt-8")}>
-              <Fact icon={Clock} label="Хугацаа" value={`${trip.durationDays} өдөр${trip.durationNights ? `, ${trip.durationNights} шөнө` : ""}`} />
+              {duration && <Fact icon={Clock} label="Хугацаа" value={duration} />}
               {places.length > 0 && <Fact icon={MapPin} label="Чиглэл" value={places.map((place) => (place.label === place.country ? place.label : `${place.label} (${place.country})`)).join(", ")} />}
               {categoryNames.length > 0 && <Fact icon={Compass} label="Аяллын төрөл" value={categoryNames.map((category) => formatCategoryName(category.categoryName)).join(", ")} />}
               {trip.foodIncluded !== null && <Fact icon={Utensils} label="Хоол" value={trip.foodIncluded ? "Хөтөлбөрт заасан хоол багтсан" : "Хоол багцад ороогүй"} />}
@@ -390,13 +408,14 @@ function TripDetailClientInner({
 
           {trip.itinerary.length > 0 && (
             <TripSection id="itinerary" eyebrow={`${trip.itinerary.length} өдөр`} title="Өдөр тутмын хөтөлбөр">
-              <ItineraryTimeline days={trip.itinerary} hotelLinks={hotelProfiles.filter((hotel) => hotel.url)} photoSource={trip} />
+              <ItineraryTimeline days={trip.itinerary} hotelLinks={hotelLinks} photoSource={trip} />
             </TripSection>
           )}
 
           <TripSection id="prices" eyebrow="Үнэ ба огноо" title="Хэзээ, хэдээр">
             <PricingSection
               trip={trip}
+              hotelLinks={hotelLinks}
               activeDate={activeDepartureDate}
               onSelect={(date) => {
                 setChosenDepartureDate(date);
@@ -455,6 +474,11 @@ function TripDetailClientInner({
                       <BedDouble className="mt-0.5 h-5 w-5 shrink-0 text-gold-text" aria-hidden="true" />
                       <HotelNameLink hotel={hotel} />
                     </h3>
+                    {hotel.soldIn.length > 0 && (
+                      <p className="mt-2 pl-[30px] text-[12.5px] leading-relaxed text-muted-foreground">
+                        Үнийн сонголт: <span className="font-semibold text-foreground">{hotel.soldIn.join(" · ")}</span>
+                      </p>
+                    )}
                     {hotel.description && <p className="mt-3 whitespace-pre-line text-[14.5px] leading-relaxed text-muted-foreground">{hotel.description}</p>}
                     {hotel.media.length > 0 && <div className="mt-4"><MediaGallery items={hotel.media} title={hotel.name} /></div>}
                   </article>
@@ -463,6 +487,13 @@ function TripDetailClientInner({
                     <BedDouble className="mt-0.5 h-5 w-5 shrink-0 text-gold-text" aria-hidden="true" />
                     {trip.hotel}
                   </p>
+                )}
+                {/* Older trip-level hotel photos that belong to no one card above. */}
+                {staySection.sharedMedia.length > 0 && (
+                  <div className="rounded-xl border border-border bg-card p-6">
+                    <h3 className="text-[15px] font-semibold text-foreground">Буудлын зураг</h3>
+                    <div className="mt-4"><MediaGallery items={staySection.sharedMedia} title="Буудлын зураг" /></div>
+                  </div>
                 )}
                 <p className="text-[13px] leading-relaxed text-muted-foreground">
                   Буудлын нэрийг хөтөлбөрт бичигдсэнээр харууллаа. «Эсвэл адил зэрэглэлийн» гэж бичсэн бол эцсийн буудлыг захиалга баталгаажих үед ажилтан мэдэгдэнэ.

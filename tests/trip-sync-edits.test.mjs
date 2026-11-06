@@ -46,6 +46,19 @@ test("a new trip is delivered whole, without a baseline", () => {
   assert.equal(payload.changedFields, undefined);
 });
 
+test("the delivery snapshot keeps the per-day meal facts, and they never count as a staff edit", () => {
+  const meals = [{ dayNumber: 1, breakfast: true, lunch: null, dinner: false, note: "Оройн хоол өөрийн зардлаар" }];
+  const synced = trip({ sourceMetadata: { price_groups: [{ adult_price: 1 }], itineraryMeals: meals, canonicalOffers: ["x"] } });
+  assert.deepEqual(syncSnapshot(synced).sourceMetadata, { price_groups: [{ adult_price: 1 }], itineraryMeals: meals });
+  const payload = deliveryPayload({ trip: synced, edits: { summary: null } });
+  assert.deepEqual(payload.trip.sourceMetadata.itineraryMeals, meals);
+  assert.deepEqual(payload.previousTrip.sourceMetadata.itineraryMeals, meals);
+  // A chatbot sync that rewrote the meal facts between two website saves is not a website edit.
+  const rewritten = trip({ sourceMetadata: { ...synced.sourceMetadata, itineraryMeals: [{ ...meals[0], dinner: true }] } });
+  assert.deepEqual(foldSave({}, synced, rewritten), {});
+  assert.deepEqual(payload.changedFields, ["summary"]);
+});
+
 test("retries back off and stop after ten failures", () => {
   assert.deepEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(retryDelayMinutes), [1, 2, 5, 10, 30, 60, 120, 240, 480, null]);
 });
@@ -55,13 +68,13 @@ test("the snapshot keeps only what the chatbot reads (B1: 1.45 MB deliveries wer
   const metadata = {
     websiteSyncPending: { id: "x" }, canonicalOffers: [big], shared_conflicts: [big], contentSnapshot: { big },
     price_groups: [{ adult_price: 1 }], age_rules: { adult: "12+" },
-    connectedSource: { id: "src-1", route_name: "Санья", notes: "", adult_price: 1, photos: [big], poster: { subtitle: "Далай", days: [big] },
+    connectedSource: { id: "src-1", route_name: "Таврин", notes: "", adult_price: 1, photos: [big], poster: { subtitle: "Далай", days: [big] },
       extra: { price_groups: [{ adult_price: 1 }], included_items: ["Нислэг"], shared_conflicts: [big], canonicalOffers: [big] } },
   };
   const snapshot = syncSnapshot(trip({ sourceMetadata: metadata }));
   assert.deepEqual(snapshot.sourceMetadata, {
     price_groups: [{ adult_price: 1 }], age_rules: { adult: "12+" },
-    connectedSource: { id: "src-1", route_name: "Санья", notes: "", adult_price: 1, extra: { price_groups: [{ adult_price: 1 }], included_items: ["Нислэг"] }, poster: { subtitle: "Далай" } },
+    connectedSource: { id: "src-1", route_name: "Таврин", notes: "", adult_price: 1, extra: { price_groups: [{ adult_price: 1 }], included_items: ["Нислэг"] }, poster: { subtitle: "Далай" } },
   });
   assert.ok(JSON.stringify(snapshot).length < 2_000);
   // An old queue entry with the full metadata is slimmed when it is delivered.

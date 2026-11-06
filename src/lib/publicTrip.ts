@@ -24,7 +24,8 @@ export function publicTrip<T extends { sourceMetadata: unknown }>(trip: T): T {
  */
 export function listTrip<T extends { sourceMetadata: unknown; itinerary?: unknown; extraImages?: unknown }>(trip: T): T {
   const base = publicTrip(trip) as T & { sourceMetadata: Record<string, unknown> | null };
-  if (base.sourceMetadata) delete base.sourceMetadata.itinerary_days;
+  // The per-day meal states go with the day-by-day itinerary: drawn only on the trip's page.
+  if (base.sourceMetadata) { delete base.sourceMetadata.itinerary_days; delete base.sourceMetadata.itineraryMeals; }
   return { ...base, itinerary: [], extraImages: [] };
 }
 

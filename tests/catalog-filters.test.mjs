@@ -36,7 +36,7 @@ const trip = (id, extra = {}) => ({
 });
 
 const hainan = trip("hainan", {
-  title: "ХАЙНАН – САНЬЯА АЯЛАЛ",
+  title: "ХАЙНАН – ТАВРИН АЯЛАЛ",
   durationDays: 9,
   categoryId: "flight",
   departures: [

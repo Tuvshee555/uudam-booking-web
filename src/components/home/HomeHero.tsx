@@ -9,7 +9,7 @@ import { ArrowRight, ArrowUpRight, CalendarDays, Compass, MapPin, Pause, Play, S
 import { track } from "@/lib/analytics";
 import { canonicalPath } from "@/lib/locales";
 import { formatMnt } from "@/lib/pricing";
-import { formatTripTitle } from "@/lib/tripDisplay";
+import { formatTripDuration, formatTripTitle } from "@/lib/tripDisplay";
 import type { HeroSlide } from "@/lib/homeSections";
 import { cn } from "@/lib/utils";
 import Listbox from "@/components/ui/listbox";
@@ -230,8 +230,7 @@ export default function HomeHero({
                 </span>
                 <span className="mt-2 line-clamp-2 block text-[15px] font-semibold leading-snug text-white">{formatTripTitle(current.trip.title)}</span>
                 <span className="mt-1.5 block text-[13px] text-white/70">
-                  {current.trip.durationDays} хоног
-                  {current.trip.price ? ` · ${formatMnt(current.trip.price)}-с эхлэн` : ""}
+                  {[formatTripDuration(current.trip.durationDays, current.trip.durationNights), current.trip.price ? `${formatMnt(current.trip.price)}-с эхлэн` : ""].filter(Boolean).join(" · ")}
                 </span>
               </Link>
               {count > 1 && (

@@ -31,6 +31,14 @@ test("hero: staff-chosen photos win, captioned only when they are a live trip's 
   assert.equal(slides[1].trip, null);
 });
 
+test("hero: the caption carries the trip's own nights, not just its days", () => {
+  const long = trip("long", { title: "Норвел", durationDays: 9, durationNights: 7, isFeatured: true });
+  const [slide] = heroSlides([long], now);
+  assert.equal(slide.trip.durationDays, 9);
+  assert.equal(slide.trip.durationNights, 7);
+  assert.equal(heroSlides([trip("old", { isFeatured: true })], now)[0].trip.durationNights, 0, "a trip with no nights stored has none");
+});
+
 test("departures: one row per trip, soonest first, only open dates", () => {
   const a = trip("a", { departures: [departure("a1", "2026-11-20T16:00:00.000Z"), departure("a2", "2026-11-05T16:00:00.000Z", { status: "SOLD_OUT" })] });
   const b = trip("b", { departures: [departure("b1", "2026-11-10T16:00:00.000Z", { price: 2_000_000 }), departure("b2", "2026-11-12T16:00:00.000Z")] });
@@ -41,7 +49,7 @@ test("departures: one row per trip, soonest first, only open dates", () => {
 });
 
 test("destination tiles: bookable places first, photos never repeat or reuse the hero", () => {
-  const hainanA = trip("ha", { title: "ХАЙНАН – САНЬЯА", departures: [departure("x", "2026-11-10T16:00:00.000Z"), departure("y", "2026-11-20T16:00:00.000Z")] });
+  const hainanA = trip("ha", { title: "ХАЙНАН – ТАВРИН", departures: [departure("x", "2026-11-10T16:00:00.000Z"), departure("y", "2026-11-20T16:00:00.000Z")] });
   const hainanB = trip("hb", { title: "хайнан-хайкоу", departures: [departure("z", "2026-12-10T16:00:00.000Z")] });
   const egypt = trip("eg", { title: "ЕГИПЕТ", departures: [departure("e", "2026-12-04T16:00:00.000Z")] });
   const tiles = destinationTiles([egypt, hainanA, hainanB], now, 7, [hainanA.image]);

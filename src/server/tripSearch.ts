@@ -27,6 +27,7 @@ export async function loadSearchableTrips(): Promise<SearchableTrip[]> {
         city: true,
         destinations: true,
         durationDays: true,
+        durationNights: true,
         category: { select: { categoryName: true } },
         categories: { select: { categoryName: true } },
         departures: {

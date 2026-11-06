@@ -20,13 +20,13 @@ test("a multi-country cruise lists every country it calls at", () => {
 });
 
 test("the city a trip flies out of is not one of its destinations", () => {
-  assert.deepEqual(keys("Хайнан-газар нислэг хосолсон - Хөх хотоос Санья нислэгтэй - 12 сарын 15, 20, 25"), ["hainan"]);
-  assert.deepEqual(keys("ХАЙНАН – ХӨХ ХОТООС САНЬЯА НИСЛЭГТЭЙ - 1"), ["hainan"]);
+  assert.deepEqual(keys("Хайнан-газар нислэг хосолсон - Хөх хотоос Таврин нислэгтэй - 12 сарын 15, 20, 25"), ["hainan"]);
+  assert.deepEqual(keys("ХАЙНАН – ХӨХ ХОТООС ТАВРИН НИСЛЭГТЭЙ - 1"), ["hainan"]);
   assert.deepEqual(keys("ХӨХ ХОТЫН БҮТЭН БИЕИЙН ШИНЖИЛГЭЭТЭЙ АЯЛАЛ"), ["inner-mongolia"], "a genitive form is still the destination");
 });
 
 test("inflected names still match, but never inside another word", () => {
-  assert.deepEqual(keys("ТАЙЛАНДЫН АЯЛАЛ — БАНГКОК, ПАТТАЯА"), ["thailand"]);
+  assert.deepEqual(keys("ТАЙЛАНДЫН АЯЛАЛ — БАНГКОК, ТАВРИН"), ["thailand"]);
   assert.deepEqual(keys("Хонобали амралт"), []);
   assert.deepEqual(keys("Фүкүока хотын аялал"), ["japan"], "Fukuoka is not Vietnam's Phu Quoc");
 });
@@ -42,7 +42,7 @@ test("folding forgives missing Mongolian letters", () => {
 
 test("counts list the most-sold destination first", () => {
   const counts = destinationCounts([
-    { title: "ХАЙНАН – САНЬЯА АЯЛАЛ" },
+    { title: "ХАЙНАН – ТАВРИН АЯЛАЛ" },
     { title: "хайнан-хайкоу нислэгтэй" },
     { title: "ВЬЕТНАМ — ДАНАНГ АЯЛАЛ" },
   ]);

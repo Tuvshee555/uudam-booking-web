@@ -14,7 +14,7 @@ import { tripDestinations } from "@/lib/destinations";
 import { canonicalPath } from "@/lib/locales";
 import { formatMnt, hasKnownTripPrice } from "@/lib/pricing";
 import { track } from "@/lib/analytics";
-import { formatTripTitle } from "@/lib/tripDisplay";
+import { formatTripDuration, formatTripTitle } from "@/lib/tripDisplay";
 import { cn } from "@/lib/utils";
 import Listbox from "@/components/ui/listbox";
 
@@ -325,8 +325,12 @@ export default function DeparturesPageClient({ trips, today: renderedToday, now:
                         {formatTripTitle(row.trip.title)}
                       </span>
                       <span className="mt-1 flex flex-wrap items-center gap-x-2 text-[12.5px] text-muted-foreground">
-                        {row.trip.durationDays} хоног
-                        <span aria-hidden="true">·</span>
+                        {formatTripDuration(row.trip.durationDays, row.trip.durationNights) && (
+                          <>
+                            {formatTripDuration(row.trip.durationDays, row.trip.durationNights)}
+                            <span aria-hidden="true">·</span>
+                          </>
+                        )}
                         <span className={cn("font-medium", !row.open ? "text-destructive" : row.tight ? "text-warning" : "text-success")}>{row.label}</span>
                       </span>
                     </span>

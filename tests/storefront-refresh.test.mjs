@@ -29,15 +29,15 @@ const trip = {
   isPublished: true,
   title: "Хайнань 7 хоног",
   country: "Хятад",
-  city: "Санья",
-  destinations: ["Санья", "Хайкоу"],
+  city: "Таврин",
+  destinations: ["Таврин", "Хайкоу"],
   categoryId: "asia",
   categories: [{ id: "asia" }, { id: "sea" }],
 };
 
 test("only edits the menu shows refresh every page", () => {
   assert.equal(menuFieldsChanged(trip, { ...trip }), false);
-  assert.equal(menuFieldsChanged(trip, { ...trip, destinations: ["Хайкоу", "Санья"], categories: [{ id: "sea" }, { id: "asia" }] }), false, "order alone");
+  assert.equal(menuFieldsChanged(trip, { ...trip, destinations: ["Хайкоу", "Таврин"], categories: [{ id: "sea" }, { id: "asia" }] }), false, "order alone");
   assert.equal(menuFieldsChanged(trip, { ...trip, isPublished: false }), true, "withdrawn");
   assert.equal(menuFieldsChanged(null, trip), true, "new and published");
   assert.equal(menuFieldsChanged(null, { ...trip, isPublished: false }), false, "new draft");

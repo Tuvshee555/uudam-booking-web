@@ -6,14 +6,9 @@ import { BedDouble, Check, ChevronDown, ExternalLink, MapPin, X } from "lucide-r
 
 import { photoAlt } from "@/lib/photoCredits";
 import { hotelTextSegments, type HotelLink } from "@/lib/hotelLinks";
+import { dayMealView, syncedMealsByDay } from "@/lib/itineraryMeals";
 import type { Trip } from "@/types/trip";
 import { cn } from "@/lib/utils";
-
-const MEAL_SLOTS = [
-  { match: /өглөө/i, label: "Өглөө" },
-  { match: /өдөр/i, label: "Өдөр" },
-  { match: /орой/i, label: "Орой" },
-] as const;
 
 /**
  * The day-by-day programme as a timeline. Every day's text stays in the HTML
@@ -31,9 +26,9 @@ export default function ItineraryTimeline({
 }) {
   const [open, setOpen] = useState<Set<string>>(() => new Set(days.slice(0, 1).map((day) => day.id)));
   const allOpen = open.size === days.length;
-  // A trip whose days carry no meal data says nothing about meals; once any
-  // day has them, every day shows all three so a missing meal reads as "not included".
-  const showMeals = days.some((day) => day.meals.length > 0);
+  // The chatbot's per-day meal facts, only while they still line up with these
+  // days (a website save renumbers days until the next sync): syncedMealsByDay.
+  const syncedMeals = syncedMealsByDay(photoSource.sourceMetadata, days);
 
   const toggle = (id: string) =>
     setOpen((current) => {
@@ -61,6 +56,10 @@ export default function ItineraryTimeline({
         {days.map((day, index) => {
           const isOpen = open.has(day.id);
           const panelId = `day-panel-${day.id}`;
+          // Only what the data says: an included meal gets ✓, a meal the data
+          // calls not included gets ✗ (from the day's list or the chatbot's
+          // per-day facts), and an unmentioned meal shows nothing.
+          const { slots: meals, note: mealNote } = dayMealView(day.meals, syncedMeals[index]);
           return (
             <li key={day.id} className="relative pb-3 last:pb-0">
               <button
@@ -103,21 +102,28 @@ export default function ItineraryTimeline({
                       </figure>
                     )}
                     {day.video && <video src={day.video} controls preload="metadata" playsInline className="mt-4 aspect-video w-full max-w-2xl rounded-lg bg-black print:hidden" />}
-                    {(showMeals || day.accommodation) && (
+                    {(meals.length > 0 || mealNote || day.accommodation) && (
                       <div className="mt-4 flex flex-col gap-3 rounded-lg bg-secondary/60 p-3.5 sm:flex-row sm:items-center sm:justify-between">
-                        {showMeals && (
+                        {(meals.length > 0 || mealNote) && (
+                          <div className="min-w-0">
+                        {meals.length > 0 && (
                           <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-[13px]" aria-label="Хоол">
-                            {MEAL_SLOTS.map(({ match, label }) => {
-                              const included = day.meals.some((meal) => match.test(meal));
+                            {meals.map(({ key, label, state }) => {
+                              const included = state === "included";
                               return (
-                                <li key={label} className={cn("flex items-center gap-1.5", included ? "font-semibold text-foreground" : "text-muted-foreground")}>
+                                <li key={key} className={cn("flex items-center gap-1.5", included ? "font-semibold text-foreground" : "text-muted-foreground")}>
                                   {included ? <Check className="h-4 w-4 text-success" aria-hidden="true" /> : <X className="h-4 w-4 text-muted-foreground/60" aria-hidden="true" />}
                                   {label}
-                                  <span className="sr-only">{included ? "хоол багтсан" : "хоол багтаагүй"}</span>
+                                  {included
+                                    ? <span className="sr-only">хоол багтсан</span>
+                                    : <span className="text-[12px] font-normal">· багтаагүй</span>}
                                 </li>
                               );
                             })}
                           </ul>
+                        )}
+                        {mealNote && <p className={cn("text-[13px] leading-relaxed text-ink-soft", meals.length > 0 && "mt-1.5")}><span className="font-semibold text-foreground">Хоол:</span> {mealNote}</p>}
+                          </div>
                         )}
                         {day.accommodation && (
                           <p className="flex items-center gap-1.5 text-[13px] text-foreground">

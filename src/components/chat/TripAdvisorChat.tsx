@@ -9,6 +9,7 @@ import { api } from "@/lib/api";
 import { CONTACT, hasLink } from "@/lib/contact";
 import { track } from "@/lib/analytics";
 import { formatMnt } from "@/lib/pricing";
+import { formatTripDuration } from "@/lib/tripDisplay";
 import { useAdvisorChat } from "@/lib/chatStore";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import { isAllowedImageHost } from "@/lib/imageHosts";
@@ -22,6 +23,8 @@ type ChatItem = {
   price: number | null;
   image: string | null;
   durationDays: number;
+  /** Absent from answers cached before nights were sent. */
+  durationNights?: number;
   country: string | null;
   /** The next open dates and their fares, as the trip page lists them. */
   nextDepartures?: { date: string; label: string; price: number | null }[];
@@ -136,7 +139,7 @@ export default function TripAdvisorChat() {
                           <div className="min-w-0">
                             <div className="truncate text-xs font-semibold text-foreground">{item.name}</div>
                             <div className="text-[11px] text-muted-foreground">
-                              {item.durationDays} хоног · {item.price !== null ? `${formatMnt(item.price)}-с` : "Үнэ лавлах"}
+                              {[formatTripDuration(item.durationDays, item.durationNights), item.price !== null ? `${formatMnt(item.price)}-с` : "Үнэ лавлах"].filter(Boolean).join(" · ")}
                             </div>
                             {item.nextDepartures && item.nextDepartures.length > 0 && (
                               <div className="truncate text-[11px] text-muted-foreground">

@@ -20,6 +20,19 @@ export function formatCategoryName(name: string): string {
 }
 
 /**
+ * The trip's length the way the trip page, the poster and the chatbot all say
+ * it: "9 өдөр 8 шөнө". Nights come from the trip itself (a 9-day trip can be
+ * 7 nights), never worked out from the days; a trip with no nights stored says
+ * only the days. An unknown length (0 days) is an empty string, not "0 өдөр".
+ */
+export function formatTripDuration(days: number | null | undefined, nights?: number | null): string {
+  const dayCount = typeof days === "number" && Number.isFinite(days) ? Math.round(days) : 0;
+  if (dayCount <= 0) return "";
+  const nightCount = typeof nights === "number" && Number.isFinite(nights) ? Math.round(nights) : 0;
+  return nightCount > 0 ? `${dayCount} өдөр ${nightCount} шөнө` : `${dayCount} өдөр`;
+}
+
+/**
  * Many titles arrive in capitals ("ХАЙНАН АРЛЫН АЯЛАЛ"). Rewriting their case
  * would misspell proper nouns, so the page sets them in a smaller, tracked
  * cut instead of letting them shout.

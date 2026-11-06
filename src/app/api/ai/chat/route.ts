@@ -3,6 +3,7 @@ import { loadSearchableTrips, searchTrips, type SearchableTrip } from "@/server/
 import { asksToBook, describeOffer, questionMonth, STAFF_CONFIRM_LINE, tripOffer, type NextDeparture } from "@/lib/tripAdvisor";
 import { openaiJson } from "@/server/openai";
 import { formatMnt } from "@/lib/pricing";
+import { formatTripDuration } from "@/lib/tripDisplay";
 
 type ChatItem = {
   id: string;
@@ -12,6 +13,7 @@ type ChatItem = {
   price: number | null;
   image: string | null;
   durationDays: number;
+  durationNights: number;
   country: string | null;
   nextDepartures: NextDeparture[];
   openCount: number;
@@ -26,6 +28,7 @@ function toItem(trip: SearchableTrip, now: number, month: number | null): ChatIt
     price: offer.fromPrice,
     image: trip.image || null,
     durationDays: trip.durationDays,
+    durationNights: trip.durationNights ?? 0,
     country: trip.country,
     nextDepartures: offer.nextDepartures,
     openCount: offer.openCount,
@@ -97,7 +100,7 @@ export const POST = handler(async (req: Request) => {
       const dates = offer.nextDepartures.length
         ? offer.nextDepartures.map((entry) => `${entry.label}${entry.price !== null ? ` (${formatMnt(entry.price)})` : ""}`).join(", ") + (offer.openCount > offer.nextDepartures.length ? ` ба өөр ${offer.openCount - offer.nextDepartures.length} огноо` : "")
         : "нээлттэй огноо алга";
-      return `ID:${trip.id} | НЭР:${trip.title.replace(/[\n\r]/g, " ")} | ҮНЭ:${offer.fromPrice !== null ? `${formatMnt(offer.fromPrice)}-с эхэлнэ` : "ажилтнаас лавлана"} | ХОНОГ:${trip.durationDays} | ОЙРЫН ОГНОО:${dates} | ГАЗАР:${[trip.country, trip.city].filter(Boolean).join(", ")}`;
+      return `ID:${trip.id} | НЭР:${trip.title.replace(/[\n\r]/g, " ")} | ҮНЭ:${offer.fromPrice !== null ? `${formatMnt(offer.fromPrice)}-с эхэлнэ` : "ажилтнаас лавлана"} | ХУГАЦАА:${formatTripDuration(trip.durationDays, trip.durationNights) || "ажилтнаас лавлана"} | ОЙРЫН ОГНОО:${dates} | ГАЗАР:${[trip.country, trip.city].filter(Boolean).join(", ")}`;
     })
     .join("\n");
 

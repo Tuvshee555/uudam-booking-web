@@ -6,7 +6,7 @@ import { checkCatalog, checkTrip, comparePartnerFares } from "../src/lib/tripHea
 const TODAY = "2026-10-20";
 const NOW = Date.parse("2026-10-20T04:00:00Z");
 const dep = (day, extra = {}) => ({ startDate: `${day}T00:00:00.000Z`, status: "OPEN", price: 2690000, childPrice: 2390000, seatsLeft: null, ...extra });
-const trip = (extra = {}) => ({ id: "t1", slug: "sanya", title: "ХАЙНАН – САНЬЯА АЯЛАЛ", isPublished: true, price: 2690000, image: "x.jpg", sourceMetadata: {}, departures: [dep("2026-11-04")], ...extra });
+const trip = (extra = {}) => ({ id: "t1", slug: "tavrin", title: "ХАЙНАН – ТАВРИН АЯЛАЛ", isPublished: true, price: 2690000, image: "x.jpg", sourceMetadata: {}, departures: [dep("2026-11-04")], ...extra });
 const codes = (issues) => issues.map((issue) => issue.code).sort();
 
 test("a clean published trip has no issues; a draft is never checked", () => {
@@ -26,15 +26,15 @@ test("child fares above adult fares and bookable dates without a price are error
   assert.deepEqual(codes(issues), ["child_over_adult", "date_without_price"]);
 });
 
-test("Санья: a live date without the hotel/package rows other dates have is an error", () => {
-  const row = (date) => ({ date_keys: [date], hotel: "Phoenix Island 5*", package_id: "Хөтөлбөргүй", adult_price: 3290000 });
+test("Таврин: a live date without the hotel/package rows other dates have is an error", () => {
+  const row = (date) => ({ date_keys: [date], hotel: "Sarnai Island 5*", package_id: "Хөтөлбөргүй", adult_price: 3290000 });
   const issues = checkTrip(trip({ sourceMetadata: { price_groups: [row("2026-10-01")] }, departures: [dep("2026-10-01", { status: "DEPARTED" }), dep("2026-11-04")] }), TODAY, NOW);
   assert.deepEqual(codes(issues), ["date_without_options"]);
 });
 
 test("a weekday in the title must match the bookable dates (Cyrillic, incl. Ням)", () => {
-  assert.deepEqual(codes(checkTrip(trip({ title: "САНЬЯА-Лхагва", departures: [dep("2026-11-04")] }), TODAY, NOW)), []);
-  assert.deepEqual(codes(checkTrip(trip({ title: "САНЬЯА-Лхагва", departures: [dep("2026-11-05")] }), TODAY, NOW)), ["weekday_mismatch"]);
+  assert.deepEqual(codes(checkTrip(trip({ title: "ТАВРИН-Лхагва", departures: [dep("2026-11-04")] }), TODAY, NOW)), []);
+  assert.deepEqual(codes(checkTrip(trip({ title: "ТАВРИН-Лхагва", departures: [dep("2026-11-05")] }), TODAY, NOW)), ["weekday_mismatch"]);
   assert.deepEqual(codes(checkTrip(trip({ title: "Ням гарагийн аялал", departures: [dep("2026-11-08")] }), TODAY, NOW)), []);
   assert.deepEqual(codes(checkTrip(trip({ title: "Нямбуугийн аялал", departures: [dep("2026-11-04")] }), TODAY, NOW)), []);
 });
@@ -57,15 +57,15 @@ test("a retried, stopped, conflicting or partly ignored sync is visible with its
 });
 
 test("sold-out-only and duplicate published trips are warnings", () => {
-  const issues = checkCatalog([trip({ departures: [dep("2026-11-04", { status: "SOLD_OUT" })] }), trip({ id: "t2", slug: "sanya-2" })], TODAY, NOW);
+  const issues = checkCatalog([trip({ departures: [dep("2026-11-04", { status: "SOLD_OUT" })] }), trip({ id: "t2", slug: "tavrin-2" })], TODAY, NOW);
   assert.deepEqual(codes(issues), ["duplicate_title", "duplicate_title", "no_bookable_date"]);
   assert.ok(issues.every((issue) => issue.severity === "warning"));
 });
 
 test("GTC drift: a raised child fare and a missing date are reported", () => {
-  const ours = trip({ sourceMetadata: { price_groups: [{ date_keys: ["2026-11-04"], hotel: "Phoenix Island + Paxton", package_id: "Хөтөлбөртэй", adult_price: 2990000,
+  const ours = trip({ sourceMetadata: { price_groups: [{ date_keys: ["2026-11-04"], hotel: "Sarnai Island + Altara", package_id: "Хөтөлбөртэй", adult_price: 2990000,
     single_price: 650000, passenger_prices: [{ age_range: "6-11 нас", price: 2590000 }, { age_range: "2-5 нас", price: 2390000 }, { age_range: "0-2 нас", price: 450000 }] }] } });
-  const fare = (date, child611) => ({ date, hotel: "Phoenix Island + Paxton", packageId: "Хөтөлбөртэй", adult: 2990000, child611, child25: 2390000, infant: 450000, single: 650000 });
+  const fare = (date, child611) => ({ date, hotel: "Sarnai Island + Altara", packageId: "Хөтөлбөртэй", adult: 2990000, child611, child25: 2390000, infant: 450000, single: 650000 });
   assert.deepEqual(comparePartnerFares(ours, "GTC", [fare("2026-11-04", 2590000)], TODAY), []);
   const issues = comparePartnerFares(ours, "GTC", [fare("2026-11-04", 2790000), fare("2026-11-11", 2790000), fare("2026-10-01", 1)], TODAY);
   assert.deepEqual(codes(issues), ["partner_date_missing", "partner_price_drift"]);

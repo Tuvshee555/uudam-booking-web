@@ -10,11 +10,12 @@ import { getVisitorId, track } from "@/lib/analytics";
 import { ageBandsFor, fareFor, formatMnt, hasKnownTripPrice, hasMissingPassengerFare, lineTotal, passengerFareLabel, resolvePrices } from "@/lib/pricing";
 import { availability, formatFullDate, formatDepartureDate, startingPrice, upcomingDepartures } from "@/lib/departures";
 import { saleBadgeLabel } from "@/lib/tripMarketing";
-import { datePriceOptions, formatAdultOption, formatPriceDelta, hasVariablePricing, priceDimensionOptions } from "@/lib/tripPriceOptions";
+import { datePriceOptions, formatAdultOption, formatPassengerOption, formatPriceDelta, hasVariablePricing, priceDimensionOptions, quoteRange } from "@/lib/tripPriceOptions";
 import { roundTemp, shortDate, weatherIcon, weatherLabel, type TripWeatherReport } from "@/lib/weather";
 import { emailError, formatPhoneInput, nameError, phoneError } from "@/lib/formValidation";
 import { canonicalPath } from "@/lib/locales";
 import { formatTripTitle } from "@/lib/tripDisplay";
+import { formatHotelName } from "@/lib/hotelLinks";
 import DepartureDatePicker from "./DepartureDatePicker";
 import { departureDateKey } from "@/lib/departureDate";
 import { useTripWeather } from "./TripWeather";
@@ -225,15 +226,24 @@ export default function BookingPanel({
   // old generic child/infant counters: that hides valid prices such as 2-5.
   const missingMinorFare = hasMissingPassengerFare({ children, infants }, prices);
   const requiresQuote = quoteOnly || specialTiers.length > 0 || missingMinorFare;
-  const tierKey = (item: typeof specialTiers[number]) => `${item.label}|${item.ageRange}`;
-  const tierTotal = specialTiers.reduce((sum, item) => sum + (tierCounts[tierKey(item)] || 0) * (item.price || 0), 0);
-  const missingTierPrice = specialTiers.some((item) => (tierCounts[tierKey(item)] || 0) > 0 && item.price == null);
-  const quoteMin = missingTierPrice || missingMinorFare ? null : adults * (option?.adult ?? prices.adult) + tierTotal;
-  const quoteMax = option?.adultMax != null ? adults * option.adultMax + tierTotal : quoteMin;
+  // The band's own key (label, age range, condition, "#2" for a repeat): two bands
+  // that differ only by height or bed never share a counter or a count.
+  const tierKey = (item: typeof specialTiers[number]) => item.key;
+  const tierCount = (item: typeof specialTiers[number]) => tierCounts[tierKey(item)] || 0;
+  // A hotel or package choice with no published fare is quoted by staff; only a
+  // plain price row with no adult figure of its own falls back to the date's fare.
+  const optionIsChoice = option != null && choiceOptions.includes(option);
+  const adultLow: number | null = option && optionIsChoice ? option.adult : option?.adult ?? prices.adult;
+  const adultHigh = option?.adult != null && option.adultMax != null ? option.adultMax : adultLow;
+  // A band priced as a range widens the estimate to the whole range (quoteRange).
+  const quote = missingMinorFare ? null : quoteRange(adults, { low: adultLow, high: adultHigh },
+    specialTiers.map((item) => ({ count: tierCount(item), price: item.price, priceMax: item.priceMax })));
+  const quoteMin = quote?.min ?? null;
+  const quoteMax = quote?.max ?? null;
   const saleLabel = saleBadgeLabel(trip);
   const adultHint = option?.adultMax != null && option.adultMax > (option.adult ?? 0)
     ? [ageBands.adult, `${formatAdultOption(option)} / хүн`].filter(Boolean).join(" · ")
-    : pricedHint(ageBands.adult, option?.adult ?? prices.adult);
+    : pricedHint(ageBands.adult, adultLow);
   const fromPrice = startingPrice(trip, now);
   const multiplePrices = fromPrice !== trip.price || new Set(openDepartures.filter((d) => availability(d).selectable).map((d) => d.price ?? trip.price)).size > 1;
 
@@ -377,7 +387,7 @@ export default function BookingPanel({
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold-text">{requiresQuote ? "Үнийн санал" : "Онлайн захиалга"}</p>
           {option?.packageId && (
-            <div className="mt-2 inline-flex rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold text-primary-foreground">{option.packageId}</div>
+            <div className="mt-2 inline-flex rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold text-primary-foreground">{option.packageLabel || option.packageId}</div>
           )}
           {/* Without a chosen date this is the cheapest bookable fare, said so
               out loud: quoting the base fare showed 4,590,000₮ on a trip whose
@@ -412,6 +422,18 @@ export default function BookingPanel({
           )}
         </dl>
       )}
+      {/* A quoted trip still states the chosen hotel's own supplement and the row's note. */}
+      {requiresQuote && option?.singleSupplement != null && option.singleSupplement > 0 && (
+        <p className="mt-3 flex justify-between gap-3 border-t border-border pt-3 text-[12.5px] text-muted-foreground">
+          <span>Ганц хүний өрөө{option.hotel ? ` · ${formatHotelName(option.hotel)}` : ""}</span>
+          <span className="shrink-0 font-semibold text-foreground">+{formatMnt(option.singleSupplement)}</span>
+        </p>
+      )}
+      {(option?.rowLabel || option?.note) && (
+        <p className="mt-2 whitespace-pre-line text-[12.5px] leading-relaxed text-muted-foreground">
+          {[option.rowLabel, option.note].filter(Boolean).join("\n")}
+        </p>
+      )}
 
       {step !== "done" && <StepIndicator step={step} />}
 
@@ -435,7 +457,8 @@ export default function BookingPanel({
                 onClick={() => { setSelectedOptionKey(item.optionKey); setTierCounts({}); }}
                 className={cn("rounded-lg border px-3 py-3 text-left transition-colors focus-ring", option?.packageId === item.id ? "border-primary bg-primary/5" : "border-border hover:border-foreground/35")}>
                 <span className="block text-[13px] font-semibold text-foreground">{item.label}</span>
-                <span className="mt-1 block text-[12px] text-muted-foreground">{formatPriceDelta(item)}</span>
+                <span className="mt-1 block text-[12.5px] font-bold tabular-nums text-foreground">{formatAdultOption(item)}</span>
+                {item.adult != null && <span className="block text-[11.5px] text-muted-foreground">{formatPriceDelta(item)}</span>}
               </button>)}
             </div>
           </div>}
@@ -446,9 +469,13 @@ export default function BookingPanel({
               {hotelChoices.map((item) => <button key={item.id} type="button" aria-pressed={option?.hotel === item.id}
                 onClick={() => { setSelectedOptionKey(item.optionKey); setTierCounts({}); }}
                 className={cn("w-full rounded-lg border px-3 py-2.5 text-left transition-colors focus-ring", option?.hotel === item.id ? "border-primary bg-primary/5" : "border-border hover:border-foreground/35")}>
-                <span className="flex items-center justify-between gap-2">
-                  <span className="min-w-0 text-[13px] font-semibold text-foreground">{item.label}</span>
-                  <span className="shrink-0 text-[12px] font-bold tabular-nums text-foreground">{formatPriceDelta(item)}</span>
+                <span className="flex items-start justify-between gap-2">
+                  <span className="min-w-0 text-[13px] font-semibold text-foreground">{formatHotelName(item.label)}</span>
+                  <span className="shrink-0 text-right">
+                    {/* A ranged row prints its range, never its minimum as if it were exact. */}
+                    <span className="block text-[12.5px] font-bold tabular-nums text-foreground">{formatAdultOption(item)}</span>
+                    {item.adult != null && <span className="block text-[11.5px] text-muted-foreground">{formatPriceDelta(item)}</span>}
+                  </span>
                 </span>
               </button>)}
             </div>
@@ -457,8 +484,8 @@ export default function BookingPanel({
           <div className="mt-5 divide-y divide-border border-t border-border">
             <Counter label="Том хүн" hint={adultHint} value={adults} onChange={setAdults} min={1} />
             {requiresQuote && specialTiers.length > 0 ? specialTiers.map((item) =>
-              <Counter key={tierKey(item)} label={item.label} hint={[item.ageRange, item.price === 0 ? "Үнэгүй" : !hasKnownTripPrice(item.price) ? "Үнэ лавлах" : formatMnt(item.price)].filter(Boolean).join(" · ")}
-                value={tierCounts[tierKey(item)] || 0} onChange={(value) => setTierCounts((current) => ({ ...current, [tierKey(item)]: value }))} />
+              <Counter key={tierKey(item)} label={item.label} hint={[item.ageRange, formatPassengerOption(item)].filter(Boolean).join(" · ")}
+                value={tierCount(item)} onChange={(value) => setTierCounts((current) => ({ ...current, [tierKey(item)]: value }))} />
             ) : <>
               <Counter label="Хүүхэд" hint={[ageBands.child, childFareLabel].filter(Boolean).join(" · ")} value={children} onChange={setChildren} />
               <Counter label="Нярай" hint={[ageBands.infant, infantFareLabel].filter(Boolean).join(" · ")} value={infants} onChange={setInfants} />

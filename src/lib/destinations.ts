@@ -68,7 +68,7 @@ type Placeable = {
 };
 
 /**
- * "-аас/-ээс/-оос/-өөс" (from): "Хөх хотоос Санья нислэгтэй" is a Hainan trip
+ * "-аас/-ээс/-оос/-өөс" (from): "Хөх хотоос Таврин нислэгтэй" is a Hainan trip
  * that flies out of Hohhot, not a trip to Hohhot.
  */
 const ORIGIN_SUFFIX = /^г?(оос|ээс|аас)$/;

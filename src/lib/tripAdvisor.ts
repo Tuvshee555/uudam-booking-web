@@ -3,6 +3,7 @@ import { availability, formatDepartureDate, startingPrice, upcomingDepartures } 
 import { departureDateKey } from "./departureDate.js";
 import { fold, tripDestinations } from "./destinations";
 import { formatMnt, hasKnownTripPrice } from "./pricing";
+import { formatTripDuration } from "./tripDisplay";
 
 /**
  * The on-site trip advisor's matching and facts, kept pure so the tests can
@@ -36,6 +37,8 @@ export type SearchableTrip = {
   city: string | null;
   destinations: string[];
   durationDays: number;
+  /** Stored nights ("9 өдөр 8 шөнө"); absent on older fixtures, which then say days only. */
+  durationNights?: number;
   departures: SearchableDeparture[];
   category: { categoryName: string } | null;
   categories: { categoryName: string }[];
@@ -257,5 +260,6 @@ export function describeOffer(trip: SearchableTrip, offer: TripOffer): string {
   const dates = offer.nextDepartures.length
     ? `ойрын огноо: ${offer.nextDepartures.map((entry) => `${entry.label}${entry.price !== null ? ` (${formatMnt(entry.price)})` : ""}`).join(", ")}${offer.openCount > offer.nextDepartures.length ? ` +${offer.openCount - offer.nextDepartures.length} огноо` : ""}`
     : "одоогоор нээлттэй огноо алга — огноог ажилтнаас лавлана";
-  return `${trip.title} — ${trip.durationDays} хоног, ${price}; ${dates}`;
+  const duration = formatTripDuration(trip.durationDays, trip.durationNights);
+  return `${trip.title} — ${duration ? `${duration}, ` : ""}${price}; ${dates}`;
 }

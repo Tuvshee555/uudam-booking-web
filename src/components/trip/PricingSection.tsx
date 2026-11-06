@@ -1,17 +1,37 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BedDouble, Check, ReceiptText, Users } from "lucide-react";
+import { BedDouble, Check, ReceiptText, Table2, Users } from "lucide-react";
 
 import { availability, upcomingDepartures } from "@/lib/departures";
 import { departureDateKey } from "@/lib/departureDate";
-import { dayTitle } from "@/lib/calendar";
+import { dayTitle, ulaanbaatarDay } from "@/lib/calendar";
 import { ageBandsFor, formatMnt, hasKnownTripPrice, passengerFareLabel, resolvePrices } from "@/lib/pricing";
 import { datePriceOptions, hasVariablePricing } from "@/lib/tripPriceOptions";
+import { priceTableBlocks } from "@/lib/tripPriceTable";
+import type { HotelLink } from "@/lib/hotelLinks";
 import type { Trip } from "@/types/trip";
 import { cn } from "@/lib/utils";
+import PriceTable from "./PriceTable";
 
 const INITIAL_ROWS = 8;
+
+/** Package descriptions staff wrote in package_options (never an invented default). */
+function packageNotes(trip: Trip): Array<{ label: string; note: string }> {
+  const options = Array.isArray(trip.sourceMetadata?.package_options) ? trip.sourceMetadata.package_options : [];
+  return options.flatMap((value) => {
+    const item = value && typeof value === "object" ? value as Record<string, unknown> : {};
+    const label = String(item.label || item.id || "").trim();
+    const note = typeof item.note === "string" ? item.note.trim() : "";
+    return label && note ? [{ label, note }] : [];
+  });
+}
+
+/** A date's own row names and notes ("Эрт захиалгын үнэ"), shown under that date. */
+function dateRowNotes(trip: Trip, departure: Parameters<typeof datePriceOptions>[1]): string[] {
+  const lines = datePriceOptions(trip, departure).flatMap((option) => [option.rowLabel, option.note]).filter(Boolean);
+  return [...new Set(lines)];
+}
 
 function InfoList({ icon: Icon, title, items }: { icon: typeof ReceiptText; title: string; items: string[] }) {
   return (
@@ -39,15 +59,20 @@ export default function PricingSection({
   trip,
   activeDate,
   onSelect,
+  hotelLinks = [],
 }: {
   trip: Trip;
   activeDate?: string;
   onSelect: (date: string) => void;
+  /** Hotel pages, so a hotel named in the price table links to it. */
+  hotelLinks?: HotelLink[];
 }) {
   const [now] = useState(() => Date.now());
   const [all, setAll] = useState(false);
   const departures = useMemo(() => upcomingDepartures(trip, now), [trip, now]);
   const variable = hasVariablePricing(trip);
+  const blocks = useMemo(() => variable ? priceTableBlocks(trip, departures) : [], [variable, trip, departures]);
+  const notes = useMemo(() => packageNotes(trip), [trip]);
   const ageBands = ageBandsFor(trip.sourceMetadata);
   const selected = departures.find((departure) => departureDateKey(departure.startDate) === activeDate)
     ?? departures.find((departure) => availability(departure).selectable)
@@ -55,7 +80,10 @@ export default function PricingSection({
   const prices = resolvePrices(trip, selected);
   const options = selected ? datePriceOptions(trip, selected) : [];
   const optionAdults = options.flatMap((option) => [option.adult, option.adultMax]).filter((value): value is number => typeof value === "number");
-  const singleSupplement = options.find((option) => option.singleSupplement != null)?.singleSupplement ?? trip.singleSupplement;
+  // Several hotels can each carry their own supplement; one figure would be wrong for the rest.
+  const supplements = [...new Set(options.map((option) => option.singleSupplement).filter((value): value is number => typeof value === "number" && value > 0))];
+  const supplementValues = supplements.length ? supplements
+    : typeof trip.singleSupplement === "number" && trip.singleSupplement > 0 ? [trip.singleSupplement] : [];
 
   const fares = variable && optionAdults.length
     ? [{ label: "Том хүн", band: ageBands.adult, value: optionAdults.length > 1 ? `${formatMnt(Math.min(...optionAdults))}–${formatMnt(Math.max(...optionAdults))}` : formatMnt(optionAdults[0]) }]
@@ -64,8 +92,14 @@ export default function PricingSection({
         { label: "Хүүхэд", band: ageBands.child, value: passengerFareLabel(trip.sourceMetadata, "child", prices.child) },
         { label: "Нярай", band: ageBands.infant, value: passengerFareLabel(trip.sourceMetadata, "infant", prices.infant) },
       ];
-  if (typeof singleSupplement === "number" && singleSupplement > 0) {
-    fares.push({ label: "Ганц хүний өрөө", band: "нэмэгдэл", value: `+${formatMnt(singleSupplement)}` });
+  if (supplementValues.length) {
+    fares.push({
+      label: "Ганц хүний өрөө",
+      band: supplementValues.length > 1 ? "нэмэгдэл · буудлаас хамаарна" : "нэмэгдэл",
+      value: supplementValues.length > 1
+        ? `+${formatMnt(Math.min(...supplementValues))}–${formatMnt(Math.max(...supplementValues))}`
+        : `+${formatMnt(supplementValues[0])}`,
+    });
   }
 
   const shown = all ? departures : departures.slice(0, INITIAL_ROWS);
@@ -97,6 +131,35 @@ export default function PricingSection({
         </p>
       </div>
 
+      {blocks.length > 0 && (
+        <div className="mt-6">
+          <h3 className="flex items-center gap-2 text-[15px] font-semibold text-foreground">
+            <Table2 className="h-4 w-4 text-gold-text" aria-hidden="true" />
+            {blocks.some((block) => block.showHotel) ? "Буудал, багцаар үнэ" : "Сонголтоор үнэ"}
+          </h3>
+          <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
+            Огноо бүрийн нэг хүний үнэ. Ижил үнэтэй огноонуудыг нэг хүснэгтэд нэгтгэв.
+          </p>
+          <PriceTable
+            blocks={blocks}
+            activeDay={selected ? departureDateKey(selected.startDate) : undefined}
+            currentYear={Number(ulaanbaatarDay(now).slice(0, 4))}
+            hotelLinks={hotelLinks}
+            adultBand={ageBands.adult}
+          />
+          {notes.length > 0 && blocks.some((block) => block.showPackage) && (
+            <dl className="mt-4 space-y-2 text-[13px] leading-relaxed">
+              {notes.map((entry) => (
+                <div key={entry.label}>
+                  <dt className="inline font-semibold text-foreground">{entry.label}: </dt>
+                  <dd className="inline text-muted-foreground">{entry.note}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </div>
+      )}
+
       {departures.length > 0 ? (
         <div className="mt-6">
           <h3 className="flex items-center gap-2 text-[15px] font-semibold text-foreground">
@@ -114,6 +177,8 @@ export default function PricingSection({
                 : [];
               const price = optionPrices.length ? Math.min(...optionPrices) : departure.price ?? trip.price;
               const active = selected?.id === departure.id;
+              // A variable-priced trip shows its notes in the table above; a plain one shows them here.
+              const rowNotes = variable ? [] : dateRowNotes(trip, departure);
               return (
                 <li key={departure.id} className={cn("flex flex-wrap items-center gap-x-4 gap-y-2 py-3.5", !seats.selectable && "opacity-60")}>
                   <div className="min-w-0 flex-1">
@@ -125,6 +190,9 @@ export default function PricingSection({
                       <span className={cn("h-1.5 w-1.5 rounded-full", !seats.selectable ? "bg-destructive" : seats.tone === "tight" ? "bg-warning" : "bg-success")} aria-hidden="true" />
                       {seats.label}
                     </p>
+                    {rowNotes.map((line) => (
+                      <p key={line} className="mt-1 whitespace-pre-line text-[12.5px] leading-relaxed text-muted-foreground">{line}</p>
+                    ))}
                   </div>
                   <p className="text-right">
                     <span className="block text-[15px] font-bold tabular-nums text-foreground">{hasKnownTripPrice(price) ? `${formatMnt(price)}${variable ? "-с" : ""}` : "Үнэ лавлах"}</span>

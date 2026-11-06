@@ -10,7 +10,7 @@ import { formatDepartureDate, startingPrice } from "@/lib/departures";
 import { saleBadgeLabel } from "@/lib/tripMarketing";
 import { tripDestinations } from "@/lib/destinations";
 import { tripStatus } from "@/lib/tripStatus";
-import { formatTripTitle, isAllCapsTitle } from "@/lib/tripDisplay";
+import { formatTripDuration, formatTripTitle, isAllCapsTitle } from "@/lib/tripDisplay";
 import { canonicalPath } from "@/lib/locales";
 import SaveButton from "@/components/trip/SaveButton";
 import { cn } from "@/lib/utils";
@@ -45,6 +45,7 @@ export default function TripCard({
   const saleLabel = saleBadgeLabel(trip);
   const hasVideo = Boolean(trip.video) || trip.videos.length > 0;
   const title = formatTripTitle(trip.title);
+  const duration = formatTripDuration(trip.durationDays, trip.durationNights);
   const Heading = headingLevel === 2 ? "h2" : "h3";
 
   return (
@@ -78,14 +79,21 @@ export default function TripCard({
           )}
         </div>
 
-        <span className="absolute bottom-2.5 left-2.5 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-navy-night backdrop-blur sm:bottom-3 sm:left-3">
-          {trip.durationDays} хоног
-        </span>
-        {hasVideo && (
-          <span className="absolute bottom-2.5 right-2.5 flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[10.5px] font-semibold text-white backdrop-blur sm:bottom-3 sm:right-3">
-            <Play className="h-3 w-3 fill-current" aria-hidden="true" />
-            Бичлэг
-          </span>
+        {/* One row, so the longer "9 өдөр 8 шөнө" can never run under the video badge on a narrow card. */}
+        {(duration || hasVideo) && (
+          <div className="absolute inset-x-2.5 bottom-2.5 flex items-end justify-between gap-1.5 sm:inset-x-3 sm:bottom-3">
+            {duration ? (
+              <span className="min-w-0 truncate rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-navy-night backdrop-blur">
+                {duration}
+              </span>
+            ) : <span />}
+            {hasVideo && (
+              <span className="flex shrink-0 items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[10.5px] font-semibold text-white backdrop-blur">
+                <Play className="h-3 w-3 fill-current" aria-hidden="true" />
+                Бичлэг
+              </span>
+            )}
+          </div>
         )}
       </div>
 

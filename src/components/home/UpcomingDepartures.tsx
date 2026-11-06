@@ -7,7 +7,7 @@ import { departureDateKey } from "@/lib/departureDate";
 import { tripDestinations } from "@/lib/destinations";
 import { canonicalPath } from "@/lib/locales";
 import { formatMnt } from "@/lib/pricing";
-import { formatTripTitle } from "@/lib/tripDisplay";
+import { formatTripDuration, formatTripTitle } from "@/lib/tripDisplay";
 import { cn } from "@/lib/utils";
 
 const WEEKDAYS = ["Ням", "Даваа", "Мягмар", "Лхагва", "Пүрэв", "Баасан", "Бямба"];
@@ -58,8 +58,12 @@ export default function UpcomingDepartures({ rows }: { rows: DepartureRow[] }) {
                       {formatTripTitle(trip.title)}
                     </span>
                     <span className="mt-1 flex flex-wrap items-center gap-x-2 text-[13px] text-muted-foreground">
-                      {trip.durationDays} хоног
-                      <span aria-hidden="true">·</span>
+                      {formatTripDuration(trip.durationDays, trip.durationNights) && (
+                        <>
+                          {formatTripDuration(trip.durationDays, trip.durationNights)}
+                          <span aria-hidden="true">·</span>
+                        </>
+                      )}
                       <span className={cn("inline-flex items-center gap-1.5 font-medium", tight ? "text-warning" : "text-success")}>
                         <span className={cn("h-1.5 w-1.5 rounded-full", tight ? "bg-warning" : "bg-success")} aria-hidden="true" />
                         {tight ? "Цөөн суудал" : "Захиалга нээлттэй"}

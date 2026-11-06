@@ -30,6 +30,7 @@ export type HeroSlide = {
     slug: string;
     title: string;
     durationDays: number;
+    durationNights: number;
     price: number | null;
     place: string | null;
   } | null;
@@ -43,6 +44,7 @@ function slideFor(trip: Trip, now: number): HeroSlide {
       slug: trip.slug,
       title: trip.title,
       durationDays: trip.durationDays,
+      durationNights: trip.durationNights ?? 0,
       price: hasKnownTripPrice(price) ? price : null,
       place: tripDestinations(trip)[0]?.label ?? null,
     },

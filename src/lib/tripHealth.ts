@@ -97,14 +97,14 @@ export function checkTrip(trip: HealthTrip, today: string, now = Date.now()): He
   const far = bookable.filter((departure) => departure.day > farLimit && !copies.includes(departure));
   if (far.length) add("warning", "far_future_date", `1 жилээс хол огноо зарагдаж байна: ${far.map((d) => d.day).join(", ")}.`);
 
-  // "ХАЙНАН – САНЬЯА АЯЛАЛ-Лхагва" sold Wednesdays while its dates said otherwise.
+  // "ХАЙНАН – ТАВРИН АЯЛАЛ-Лхагва" sold Wednesdays while its dates said otherwise.
   const weekday = WEEKDAYS.find(([pattern]) => pattern.test(trip.title));
   if (weekday) {
     const offDay = bookable.filter((departure) => new Date(`${departure.day}T00:00:00Z`).getUTCDay() !== weekday[1]);
     if (offDay.length) add("warning", "weekday_mismatch", `Нэрэнд "${weekday[2]}" гэсэн ч ${offDay.map((d) => d.day).join(", ")} өөр гарагт таарч байна.`);
   }
 
-  // Санья (2026-10-15): hotel fares belonged to old dates, so the live dates
+  // A partner trip (2026-10-15): hotel fares belonged to old dates, so the live dates
   // showed one flat price and no hotel choice.
   const rows = fareRows(trip);
   const choiceRows = rows.filter((row) => row.hotel || row.package_id);
@@ -167,7 +167,7 @@ export type PartnerFare = {
 };
 
 /**
- * Санья (2026-10-18): GTC raised two child fares by 200,000₮ after we copied
+ * A partner trip (2026-10-18): GTC raised two child fares by 200,000₮ after we copied
  * their table, and staff found it by hand. Compares every upcoming partner
  * row with our fare row for the same date, hotel and package.
  */
