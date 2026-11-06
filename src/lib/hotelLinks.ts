@@ -192,16 +192,59 @@ function nameWithin(short: string, long: string): boolean {
 }
 
 /**
- * The profile a price row's hotel name refers to. The same name written
- * differently wins; a partial name counts only when exactly one profile fits
- * it ("Example Bay" fitting two Example Bay hotels is no answer, not a guess).
+ * The profile a price row's hotel name refers to, by the chatbot's rule
+ * (partnerSync/hotelProfiles.ts matchHotelProfile), so both sides link a row to
+ * the same hotel. The whole name's key first, generic words kept: "Norvel
+ * Resort" is not "Norvel Hotel", and two profiles of that key are no answer.
+ * Then exactly one profile that fits by its words, and only by the start of
+ * the name: a shorter spelling ("Norvel" for "Norvel Grand"), or the profile's
+ * whole name starting a longer one with no joiner after it. "Norvel Garden
+ * Lodge" is not "Norvel Hotel", "Crown" is not "Velt Crown", and "Norvel
+ * Beach, Tavrin Morrow" names two hotels, not Norvel Beach.
  */
 export function matchHotelProfile<T extends HotelLink>(name: string, profiles: T[]): T | null {
-  const scored = profiles.map((profile) => ({ profile, score: hotelNameMatchScore(name, profile.name) }));
-  const exact = scored.find((entry) => entry.score === 3);
-  if (exact) return exact.profile;
-  const partial = scored.filter((entry) => entry.score === 2);
-  return partial.length === 1 ? partial[0].profile : null;
+  const key = hotelKey(name);
+  if (key.length < MIN_KEY_LENGTH) return null;
+  const same = profiles.filter((profile) => hotelKey(profile.name) === key);
+  if (same.length) return same.length === 1 ? same[0] : null;
+  const fits = profiles.filter((profile) => hotelNameMatchScore(name, profile.name) >= 2);
+  return fits.length === 1 && startsAlike(name, fits[0].name) ? fits[0] : null;
+}
+
+/** The chatbot's MIN_KEY_LENGTH: a name of fewer letters is no hotel. */
+const MIN_KEY_LENGTH = 3;
+
+/** Signs and words that join two hotels in one text: the chatbot's LIST_JOINER (partnerSync/hotelProfiles.ts). */
+const LIST_JOINER = /[,;&/+＋]|(?:^|[^\p{L}\p{N}])(?:эсвэл|буюу|болон|ба|or|and)(?=$|[^\p{L}\p{N}])/iu;
+
+/**
+ * What is left of `long` after the words that spell `short` from its start ("Norvel Grand" in
+ * "Norvel Grand Hotel" leaves " Hotel"), or null when `short` is not the start of `long`:
+ * the chatbot's startRemainder.
+ */
+function startRemainder(short: string, long: string): string | null {
+  const key = hotelKey(short);
+  if (!key) return null;
+  const source = long.normalize("NFKC");
+  let prefix = "";
+  for (const word of source.matchAll(/[\p{L}\p{N}]+/gu)) {
+    prefix += word[0].toLocaleLowerCase();
+    if (prefix === key) return source.slice((word.index ?? 0) + word[0].length);
+    if (prefix.length >= key.length) return null;
+  }
+  return null;
+}
+
+/**
+ * The chatbot's startsAlike: `name` is a shorter spelling of the profile, or the profile's whole
+ * name starts `name` and nothing after it joins a second hotel. The chatbot's extra "the rest
+ * starts like another profile" check is not needed here: any other profile whose words are in
+ * `name` is a second fit, and two fits are already no answer.
+ */
+function startsAlike(name: string, profileName: string): boolean {
+  if (startRemainder(name, profileName) !== null) return true;
+  const rest = startRemainder(profileName, name);
+  return rest !== null && !LIST_JOINER.test(rest);
 }
 
 /** A priced hotel option ("A+B") and the profile ids the chatbot linked it to, if any. */
@@ -267,7 +310,7 @@ function optionProfiles(option: Required<PricedHotel>, declared: HotelProfile[])
     // ("Norvel Beach" written short for "Norvel Beach Lagoon"); a profile of exactly
     // that name still wins.
     const profile = resolve(part);
-    if (profile && hotelNameMatchScore(part, profile.name) === 3) return [{ part, profile }];
+    if (profile && hotelKey(part) === hotelKey(profile.name)) return [{ part, profile }];
     const pieces = part.split(/\s*,\s+/).map((piece) => piece.trim()).filter(Boolean);
     if (pieces.length > 1) {
       const found = pieces.map((piece) => ({ part: piece, profile: resolve(piece) }));
@@ -287,9 +330,14 @@ function optionProfiles(option: Required<PricedHotel>, declared: HotelProfile[])
   return pairs;
 }
 
-/** True when a day's accommodation text names this profile ("Example Transit Inn-д хоноглоно"). */
+/**
+ * True when a day's accommodation text names this profile ("Example Transit Inn-д хоноглоно"):
+ * the profile's whole name, generic words included. Its distinctive words alone ("Norvel" of
+ * "Norvel Hotel") are another hotel's too ("Norvel Garden Lodge-д хоноглоно").
+ */
 function namedInText(profile: HotelProfile, texts: string[], declared: HotelProfile[]): boolean {
-  return texts.some((value) => nameWithin(profile.name, value)
+  const words = spelledWords(profile.name);
+  return texts.some((value) => (words.length > 0 && ` ${spelledWords(value)} `.includes(` ${words} `))
     || splitHotelNames(value).some((part) => matchHotelProfile(part, declared) === profile));
 }
 
@@ -329,7 +377,7 @@ export function stayHotelSection(
   const declared = declaredHotelProfiles(metadata, legacyMedia);
   const cards: Array<StayHotel & { source: HotelProfile | null }> = [];
   const cardOf = (profile: HotelProfile | null, part: string) => {
-    const existing = cards.find((card) => profile ? card.source === profile : !card.source && hotelNameMatchScore(card.name, part) === 3);
+    const existing = cards.find((card) => profile ? card.source === profile : !card.source && hotelKey(card.name) === hotelKey(part));
     if (existing) return existing;
     const created = profile
       ? { ...profile, media: [...profile.media], soldIn: [] as string[], source: profile }
@@ -356,7 +404,7 @@ export function stayHotelSection(
   let sharedMedia: HotelProfile["media"] = [];
   const legacy = declared.length ? [] : hotelMedia(legacyMedia);
   if (legacy.length) {
-    const named = hotel?.trim() ? cards.filter((card) => hotelNameMatchScore(card.name, hotel) === 3) : [];
+    const named = hotel?.trim() ? cards.filter((card) => hotelKey(card.name) === hotelKey(hotel)) : [];
     const owner = cards.length === 1 ? cards[0] : named.length === 1 ? named[0] : null;
     if (owner) owner.media = [...owner.media, ...legacy];
     else sharedMedia = legacy;

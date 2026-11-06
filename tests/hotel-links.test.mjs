@@ -211,9 +211,12 @@ test("a comma splits a part only when every piece is a different declared hotel"
     { name: "Norvel Beach", url: "", description: "", media: [] },
     { name: "Sarnai Kelda Center", url: "", description: "", media: [] },
   ] };
-  // A comma inside one hotel's name: the name stays whole, matched to its one profile.
+  // A comma after a profile's name is not that profile (the chatbot's joiner rule): "Norvel Beach,
+  // Old Town" stays whole as a name-only card, and the declared profiles show beside it unpriced.
   assert.deepEqual(stayHotels(metadata, null, [], ["Norvel Beach, Old Town"]).map((card) => [card.name, card.soldIn]), [
-    ["Norvel Beach", ["Norvel Beach, Old Town"]],
+    ["Norvel Beach, Old Town", ["Norvel Beach, Old Town"]],
+    ["Norvel Beach", []],
+    ["Sarnai Kelda Center", []],
   ]);
   // No profiles at all: the comma name is one name-only card, as written.
   assert.deepEqual(stayHotels({}, null, [], ["Altara Bay, Old Town"]).map((card) => card.name), ["Altara Bay, Old Town"]);
@@ -247,6 +250,42 @@ test("a short name two profiles could be is never given one of their cards", () 
   assert.deepEqual(stayHotels(linked, null, [], [{ label: "Norvel Lagoon", profileIds: ["h1"] }]).map((card) => [card.name, card.soldIn]), [
     ["Norvel Lagoon Villas", ["Norvel Lagoon"]],
   ]);
+});
+
+test("a price row's hotel links to a profile by the chatbot's rule: whole name, then start of name", () => {
+  const names = (...list) => list.map((name) => ({ name, url: "" }));
+  const match = (row, profiles) => matchHotelProfile(row, names(...profiles))?.name ?? null;
+  // A longer row that only contains a shorter profile's words is another hotel.
+  assert.equal(match("Norvel Garden Lodge", ["Norvel Hotel"]), null);
+  // Generic words count: "Resort" is not "Hotel", and words in another order are another name.
+  assert.equal(match("Norvel Resort", ["Norvel Hotel"]), null);
+  assert.equal(match("Hotel Norvel", ["Norvel"]), null);
+  // Two profiles that fit by their words: the one with the same whole name, never the first listed.
+  assert.equal(match("Norvel Resort", ["Norvel Hotel", "Norvel Resort"]), "Norvel Resort");
+  // A middle word is not the start of the name.
+  assert.equal(match("Crown", ["Velt Crown"]), null);
+  // A joiner after the profile's name is a second hotel, not this one.
+  assert.equal(match("Norvel Beach, Tavrin Morrow", ["Norvel Beach"]), null);
+  assert.equal(match("Norvel Beach & Tavrin", ["Norvel Beach"]), null);
+  // The start of the name still links, shorter or longer.
+  assert.equal(match("Norvel Garden Lodge", ["Norvel"]), "Norvel");
+  assert.equal(match("Norvel Grand Hotel", ["Norvel Grand"]), "Norvel Grand");
+  assert.equal(match("Norvel", ["Norvel Grand"]), "Norvel Grand");
+  assert.equal(match("Norvel-Grand", ["NORVELGRAND"]), "NORVELGRAND");
+  // Two profiles of the same whole name are no answer.
+  assert.equal(match("Norvel Grand", ["Norvel Grand", "norvel-grand"]), null);
+});
+
+test("a day naming another hotel that shares a word never brings back an unsold profile", () => {
+  const metadata = { hotel_profiles: [
+    { name: "Norvel Hotel", url: "", description: "Хотын төв", media: [] },
+    { name: "Velt Crown", url: "", description: "", media: [] },
+  ] };
+  const cards = stayHotels(metadata, null, [], ["Velt Crown"], ["Norvel Garden Lodge-д хоноглоно"]);
+  assert.deepEqual(cards.map((card) => card.name), ["Velt Crown"]);
+  // The profile's whole name in a day still keeps its card.
+  const named = stayHotels(metadata, null, [], ["Velt Crown"], ["Norvel Hotel-д хоноглоно"]);
+  assert.deepEqual(named.map((card) => card.name), ["Velt Crown", "Norvel Hotel"]);
 });
 
 test("older trip-level hotel photos never vanish when the price rows name the hotels", async () => {
