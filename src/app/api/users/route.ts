@@ -1,11 +1,12 @@
-import bcrypt from "bcryptjs";
 import { prisma } from "@/server/prisma";
 import { requireAdmin } from "@/server/auth";
-import { handler, httpError, json, readJson, safeText } from "@/server/http";
+import { allowedAdminEmails } from "@/server/googleAuth";
+import { handler, json } from "@/server/http";
 
 /**
- * Staff accounts. There is no public signup — customers never have accounts,
- * so the only way in is an existing admin creating one.
+ * Who can get into the admin panel. Sign-in is Google-only and ADMIN_GOOGLE_EMAILS (Vercel env)
+ * is the whole list — there are no passwords and no in-app way to add a person, so a stolen
+ * session can't grant itself or anyone else access. Staff rows only record who handled what.
  */
 const STAFF_SELECT = {
   id: true,
@@ -15,44 +16,28 @@ const STAFF_SELECT = {
   lastName: true,
   phonenumber: true,
   createdAt: true,
+  updatedAt: true,
 } as const;
 
 export const GET = handler(async (req: Request) => {
   await requireAdmin(req);
 
+  const allowed = allowedAdminEmails();
   const users = await prisma.user.findMany({
     select: STAFF_SELECT,
     orderBy: { createdAt: "asc" },
   });
 
-  return json({ users });
+  return json({
+    allowedEmails: allowed,
+    users: users.map((user) => ({ ...user, canSignIn: allowed.includes(user.email.toLowerCase()) })),
+  });
 });
 
 export const POST = handler(async (req: Request) => {
   await requireAdmin(req);
-
-  const body = await readJson(req);
-  const email = safeText(body.email, 200)?.toLowerCase();
-  const password = typeof body.password === "string" ? body.password : "";
-
-  if (!email) throw httpError(400, "И-мэйл оруулна уу");
-  if (password.length < 8) throw httpError(400, "Нууц үг дор хаяж 8 тэмдэгт байна");
-
-  const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
-  if (existing) throw httpError(400, "Энэ и-мэйл бүртгэлтэй байна");
-
-  const user = await prisma.user.create({
-    data: {
-      email,
-      password: await bcrypt.hash(password, 10),
-      firstName: safeText(body.firstName, 120),
-      lastName: safeText(body.lastName, 120),
-      phonenumber: safeText(body.phonenumber, 40),
-      role: body.role === "STAFF" ? "STAFF" : "ADMIN",
-      isVerified: true,
-    },
-    select: STAFF_SELECT,
-  });
-
-  return json(user, { status: 201 });
+  return json(
+    { message: "Шинэ хүн нэмэхдээ түүний Gmail хаягийг ADMIN_GOOGLE_EMAILS жагсаалтад нэмнэ (хөгжүүлэгч)." },
+    { status: 410 },
+  );
 });

@@ -7,7 +7,7 @@ import { DEFAULT_LOCALE, LOCALES } from "@/lib/locales";
 const STATIC_PREFIXES = ["/_next/", "/favicon", "/images", "/api", "/public"];
 
 /** Admin pages that must stay reachable without a session. */
-const PUBLIC_ADMIN_PATHS = ["/admin/log-in", "/admin/forgot-password", "/admin/reset-password"];
+const PUBLIC_ADMIN_PATHS = ["/admin/log-in"];
 
 /**
  * One middleware for both halves of the app now that the storefront and the

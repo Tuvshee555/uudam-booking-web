@@ -7,7 +7,6 @@
  * Run with:  node prisma/seed.mjs
  */
 import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
@@ -19,15 +18,15 @@ function daysFromNow(days) {
 }
 
 async function main() {
-  const adminEmail = process.env.SEED_ADMIN_EMAIL || "admin@uudam.mn";
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD || "uudam-admin-2026";
+  // Sign-in is Google-only: this row only exists so enquiries can be assigned to someone.
+  // Access comes from ADMIN_GOOGLE_EMAILS, never from this row.
+  const adminEmail = (process.env.SEED_ADMIN_EMAIL || "admin@uudam.mn").toLowerCase();
 
   const admin = await prisma.user.upsert({
     where: { email: adminEmail },
     update: { role: "ADMIN" },
     create: {
       email: adminEmail,
-      password: await bcrypt.hash(adminPassword, 10),
       role: "ADMIN",
       isVerified: true,
       firstName: "Uudam",

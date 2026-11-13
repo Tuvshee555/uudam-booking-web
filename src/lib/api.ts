@@ -31,6 +31,19 @@ api.interceptors.request.use((config) => {
 // A request that never got an answer (offline, timeout, blocked) leaves no trace on the
 // server, so the browser reports it to the three-day error log; refused ones are logged there.
 api.interceptors.response.use(undefined, (error) => {
+  // Inside the admin panel a 401 means the session is gone (expired, signed with an old key,
+  // a password-era token, or the address was taken off ADMIN_GOOGLE_EMAILS): back to sign-in.
+  if (axios.isAxiosError(error) && error.response?.status === 401 && typeof window !== "undefined") {
+    const path = window.location.pathname;
+    if (/^\/[a-z]{2}\/admin(\/|$)/.test(path) && !path.includes("/admin/log-in")) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("userId");
+      localStorage.removeItem("email");
+      document.cookie = "token=; Path=/; Max-Age=0; SameSite=Lax";
+      const from = encodeURIComponent(path + window.location.search);
+      window.location.replace(`/${path.split("/")[1]}/admin/log-in?login_error=session_expired&from=${from}`);
+    }
+  }
   if (axios.isAxiosError(error) && !error.response && error.code !== "ERR_CANCELED") {
     reportClientError({
       kind: "network",

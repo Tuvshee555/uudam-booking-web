@@ -7,7 +7,7 @@ import AdminShell from "@/components/admin/AdminShell";
 
 // Pages a staff member reaches before they're authenticated — these render
 // their own centered card and must never carry the sidebar/nav.
-const UNSHELLED_SUFFIXES = ["/admin/log-in", "/admin/forgot-password", "/admin/reset-password"];
+const UNSHELLED_SUFFIXES = ["/admin/log-in"];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
