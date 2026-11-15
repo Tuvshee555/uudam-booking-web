@@ -8,6 +8,7 @@ import MobileActionBar from "@/components/layout/MobileActionBar";
 import TopLoader from "@/components/layout/TopLoader";
 import PageTracker from "@/components/analytics/PageTracker";
 import TripAdvisorChat from "@/components/chat/TripAdvisorChat";
+import Snowfall from "@/components/site/Snowfall";
 import type { SiteNav } from "@/lib/siteNav";
 import { cn } from "@/lib/utils";
 
@@ -51,6 +52,8 @@ export default function AppShellClient({
       <div aria-hidden="true" className="h-[calc(4rem+env(safe-area-inset-bottom))] bg-[hsl(var(--uudam-night))] lg:hidden" />
       {!isTripPage && <MobileActionBar />}
       <TripAdvisorChat />
+      {/* Winter only (Snowfall.tsx): falling snow with an on/off button. */}
+      <Snowfall />
     </div>
   );
 }
