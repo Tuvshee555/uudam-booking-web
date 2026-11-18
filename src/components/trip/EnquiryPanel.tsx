@@ -7,7 +7,8 @@ import { Check, Loader2, ShieldCheck } from "lucide-react";
 
 import { api, apiErrorMessage } from "@/lib/api";
 import { getVisitorId, track } from "@/lib/analytics";
-import { ageBandsFor, formatMnt, formatTripStartingPrice, hasKnownTripPrice, hasMissingPassengerFare, lineTotal, passengerFareLabel, resolvePrices } from "@/lib/pricing";
+import { INFANT_FARE_ASK, ageBandsFor, formatMnt, formatTripStartingPrice, hasKnownTripPrice, hasMissingPassengerFare, infantFareUnknown, lineTotal, passengerFareLabel, resolvePrices } from "@/lib/pricing";
+import InfantFareAsk from "./InfantFareAsk";
 import { availability, upcomingDepartures } from "@/lib/departures";
 import { saleBadgeLabel } from "@/lib/tripMarketing";
 import { datePriceOptions, formatAdultOption } from "@/lib/tripPriceOptions";
@@ -78,7 +79,8 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
     : option ? formatAdultOption(option) : "Үнэ огноо, буудлаас хамаарна";
   const ageBands = ageBandsFor(trip.sourceMetadata);
   const childFareLabel = passengerFareLabel(trip.sourceMetadata, "child", option?.child ?? prices.child);
-  const infantFareLabel = passengerFareLabel(trip.sourceMetadata, "infant", option?.infant ?? prices.infant);
+  const infantPrice = option?.infant ?? prices.infant;
+  const infantFareLabel = infantFareUnknown(trip.sourceMetadata, infantPrice) ? INFANT_FARE_ASK : passengerFareLabel(trip.sourceMetadata, "infant", infantPrice);
   const estimate = hasMissingPassengerFare({ children, infants }, prices)
     ? null : lineTotal({ adults, children, infants }, prices);
   const hasPrice = hasKnownTripPrice(prices.adult);
@@ -178,7 +180,7 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
           <dt className="text-muted-foreground">Хүүхэд{ageBands.child ? ` (${ageBands.child})` : ""}</dt>
           <dd className="text-right font-semibold text-foreground">{childFareLabel}</dd>
           <dt className="text-muted-foreground">Нярай{ageBands.infant ? ` (${ageBands.infant})` : ""}</dt>
-          <dd className="text-right font-semibold text-foreground">{infantFareLabel}</dd>
+          <dd className="text-right font-semibold text-foreground"><InfantFareAsk sourceMetadata={trip.sourceMetadata} price={infantPrice} tripId={trip.id} from="enquiry-panel" /></dd>
           {typeof trip.singleSupplement === "number" && trip.singleSupplement > 0 && (
             <>
               <dt className="text-muted-foreground">Ганц хүний өрөө</dt>

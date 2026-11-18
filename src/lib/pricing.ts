@@ -124,6 +124,16 @@ export function formatFare(value: number | null | undefined): string {
   return formatMnt(value);
 }
 
+/** The owner's words for an infant fare the trip does not give (2026-11-18), as on the chatbot. */
+export const INFANT_FARE_ASK = "Тодруулж мэдээлэл аваарай";
+
+/** True when the infant fare is not given: no price and no wording of its own («Нярай үнэгүй» etc.). */
+export function infantFareUnknown(sourceMetadata: Record<string, unknown> | null | undefined, price: number | null | undefined): boolean {
+  if (typeof price === "number" && Number.isFinite(price)) return false;
+  const label = sourceMetadata?.infant_fare_label;
+  return !(typeof label === "string" && label.trim());
+}
+
 /** An explicitly supplied text label may describe an unpriced passenger fare. */
 export function passengerFareLabel(
   sourceMetadata: Record<string, unknown> | null | undefined,

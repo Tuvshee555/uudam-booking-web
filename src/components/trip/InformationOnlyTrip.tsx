@@ -9,6 +9,7 @@ import type { Trip } from "@/types/trip";
 import Breadcrumbs from "@/components/site/Breadcrumbs";
 import TripGallery from "./TripGallery";
 import ItineraryTimeline from "./ItineraryTimeline";
+import InfantFareAsk from "./InfantFareAsk";
 import HealthCheckupSection from "./HealthCheckupSection";
 
 function record(value: unknown): Record<string, unknown> {
@@ -54,7 +55,7 @@ function FarePanel({ trip, source }: { trip: Trip; source: ReturnType<typeof arc
         </div>
         <div className="flex items-start justify-between gap-3 py-3">
           <dt className="text-muted-foreground">Нярай</dt>
-          <dd className="text-right font-semibold">Заагаагүй</dd>
+          <dd className="text-right font-semibold"><InfantFareAsk sourceMetadata={null} price={null} tripId={trip.id} from="information-only" /></dd>
         </div>
       </dl>
       {source.childNote && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{source.childNote}</p>}

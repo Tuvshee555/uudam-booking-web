@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { BedDouble, Check, ReceiptText, Table2, Users } from "lucide-react";
 
 import { availability, upcomingDepartures } from "@/lib/departures";
@@ -13,6 +13,7 @@ import type { HotelLink } from "@/lib/hotelLinks";
 import type { Trip } from "@/types/trip";
 import { cn } from "@/lib/utils";
 import PriceTable from "./PriceTable";
+import InfantFareAsk from "./InfantFareAsk";
 
 const INITIAL_ROWS = 8;
 
@@ -85,12 +86,19 @@ export default function PricingSection({
   const supplementValues = supplements.length ? supplements
     : typeof trip.singleSupplement === "number" && trip.singleSupplement > 0 ? [trip.singleSupplement] : [];
 
-  const fares = variable && optionAdults.length
-    ? [{ label: "Том хүн", band: ageBands.adult, value: optionAdults.length > 1 ? `${formatMnt(Math.min(...optionAdults))}–${formatMnt(Math.max(...optionAdults))}` : formatMnt(optionAdults[0]) }]
+  // An infant fare given by no price row of the date: the «Тодруулж мэдээлэл аваарай» button beside the adult fare.
+  const infantGiven = typeof prices.infant === "number"
+    || options.some((option) => typeof option.infant === "number" || option.passengers.some((passenger) => /нярай|infant/i.test(passenger.label)));
+  const fares: Array<{ label: string; band: string; value: ReactNode }> = variable && optionAdults.length
+    ? [
+        { label: "Том хүн", band: ageBands.adult, value: optionAdults.length > 1 ? `${formatMnt(Math.min(...optionAdults))}–${formatMnt(Math.max(...optionAdults))}` : formatMnt(optionAdults[0]) },
+        ...(infantGiven ? [] : [{ label: "Нярай", band: ageBands.infant, value: <InfantFareAsk sourceMetadata={trip.sourceMetadata} price={null} tripId={trip.id} from="price-section" /> }]),
+      ]
     : [
         { label: "Том хүн", band: ageBands.adult, value: hasKnownTripPrice(prices.adult) ? formatMnt(prices.adult) : "Үнэ лавлах" },
         { label: "Хүүхэд", band: ageBands.child, value: passengerFareLabel(trip.sourceMetadata, "child", prices.child) },
-        { label: "Нярай", band: ageBands.infant, value: passengerFareLabel(trip.sourceMetadata, "infant", prices.infant) },
+        // Not given: a «Тодруулж мэдээлэл аваарай» button, not "Тодруулна уу" text (InfantFareAsk.tsx).
+        { label: "Нярай", band: ageBands.infant, value: <InfantFareAsk sourceMetadata={trip.sourceMetadata} price={prices.infant} tripId={trip.id} from="price-section" /> },
       ];
   if (supplementValues.length) {
     fares.push({

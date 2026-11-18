@@ -7,7 +7,8 @@ import { toast } from "sonner";
 
 import { api, apiErrorMessage } from "@/lib/api";
 import { getVisitorId, track } from "@/lib/analytics";
-import { ageBandsFor, fareFor, formatMnt, hasKnownTripPrice, hasMissingPassengerFare, lineTotal, passengerFareLabel, resolvePrices } from "@/lib/pricing";
+import { INFANT_FARE_ASK, ageBandsFor, fareFor, formatMnt, hasKnownTripPrice, hasMissingPassengerFare, infantFareUnknown, lineTotal, passengerFareLabel, resolvePrices } from "@/lib/pricing";
+import InfantFareAsk from "./InfantFareAsk";
 import { availability, formatFullDate, formatDepartureDate, startingPrice, upcomingDepartures } from "@/lib/departures";
 import { saleBadgeLabel } from "@/lib/tripMarketing";
 import { datePriceOptions, formatAdultOption, formatPassengerOption, formatPriceDelta, hasVariablePricing, priceDimensionOptions, quoteRange } from "@/lib/tripPriceOptions";
@@ -218,7 +219,7 @@ export default function BookingPanel({
   const prices = resolvePrices(trip, selected);
   const ageBands = ageBandsFor(trip.sourceMetadata);
   const childFareLabel = passengerFareLabel(trip.sourceMetadata, "child", prices.child);
-  const infantFareLabel = passengerFareLabel(trip.sourceMetadata, "infant", prices.infant);
+  const infantFareLabel = infantFareUnknown(trip.sourceMetadata, prices.infant) ? INFANT_FARE_ASK : passengerFareLabel(trip.sourceMetadata, "infant", prices.infant);
   const total = lineTotal({ adults, children, infants }, prices);
   const specialTiers = option?.passengers ?? [];
   // A detailed passenger tier is an offer that needs a human quote until the
@@ -413,7 +414,7 @@ export default function BookingPanel({
           <dt className="text-muted-foreground">Хүүхэд{ageBands.child ? ` (${ageBands.child})` : ""}</dt>
           <dd className="text-right font-semibold text-foreground">{childFareLabel}</dd>
           <dt className="text-muted-foreground">Нярай{ageBands.infant ? ` (${ageBands.infant})` : ""}</dt>
-          <dd className="text-right font-semibold text-foreground">{infantFareLabel}</dd>
+          <dd className="text-right font-semibold text-foreground"><InfantFareAsk sourceMetadata={trip.sourceMetadata} price={prices.infant} tripId={trip.id} from="booking-panel" /></dd>
           {option?.singleSupplement != null && (
             <>
               <dt className="text-muted-foreground">Ганц хүний өрөө</dt>
@@ -483,10 +484,21 @@ export default function BookingPanel({
 
           <div className="mt-5 divide-y divide-border border-t border-border">
             <Counter label="Том хүн" hint={adultHint} value={adults} onChange={setAdults} min={1} />
-            {requiresQuote && specialTiers.length > 0 ? specialTiers.map((item) =>
-              <Counter key={tierKey(item)} label={item.label} hint={[item.ageRange, formatPassengerOption(item)].filter(Boolean).join(" · ")}
-                value={tierCount(item)} onChange={(value) => setTierCounts((current) => ({ ...current, [tierKey(item)]: value }))} />
-            ) : <>
+            {requiresQuote && specialTiers.length > 0 ? <>
+              {specialTiers.map((item) =>
+                <Counter key={tierKey(item)} label={item.label} hint={[item.ageRange, formatPassengerOption(item)].filter(Boolean).join(" · ")}
+                  value={tierCount(item)} onChange={(value) => setTierCounts((current) => ({ ...current, [tierKey(item)]: value }))} />)}
+              {/* No infant tier on this option and no infant fare: say so with a way to ask (InfantFareAsk.tsx). */}
+              {!specialTiers.some((item) => /нярай|infant/i.test(item.label)) && infantFareUnknown(trip.sourceMetadata, option?.infant ?? prices.infant) && (
+                <div className="flex items-center justify-between gap-4 py-3">
+                  <div className="min-w-0">
+                    <div className="text-[14px] font-semibold text-foreground">Нярай</div>
+                    {ageBands.infant && <div className="mt-0.5 text-[12px] text-muted-foreground">{ageBands.infant}</div>}
+                  </div>
+                  <InfantFareAsk sourceMetadata={trip.sourceMetadata} price={null} tripId={trip.id} from="booking-tiers" className="shrink-0" />
+                </div>
+              )}
+            </> : <>
               <Counter label="Хүүхэд" hint={[ageBands.child, childFareLabel].filter(Boolean).join(" · ")} value={children} onChange={setChildren} />
               <Counter label="Нярай" hint={[ageBands.infant, infantFareLabel].filter(Boolean).join(" · ")} value={infants} onChange={setInfants} />
             </>}
