@@ -60,3 +60,35 @@ test("ordinary descriptions are left whole", () => {
   assert.equal(splitHealthCheckup(headingOnly).lists.length, 0);
   assert.equal(splitHealthCheckup(headingOnly).intro, headingOnly);
 });
+
+test("the clinic's optional paid tests are a list of their own: «Нэмэлт», each price under its test", () => {
+  const withExtras = [
+    PASTED,
+    "",
+    "Нэмэлт шинжилгээ – хүсвэл нэмж хийх зүйлс (төлбөртэй, юаниар)",
+    "Зүрх судас:",
+    "Зүрхний өнгөт эхо: 170 юань",
+    "",
+    "Дүрс оношилгоо:",
+    "Толгойн MRI энгийн дүрслэл (судас хамт): 950 юань",
+    "Хүзүүний нугасны (C2–C7) завсар: 260 юань",
+    "",
+    "Жич: Эдгээр шинжилгээ нь аяллын үнэд багтаагүй бөгөөд хүсвэл газар дээр нь юаниар нэмж төлөөд хийлгэх боломжтой.",
+  ].join("\n");
+  const { intro, lists } = splitHealthCheckup(withExtras);
+  assert.equal(intro, "Вэлмор нуурын амралттай 5 өдрийн аялал.");
+  assert.deepEqual(lists.map((list) => list.audience), ["Эрэгтэй", "Эмэгтэй", "Нэмэлт"]);
+  const extras = lists[2];
+  assert.equal(extras.title, "Нэмэлт шинжилгээ – хүсвэл нэмж хийх зүйлс (төлбөртэй, юаниар)");
+  assert.deepEqual(extras.groups.map((group) => [group.title, group.items]), [
+    ["Зүрх судас", [{ label: "Зүрхний өнгөт эхо", detail: "170 юань" }]],
+    ["Дүрс оношилгоо", [
+      { label: "Толгойн MRI энгийн дүрслэл (судас хамт)", detail: "950 юань" },
+      { label: "Хүзүүний нугасны (C2–C7) завсар", detail: "260 юань" },
+    ]],
+  ]);
+  assert.deepEqual(extras.notes, ["Эдгээр шинжилгээ нь аяллын үнэд багтаагүй бөгөөд хүсвэл газар дээр нь юаниар нэмж төлөөд хийлгэх боломжтой."]);
+  assert.equal(checkupItemCount(extras), 3);
+  // The women's list above it ends where the optional list begins.
+  assert.equal(checkupItemCount(lists[1]), 1);
+});

@@ -27,6 +27,8 @@ function audienceOf(title: string): string {
   if (/эрэгтэй/i.test(title)) return "Эрэгтэй";
   if (/эмэгтэй/i.test(title)) return "Эмэгтэй";
   if (/хүүхд/i.test(title)) return "Хүүхэд";
+  // "Нэмэлт шинжилгээ – хүсвэл нэмж хийх зүйлс (төлбөртэй, юаниар)": the clinic's optional paid tests.
+  if (/нэмэлт/i.test(title)) return "Нэмэлт";
   return "Шинжилгээ";
 }
 

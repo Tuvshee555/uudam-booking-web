@@ -60,8 +60,11 @@ export default function HealthCheckupSection({ lists, fallbackText }: { lists: C
         )}
       </div>
 
+      {/* The list's own heading says what it is: included in the price, or optional and paid on the spot. */}
+      {list && lists.length > 1 && <p className="mt-5 text-sm font-medium text-muted-foreground">{list.title}</p>}
+
       {list ? (
-        <div role={lists.length > 1 ? "tabpanel" : undefined} className="mt-6 gap-3 sm:columns-2">
+        <div role={lists.length > 1 ? "tabpanel" : undefined} className={(lists.length > 1 ? "mt-3" : "mt-6") + " gap-3 sm:columns-2"}>
           {list.groups.map((group, index) => (
             <div key={`${group.title}-${index}`} className="mb-3 break-inside-avoid rounded-xl border border-border bg-card p-5">
               {group.items.length > 0 && (
