@@ -45,7 +45,9 @@ export const CONTACT = {
    * The other numbers on the agency's trip posters (the office line first).
    * The main number above stays the one every button calls.
    */
-  otherPhones: (BRAND_OTHER_PHONES.length ? BRAND_OTHER_PHONES : ["7713 6633", "8913 6633", "9924 8000"]) as string[],
+  // A brand with its own main number lists only its own extra numbers (none unless set), never the
+  // primary's poster numbers.
+  otherPhones: (BRAND_PHONE || BRAND_OTHER_PHONES.length ? BRAND_OTHER_PHONES : ["7713 6633", "8913 6633", "9924 8000"]) as string[],
 
   email: process.env.NEXT_PUBLIC_BRAND_EMAIL || process.env.NEXT_PUBLIC_EMAIL || "",
 
@@ -108,10 +110,11 @@ export function phonesFrom(row: { contactPhone?: string | null; contactOtherPhon
   const others = Array.isArray(row?.contactOtherPhones)
     ? row.contactOtherPhones.filter((value): value is string => typeof value === "string").map((value) => value.trim()).filter(Boolean).slice(0, 6)
     : null;
-  // A brand's own numbers (BRAND_PHONE / BRAND_OTHER_PHONES above) win over the shared Settings row.
+  // A brand's own numbers (BRAND_PHONE / BRAND_OTHER_PHONES above) win over the shared Settings row;
+  // a brand with its own main number never inherits the primary's extra numbers.
   return {
     phone: BRAND_PHONE || saved || DEFAULT_PHONES.phone,
-    otherPhones: BRAND_OTHER_PHONES.length ? BRAND_OTHER_PHONES : others ?? DEFAULT_PHONES.otherPhones,
+    otherPhones: BRAND_PHONE || BRAND_OTHER_PHONES.length ? BRAND_OTHER_PHONES : others ?? DEFAULT_PHONES.otherPhones,
   };
 }
 
