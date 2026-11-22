@@ -11,6 +11,7 @@ import TripGallery from "./TripGallery";
 import ItineraryTimeline from "./ItineraryTimeline";
 import InfantFareAsk from "./InfantFareAsk";
 import HealthCheckupSection from "./HealthCheckupSection";
+import EndedTripGroupOffer from "./EndedTripGroupOffer";
 
 function record(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value)
@@ -29,6 +30,9 @@ function archiveDetails(metadata: unknown) {
     childNote: typeof archive.child_price_note === "string" ? archive.child_price_note : null,
     infantNote: typeof archive.infant_price_note === "string" ? archive.infant_price_note : null,
     durationNote: typeof archive.duration_note === "string" ? archive.duration_note : null,
+    // A trip whose dates have all passed, kept by the chatbot's sync (owner, 2026-11-22): «Аялал дууссан» and the group offer.
+    ended: archive.ended === true,
+    groupNote: typeof archive.group_note === "string" && archive.group_note.trim() ? archive.group_note.trim() : null,
   };
 }
 
@@ -36,10 +40,10 @@ function FarePanel({ trip, source }: { trip: Trip; source: ReturnType<typeof arc
   return (
     <div className="rounded-xl border border-border bg-card p-6 shadow-panel">
       <div className="rounded-lg bg-gold/15 px-3 py-2 text-sm font-semibold text-foreground">
-        Өнгөрсөн хөтөлбөр · Одоогоор захиалга авахгүй
+        {source.ended ? "Аялал дууссан · Товлосон гарах өдөр алга" : "Өнгөрсөн хөтөлбөр · Одоогоор захиалга авахгүй"}
       </div>
-      <h2 className="mt-5 text-lg font-bold">PDF-д байсан огноо, үнэ</h2>
-      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Доорх нь өмнөх аяллын мэдээлэл. Шинэ гарах өдөр, үнэ, суудал баталгаажаагүй.</p>
+      <h2 className="mt-5 text-lg font-bold">{source.ended ? "Сүүлд гарсан огноо, үнэ" : "PDF-д байсан огноо, үнэ"}</h2>
+      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{source.ended ? "Энэ аяллын товлосон гарах өдрүүд дууссан. Доорх нь сүүлд гарсан аяллын мэдээлэл." : "Доорх нь өмнөх аяллын мэдээлэл. Шинэ гарах өдөр, үнэ, суудал баталгаажаагүй."}</p>
       <dl className="mt-4 divide-y divide-border text-sm">
         <div className="flex items-start justify-between gap-3 py-3">
           <dt className="flex items-center gap-2 text-muted-foreground"><CalendarDays className="h-4 w-4" />Явах өдөр</dt>
@@ -60,6 +64,7 @@ function FarePanel({ trip, source }: { trip: Trip; source: ReturnType<typeof arc
       </dl>
       {source.childNote && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{source.childNote}</p>}
       {source.infantNote && <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{source.infantNote}</p>}
+      {source.groupNote && <EndedTripGroupOffer note={source.groupNote} tripId={trip.id} />}
       <Link href="/mn/contact" className="mt-5 flex h-11 items-center justify-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground focus-ring">
         Шинэ аяллын талаар лавлах
       </Link>
@@ -99,7 +104,7 @@ export default function InformationOnlyTrip({ trip, sourceMetadata }: { trip: Tr
         <div className="min-w-0 space-y-14">
           <header>
             <div className="flex flex-wrap items-center gap-3">
-              <span className="rounded-full bg-gold/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-foreground">Өнгөрсөн хөтөлбөр</span>
+              <span className="rounded-full bg-gold/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-foreground">{source.ended ? "Аялал дууссан" : "Өнгөрсөн хөтөлбөр"}</span>
               <span className="flex items-center gap-1.5 text-[13px] text-muted-foreground"><Clock className="h-4 w-4" aria-hidden="true" />{trip.durationDays > 0 ? formatTripDuration(trip.durationDays, trip.durationNights) : formatTripDuration(days.length)}</span>
               {trip.hotel && <span className="flex items-center gap-1.5 text-[13px] text-muted-foreground"><BedDouble className="h-4 w-4" aria-hidden="true" />{trip.hotel}</span>}
             </div>
@@ -128,7 +133,8 @@ export default function InformationOnlyTrip({ trip, sourceMetadata }: { trip: Tr
           <section id="important" className="scroll-mt-28 rounded-xl border border-gold/50 bg-gold/10 p-6">
             <h2 className="text-[17px] font-semibold text-foreground">Чухал мэдээлэл</h2>
             <ul className="mt-3 list-disc space-y-2 pl-5 text-[14.5px] leading-relaxed text-foreground">
-              <li>Энэ нь өнгөрсөн аяллын хөтөлбөр. Шинэ огноо, үнэ, суудал баталгаажаагүй тул онлайн захиалга авахгүй.</li>
+              <li>{source.ended ? "Энэ аяллын товлосон гарах өдрүүд дууссан тул онлайн захиалга авахгүй." : "Энэ нь өнгөрсөн аяллын хөтөлбөр. Шинэ огноо, үнэ, суудал баталгаажаагүй тул онлайн захиалга авахгүй."}</li>
+              {source.groupNote && <li>{source.groupNote}</li>}
               {source.durationNote && <li>{source.durationNote}</li>}
               {trip.hotel && <li>Зочид буудал: {trip.hotel}; нэр, өрөөний сонголт баталгаажаагүй.</li>}
             </ul>
