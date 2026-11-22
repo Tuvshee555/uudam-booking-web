@@ -4,8 +4,9 @@
  * Rule (the same one the chatbot applies, so the website and Messenger quote one figure): every
  * ADULT and CHILD fare of MIN_DISCOUNTED_FARE or more is `discount` tögrög lower. Infant fares,
  * single-room supplements, extra fees, deposits and the struck-through old price stay as they
- * are. Text that repeats a fare ("Хүүхэд (2-11 нас) - 1,234,000₮") gets the same new figure, but
- * only for amounts that ARE one of that trip's adult/child fares, so a fee or a supplement written
+ * are — except a date sale's regular fare and an old price worked out from date sales
+ * (lib/dateDeals.ts), which are regular fares and are lowered like one. Text that repeats a fare
+ * ("Хүүхэд (2-11 нас) - 1,234,000₮") gets the same new figure, but only for amounts that ARE one of that trip's adult/child fares, so a fee or a supplement written
  * in the same sentence is never touched.
  *
  * Pure and copy-on-write: the input (often a cached object shared by a page and its metadata)
@@ -118,6 +119,11 @@ export function collectFares(trip: unknown): FareSets {
     if (!isObject(departure)) continue;
     add(sets.adultChild, departure.price);
     add(sets.adultChild, departure.childPrice);
+    // A date's sale and, once applied (lib/dateDeals.ts), its regular fare moved aside.
+    add(sets.adultChild, departure.salePrice);
+    add(sets.adultChild, departure.saleChildPrice);
+    add(sets.adultChild, departure.originalPrice);
+    add(sets.adultChild, departure.originalChildPrice);
     add(sets.infant, departure.infantPrice);
   }
   const meta = isObject(trip.sourceMetadata) ? trip.sourceMetadata : null;
@@ -278,16 +284,40 @@ function transformMetadata(meta: unknown, context: Context): unknown {
   return out;
 }
 
+const DEPARTURE_FARE_KEYS = new Set(["price", "childPrice", "infantPrice", "salePrice", "saleChildPrice", "originalPrice", "originalChildPrice", "salePercent"]);
+
+/**
+ * A date on sale (lib/dateDeals.ts) shows its regular fare struck through: that fare is lowered
+ * by the same rule as the sale fare, and the percent is worked out again from the two lowered
+ * figures. A sale that is no longer below the lowered regular fare (only possible under
+ * MIN_DISCOUNTED_FARE) is dropped and the date sells at its lowered regular fare.
+ */
+function rebaseSale(out: Json, priceKey: "price" | "childPrice", originalKey: "originalPrice" | "originalChildPrice", percentKey?: "salePercent") {
+  const regular = out[originalKey];
+  if (typeof regular !== "number") return;
+  const sale = out[priceKey];
+  if (typeof sale === "number" && sale < regular) {
+    if (percentKey) out[percentKey] = Math.round(((regular - sale) / regular) * 100);
+    return;
+  }
+  out[priceKey] = regular;
+  delete out[originalKey];
+  if (percentKey) delete out[percentKey];
+}
+
 function transformDeparture(departure: unknown, context: Context): unknown {
   if (!isObject(departure)) return departure;
-  const out = transformTexts(departure, context, new Set(["price", "childPrice", "infantPrice"]));
-  if ("price" in departure) out.price = discountFare(departure.price, context.discount);
-  if ("childPrice" in departure) out.childPrice = discountFare(departure.childPrice, context.discount);
+  const out = transformTexts(departure, context, DEPARTURE_FARE_KEYS);
+  for (const key of ["price", "childPrice", "salePrice", "saleChildPrice", "originalPrice", "originalChildPrice"]) {
+    if (key in departure) out[key] = discountFare(departure[key], context.discount);
+  }
+  rebaseSale(out, "price", "originalPrice", "salePercent");
+  rebaseSale(out, "childPrice", "originalChildPrice");
   return out;
 }
 
 /* Top-level trip fields that are not prices to discount or text to rewrite. */
-const TRIP_UNTOUCHED = new Set(["infantPrice", "oldPrice", "discount", "singleSupplement", "testimonials", "category", "categories", "tags", "currency"]);
+const TRIP_UNTOUCHED = new Set(["infantPrice", "oldPrice", "discount", "singleSupplement", "testimonials", "category", "categories", "tags", "currency", "featuredDates", "saleFromDates"]);
 
 /**
  * The trip as a secondary brand shows it. Returns the input itself when there is nothing to do
@@ -306,6 +336,8 @@ export function brandTrip<T>(trip: T, options: BrandPricingOptions): T {
   const out: Json = {};
   for (const [key, value] of Object.entries(trip)) {
     if (key === "price" || key === "childPrice") out[key] = discountFare(value, discount);
+    // An old "from" price worked out from date sales is a regular fare: lowered like one.
+    else if (key === "oldPrice" && trip.saleFromDates === true) out[key] = discountFare(value, discount);
     else if (key === "departures" && Array.isArray(value)) out[key] = value.map((departure) => transformDeparture(departure, context));
     else if (key === "sourceMetadata") out[key] = transformMetadata(value, context);
     else if (TRIP_UNTOUCHED.has(key)) out[key] = value;

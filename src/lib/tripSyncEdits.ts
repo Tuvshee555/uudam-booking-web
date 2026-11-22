@@ -46,10 +46,28 @@ export function bridgeMetadata(value: unknown): Row {
   return slim;
 }
 
+/**
+ * A date's sale fares and «Онцлох» flag (lib/dateDeals.ts). The chatbot reads them
+ * straight from the shared database and its sync never writes them, so they are
+ * never sent to it, and changing one is never a staff edit of the trip's dates.
+ */
+export const DATE_DEAL_FIELDS = ["salePrice", "saleChildPrice", "isFeatured"] as const;
+
+function withoutDateDeals(departures: unknown): unknown {
+  if (!Array.isArray(departures)) return departures;
+  return departures.map((departure) => {
+    if (!departure || typeof departure !== "object" || Array.isArray(departure)) return departure;
+    const copy = { ...departure as Row };
+    for (const field of DATE_DEAL_FIELDS) delete copy[field];
+    return copy;
+  });
+}
+
 /** JSON copy of a trip, as the chatbot needs it, without its own queue entry. */
 export function syncSnapshot(value: unknown): Row {
   const trip = JSON.parse(JSON.stringify(value)) as Row;
   trip.sourceMetadata = bridgeMetadata(trip.sourceMetadata);
+  if ("departures" in trip) trip.departures = withoutDateDeals(trip.departures);
   return trip;
 }
 
@@ -60,7 +78,7 @@ const SYNCED_METADATA = ["price_groups", "age_rules", "hotel_profiles", "hotel_l
 
 export function syncedValues(trip: Row): Map<string, unknown> {
   const values = new Map<string, unknown>();
-  for (const [key, value] of Object.entries(trip)) if (!NOT_SYNCED.has(key)) values.set(key, value);
+  for (const [key, value] of Object.entries(trip)) if (!NOT_SYNCED.has(key)) values.set(key, key === "departures" ? withoutDateDeals(value) : value);
   const metadata = record(trip.sourceMetadata);
   for (const key of SYNCED_METADATA) if (key in metadata) values.set(`sourceMetadata.${key}`, metadata[key]);
   return values;
@@ -110,7 +128,8 @@ export function foldSave(pending: Row, previous: Row, next: Row): Record<string,
 /** What goes over the wire: the trip, its per-field baseline and the edited field names. */
 export function deliveryPayload(pending: Row): { trip: Row; previousTrip: Row | null; changedFields?: string[] } {
   // Queue entries written before 2026-10-31 hold the full metadata.
-  const trip = { ...record(pending.trip), sourceMetadata: bridgeMetadata(record(pending.trip).sourceMetadata) };
+  const trip: Row = { ...record(pending.trip), sourceMetadata: bridgeMetadata(record(pending.trip).sourceMetadata) };
+  if ("departures" in trip) trip.departures = withoutDateDeals(trip.departures);
   if (pending.created === true || (!pending.edits && !pending.previousTrip)) return { trip, previousTrip: null };
   const edits = pendingEdits(pending);
   const previousMetadata: Row = { ...record(trip.sourceMetadata) };

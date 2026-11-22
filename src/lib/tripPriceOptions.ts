@@ -19,6 +19,8 @@ export type PassengerOption = {
   priceMax: number | null;
   /** True only when the source itself marks the band free (a flag or "Үнэгүй"); price is then 0. */
   free: boolean;
+  /** The band's regular fare when the date's child sale (lib/dateDeals.ts) replaced it in `price`. */
+  originalPrice?: number;
 };
 
 export type DatePriceOption = {
@@ -43,6 +45,10 @@ export type DatePriceOption = {
   passengers: PassengerOption[];
   /** False for a variant that is sold out or paused on this date; only returned with `includeUnavailable`. */
   available: boolean;
+  /** The regular adult fare when the date's sale (lib/dateDeals.ts) replaced it in `adult`. */
+  originalAdult?: number;
+  /** The regular child fare when the date's child sale replaced it in `child`. */
+  originalChild?: number;
 };
 
 export type PriceDimensionOption = {
@@ -202,9 +208,49 @@ type DateOptionsSettings = {
   includeUnavailable?: boolean;
 };
 
+type SaleDeparture = Pick<Departure, "startDate"> & Partial<Pick<Departure, "price" | "childPrice" | "originalPrice" | "originalChildPrice">>;
+
+const INFANT_BAND = /нярай|infant/i;
+
+/**
+ * A date on sale (lib/dateDeals.ts has already put the sale fare in the departure's
+ * `price` and the regular one in `originalPrice`): the price rows of that date that
+ * charge the regular fare charge the sale fare instead, remembering the regular one.
+ * A date with a single plain row (no hotel or package) is that row, whatever it says.
+ * Child bands at exactly the regular child fare take the child sale. Rows at another
+ * fare (a dearer hotel) keep their own: the sale was never set for them.
+ */
+function withDateSale(options: DatePriceOption[], departure: SaleDeparture): DatePriceOption[] {
+  const sale = departure.price;
+  const regular = departure.originalPrice;
+  const childSale = departure.childPrice;
+  const childRegular = departure.originalChildPrice;
+  const adultOn = typeof regular === "number" && typeof sale === "number" && sale < regular;
+  const childOn = typeof childRegular === "number" && typeof childSale === "number" && childSale < childRegular;
+  if (!adultOn && !childOn) return options;
+  const priced = options.filter((option) => option.adult != null);
+  const exact = adultOn ? options.filter((option) => option.adult === regular) : [];
+  const sole = priced.length === 1 && !priced[0].hotel && !priced[0].packageId ? priced : [];
+  const targets = new Set(exact.length ? exact : sole);
+  return options.map((option) => {
+    let next = option;
+    if (adultOn && targets.has(option) && option.adult != null && sale < option.adult) {
+      next = { ...next, adult: sale, originalAdult: option.adult };
+    }
+    if (childOn) {
+      if (option.child === childRegular) next = { ...next, child: childSale, originalChild: childRegular };
+      if (option.passengers.some((band) => band.price === childRegular && !INFANT_BAND.test(band.label))) {
+        next = { ...next, passengers: option.passengers.map((band) => band.price === childRegular && !INFANT_BAND.test(band.label)
+          ? { ...band, price: childSale, originalPrice: childRegular } : band) };
+      }
+    }
+    return next;
+  });
+}
+
 export function datePriceOptions(
   trip: Pick<Trip, "sourceMetadata">,
-  departure: Pick<Departure, "startDate">,
+  departure: SaleDeparture,
   settings: DateOptionsSettings = {},
 ): DatePriceOption[] {
   const groups = trip.sourceMetadata?.price_groups;
@@ -300,11 +346,11 @@ export function datePriceOptions(
   });
   // Two rows can share hotel, package and label; the key must still pick one.
   const seen = new Map<string, number>();
-  return options.map((option) => {
+  return withDateSale(options.map((option) => {
     const count = seen.get(option.key) ?? 0;
     seen.set(option.key, count + 1);
     return count ? { ...option, key: `${option.key}#${count + 1}` } : option;
-  });
+  }), departure);
 }
 
 /**

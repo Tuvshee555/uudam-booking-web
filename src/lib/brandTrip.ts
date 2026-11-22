@@ -1,18 +1,24 @@
 import { BRAND, BRAND_DISCOUNT_MNT, renameBrandIn } from "@/lib/brand";
 import { brandTrip } from "@/lib/brandPricing";
+import { applyDateDeals } from "@/lib/dateDeals";
 import { SITE_URL } from "@/lib/siteUrl";
 
 /**
- * The trip the way THIS deployment's brand shows it to the public: lower adult/child fares, the
- * primary brand's name and links swapped for this brand's (lib/brandPricing.ts). On the primary
- * brand it returns the very same object, so uudamtravel.mn is unaffected.
+ * The trip the way THIS deployment's brand shows it to the public. First, for every brand, the
+ * per-date sales and «Онцлох» dates staff set (lib/dateDeals.ts); then a secondary brand's lower
+ * adult/child fares and the primary brand's name and links swapped for its own
+ * (lib/brandPricing.ts). A trip with no date deals comes back as the very same object on the
+ * primary brand, so uudamtravel.mn is otherwise unaffected.
  *
  * Public read paths only (publicTrip, the catalogue summaries, the advisor's search list, the
  * availability poll, enquiry estimates). Never an admin read, never anything written back.
  */
 export function brandPublicTrip<T>(trip: T): T {
-  if (BRAND.isPrimary) return trip;
-  const branded = brandTrip(trip, { discount: BRAND_DISCOUNT_MNT, rename: brandCopy, rewriteUrl: brandUrl });
+  const dealt = applyDateDeals(trip);
+  if (BRAND.isPrimary) return dealt;
+  // brandTrip lowers sale and regular fares alike; the trip's sale badge and struck "from" price
+  // are then worked out again from the lowered figures, so the percent matches what is shown.
+  const branded = applyDateDeals(brandTrip(dealt, { discount: BRAND_DISCOUNT_MNT, rename: brandCopy, rewriteUrl: brandUrl }));
   if (BRAND.testimonials || !branded || typeof branded !== "object") return branded;
   // Reviews and ratings were written about the primary brand: never shown as this brand's.
   const out = { ...branded } as Record<string, unknown>;

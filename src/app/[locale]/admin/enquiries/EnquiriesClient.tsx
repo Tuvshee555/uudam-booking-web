@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -106,6 +106,8 @@ type ListResponse = {
 };
 
 const PAGE_SIZE = 25;
+/** The PATCH route keeps at most this much of a note (api/enquiries/[id]). */
+const NOTES_MAX = 4000;
 
 const STATUS_SELECT_TONE: Record<Tone, string> = {
   neutral: "border-border bg-muted text-foreground",
@@ -437,7 +439,6 @@ export default function EnquiriesClient() {
                             </span>
                           )}
                           {enquiry.estimatedTotal != null && <span>~{formatMoney(enquiry.estimatedTotal)}</span>}
-                          {enquiry.staffNotes && <span className="text-foreground/70">Тэмдэглэлтэй</span>}
                         </p>
                       </div>
 
@@ -464,6 +465,8 @@ export default function EnquiriesClient() {
                           <ChevronRight />
                         </Button>
                       </div>
+
+                      <RowNotes enquiry={enquiry} name={name} />
                     </div>
                   </li>
                 );
@@ -810,6 +813,105 @@ function EnquiryDetail({
         </div>
       )}
     </SidePanel>
+  );
+}
+
+type NoteState = "idle" | "saving" | "saved" | "error";
+
+/**
+ * The staff note, right on the list row: typed in place and kept for good, saved by
+ * itself when the box loses focus (or on Ctrl/Cmd+Enter) through the same PATCH the
+ * detail panel uses. A save updates the row and the open panel at once; a refresh of
+ * the list while someone is typing never overwrites what they typed.
+ */
+function RowNotes({ enquiry, name }: { enquiry: Enquiry; name: string }) {
+  const queryClient = useQueryClient();
+  const saved = enquiry.staffNotes ?? "";
+  // null: not being edited, so the row shows what is stored.
+  const [draft, setDraft] = useState<string | null>(null);
+  const [state, setState] = useState<NoteState>("idle");
+  const fade = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const text = draft ?? saved;
+  useEffect(() => () => { if (fade.current) clearTimeout(fade.current); }, []);
+
+  const save = useMutation({
+    mutationFn: async (staffNotes: string) => (await api.patch<Enquiry>(`/enquiries/${enquiry.id}`, { staffNotes })).data,
+    onMutate: () => setState("saving"),
+    onSuccess: (updated, sent) => {
+      queryClient.setQueryData(["admin", "enquiry", updated.id], updated);
+      queryClient.setQueriesData<ListResponse>({ queryKey: ["admin", "enquiries"] }, (data) => data && {
+        ...data,
+        enquiries: data.enquiries.map((row) => (row.id === updated.id ? { ...row, staffNotes: updated.staffNotes } : row)),
+      });
+      // Anything typed while the save was on its way stays in the box for the next save.
+      setDraft((current) => (current === sent ? null : current));
+      setState("saved");
+      if (fade.current) clearTimeout(fade.current);
+      fade.current = setTimeout(() => setState((current) => (current === "saved" ? "idle" : current)), 2500);
+    },
+    onError: (err) => {
+      setState("error");
+      toast.error(apiErrorMessage(err, `${name}: тэмдэглэл хадгалахад алдаа гарлаа`));
+    },
+  });
+
+  function commit() {
+    if (draft === null || save.isPending) return;
+    if (draft.trim() === saved.trim()) {
+      setDraft(null);
+      if (state === "error") setState("idle");
+      return;
+    }
+    save.mutate(draft);
+  }
+
+  const id = `enquiry-row-notes-${enquiry.id}`;
+  return (
+    <div className="min-w-0 md:col-span-3" onClick={(event) => event.stopPropagation()}>
+      <label htmlFor={id} className="sr-only">{`${name}: ажилтны тэмдэглэл`}</label>
+      <Textarea
+        id={id}
+        rows={text.includes("\n") || text.length > 90 ? 3 : 1}
+        maxLength={NOTES_MAX}
+        value={text}
+        placeholder="Тэмдэглэл бичих…"
+        aria-describedby={`${id}-state`}
+        onChange={(event) => {
+          setDraft(event.target.value);
+          if (state !== "saving") setState("idle");
+        }}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          event.stopPropagation();
+          if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+            event.preventDefault();
+            commit();
+          }
+          if (event.key === "Escape" && draft !== null && !save.isPending) {
+            setDraft(null);
+            setState("idle");
+          }
+        }}
+        className={cn(
+          "min-h-9 resize-y py-1.5 text-sm md:text-[13px]",
+          !text && "bg-muted/30",
+          state === "error" && "border-destructive focus-visible:ring-destructive",
+        )}
+      />
+      <p id={`${id}-state`} aria-live="polite" className="mt-0.5 flex min-h-4 items-center gap-1 text-[11px] text-muted-foreground">
+        {state === "saving" && (<><Loader2 className="h-3 w-3 animate-spin" />Хадгалж байна…</>)}
+        {state === "saved" && (<><Check className="h-3 w-3 text-emerald-600" />Хадгалсан</>)}
+        {state === "error" && (
+          <span className="text-destructive">
+            Хадгалагдсангүй —{" "}
+            <button type="button" className="font-medium underline underline-offset-2" onMouseDown={(event) => event.preventDefault()} onClick={commit}>
+              дахин оролдох
+            </button>
+          </span>
+        )}
+        {state === "idle" && draft !== null && draft.trim() !== saved.trim() && "Хадгалаагүй · Ctrl+Enter эсвэл гадна дарахад хадгална"}
+      </p>
+    </div>
   );
 }
 

@@ -25,6 +25,21 @@ export type Departure = {
   childPrice: number | null;
   infantPrice: number | null;
   status: DepartureStatus;
+  /**
+   * Staff's sale on THIS date (lib/dateDeals.ts). Public reads have already
+   * applied it: `price`/`childPrice` are then what the customer pays, and the
+   * regular fare moved to `originalPrice`/`originalChildPrice`.
+   */
+  salePrice?: number | null;
+  saleChildPrice?: number | null;
+  /** «Онцлох» on this date only. */
+  isFeatured?: boolean;
+  /** The regular adult fare, set only when a sale on this date is in effect. */
+  originalPrice?: number;
+  /** The regular child fare, set only when a child sale on this date is in effect. */
+  originalChildPrice?: number;
+  /** Whole percent the adult sale takes off the regular fare. */
+  salePercent?: number;
 };
 
 export type ItineraryDay = {
@@ -127,6 +142,10 @@ export type Trip = {
   tags: TripTag[];
 
   isFeatured: boolean;
+  /** Upcoming bookable dates marked «Онцлох» (yyyy-mm-dd, Ulaanbaatar); public reads only. */
+  featuredDates?: string[];
+  /** True when `discount`/`oldPrice` were worked out from date sales, not set on the trip. */
+  saleFromDates?: boolean;
   isPublished: boolean;
   salesCount: number;
   avgRating: number;

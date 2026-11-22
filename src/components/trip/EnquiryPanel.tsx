@@ -17,6 +17,8 @@ import { canonicalPath } from "@/lib/locales";
 import { useChannel } from "@/components/site/ContactProvider";
 import DepartureDatePicker from "./DepartureDatePicker";
 import { Counter } from "./BookingPanel";
+import { FeaturedChip, SaleChip, WasPrice, dateSale } from "./DateDeal";
+import { salePercentOf } from "@/lib/dateDeals";
 import { departureDateKey } from "@/lib/departureDate";
 import FormField, { inputClass, revealConfirmation, useSubmitGuard } from "@/components/site/FormField";
 import Honeypot from "@/components/site/Honeypot";
@@ -86,6 +88,13 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
     ? null : lineTotal({ adults, children, infants }, prices);
   const hasPrice = hasKnownTripPrice(prices.adult);
   const saleLabel = saleBadgeLabel(trip);
+  // The chosen date's own sale (lib/dateDeals.ts) beside the figure shown; otherwise the trip's
+  // own old price, as before. A struck price worked out from date sales belongs to the cards.
+  const shownSale = variablePricing
+    ? option && typeof option.originalAdult === "number" && option.adult != null && optionLabel === formatAdultOption(option)
+      ? { original: option.originalAdult, percent: salePercentOf(option.originalAdult, option.adult) } : null
+    : dateSale(selected);
+  const ownOldPrice = !shownSale && !trip.saleFromDates && hasKnownTripPrice(trip.price) && trip.oldPrice && trip.oldPrice > trip.price ? trip.oldPrice : null;
   const adultHint = option?.adultMax != null && option.adultMax > (option.adult ?? 0)
     ? [ageBands.adult, `${formatAdultOption(option)} / хүн`].filter(Boolean).join(" · ")
     : pricedHint(ageBands.adult, option?.adult ?? prices.adult);
@@ -159,13 +168,20 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold-text">Ажилтанд хүсэлт</p>
-          {hasKnownTripPrice(trip.price) && trip.oldPrice && trip.oldPrice > trip.price && (
-            <div className="mt-2 text-[13px] text-muted-foreground line-through">{formatMnt(trip.oldPrice)}</div>
+          {ownOldPrice && (
+            <div className="mt-2 text-[13px] text-muted-foreground line-through">{formatMnt(ownOldPrice)}</div>
+          )}
+          {(shownSale || selected?.isFeatured === true) && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[13px]">
+              {selected?.isFeatured === true && <FeaturedChip />}
+              {shownSale && <WasPrice value={shownSale.original} />}
+              {shownSale && <SaleChip percent={shownSale.percent} />}
+            </div>
           )}
           {option?.packageId && (
             <div className="mt-2 inline-flex rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold text-primary-foreground">{option.packageLabel || option.packageId}</div>
           )}
-          <div className="mt-2 text-[1.6rem] font-bold leading-none tabular-nums text-foreground">
+          <div className={cn("mt-2 text-[1.6rem] font-bold leading-none tabular-nums", shownSale ? "text-destructive" : "text-foreground")}>
             {variablePricing ? optionLabel : formatTripStartingPrice(prices.adult)}
           </div>
           <div className="mt-1.5 text-[12.5px] text-muted-foreground">

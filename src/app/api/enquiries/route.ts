@@ -100,6 +100,10 @@ export const POST = handler(async (req: Request) => {
               price: true,
               childPrice: true,
               infantPrice: true,
+              // A date's sale is what the page quoted, so the estimate uses it (lib/dateDeals.ts).
+              salePrice: true,
+              saleChildPrice: true,
+              isFeatured: true,
             },
           },
         },

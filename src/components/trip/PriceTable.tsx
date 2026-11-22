@@ -8,6 +8,7 @@ import { formatAdultOption, formatPassengerOption, type DatePriceOption } from "
 import { formatHotelName, hotelTextSegments, type HotelLink } from "@/lib/hotelLinks";
 import { blockForDay, formatDayList, type PriceTableBlock } from "@/lib/tripPriceTable";
 import { cn } from "@/lib/utils";
+import { WasPrice } from "./DateDeal";
 
 /*
  * One markup, two layouts. A real table where the column has room (md–lg with
@@ -162,7 +163,11 @@ export default function PriceTable({
                         )}
                         <td className={VALUE_CELL}>
                           <span className={CELL_LABEL}>Том хүн{adultBand ? ` · ${adultBand}` : ""}</span>
-                          <span className="font-bold">{formatAdultOption(row)}</span>
+                          {/* A date sale (lib/dateDeals.ts): the regular fare struck through above the sale. */}
+                          <span>
+                            {typeof row.originalAdult === "number" && <WasPrice value={row.originalAdult} className="mr-1.5 text-[11.5px]" />}
+                            <span className={cn("font-bold", typeof row.originalAdult === "number" && "text-destructive")}>{formatAdultOption(row)}</span>
+                          </span>
                         </td>
                         {block.bands.map((band) => {
                           // By key, never by label: bands that share a label (another height, a repeat) keep their own fares.
@@ -170,7 +175,10 @@ export default function PriceTable({
                           return fare ? (
                             <td key={band.key} className={VALUE_CELL}>
                               <span className={CELL_LABEL}>{band.label}</span>
-                              <span>{formatPassengerOption(fare)}</span>
+                              <span>
+                                {typeof fare.originalPrice === "number" && <WasPrice value={fare.originalPrice} className="mr-1.5 text-[11.5px]" />}
+                                <span className={cn(typeof fare.originalPrice === "number" && "text-destructive")}>{formatPassengerOption(fare)}</span>
+                              </span>
                             </td>
                           ) : (
                             <td key={band.key} className={cn(VALUE_CELL, EMPTY_CELL, "text-muted-foreground")}>

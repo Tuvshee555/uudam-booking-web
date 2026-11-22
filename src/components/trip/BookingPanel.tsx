@@ -18,6 +18,8 @@ import { canonicalPath } from "@/lib/locales";
 import { formatTripTitle } from "@/lib/tripDisplay";
 import { formatHotelName } from "@/lib/hotelLinks";
 import DepartureDatePicker from "./DepartureDatePicker";
+import { FeaturedChip, SaleChip, WasPrice, dateSale } from "./DateDeal";
+import { salePercentOf } from "@/lib/dateDeals";
 import { departureDateKey } from "@/lib/departureDate";
 import { useTripWeather } from "./TripWeather";
 import QpayPayButton, { QpayPaidBadge } from "./QpayPayButton";
@@ -247,6 +249,15 @@ export default function BookingPanel({
     ? [ageBands.adult, `${formatAdultOption(option)} / хүн`].filter(Boolean).join(" · ")
     : pricedHint(ageBands.adult, adultLow);
   const fromPrice = startingPrice(trip, now);
+  // The figure in the header, struck through beside its regular fare when it is a date's sale
+  // (lib/dateDeals.ts); with no date chosen, the trip's old "from" price worked out from them.
+  const headerSale = requiresQuote && option
+    ? typeof option.originalAdult === "number" && option.adult != null && option.adultMax == null
+      ? { original: option.originalAdult, percent: salePercentOf(option.originalAdult, option.adult) } : null
+    : selected
+      ? dateSale(selected)
+      : trip.saleFromDates && typeof trip.oldPrice === "number" && hasKnownTripPrice(fromPrice) && trip.oldPrice > fromPrice
+        ? { original: trip.oldPrice, percent: salePercentOf(trip.oldPrice, fromPrice) } : null;
   const multiplePrices = fromPrice !== trip.price || new Set(openDepartures.filter((d) => availability(d).selectable).map((d) => d.price ?? trip.price)).size > 1;
 
   const errors = {
@@ -390,10 +401,17 @@ export default function BookingPanel({
           {option?.packageId && (
             <div className="mt-2 inline-flex rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold text-primary-foreground">{option.packageLabel || option.packageId}</div>
           )}
+          {(headerSale || selected?.isFeatured === true) && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[13px]">
+              {selected?.isFeatured === true && <FeaturedChip />}
+              {headerSale && <WasPrice value={headerSale.original} />}
+              {headerSale && <SaleChip percent={headerSale.percent} />}
+            </div>
+          )}
           {/* Without a chosen date this is the cheapest bookable fare, said so
               out loud: quoting the base fare showed 4,590,000₮ on a trip whose
               every open date cost 4,790,000₮. */}
-          <div className="mt-2 text-[1.7rem] font-bold leading-none tabular-nums text-foreground">
+          <div className={cn("mt-2 text-[1.7rem] font-bold leading-none tabular-nums", headerSale ? "text-destructive" : "text-foreground")}>
             {requiresQuote && option ? formatAdultOption(option) : formatMnt(selected ? prices.adult : fromPrice)}
           </div>
           <div className="mt-1.5 text-[12.5px] text-muted-foreground">

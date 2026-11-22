@@ -17,8 +17,13 @@ import { track } from "@/lib/analytics";
 import { formatTripDuration, formatTripTitle } from "@/lib/tripDisplay";
 import { cn } from "@/lib/utils";
 import Listbox from "@/components/ui/listbox";
+import { FeaturedChip, SaleChip, WasPrice, dateSale } from "@/components/trip/DateDeal";
 
-type Row = { trip: Trip; departure: Departure; day: DayKey; price: number | null; open: boolean; tight: boolean; label: string };
+type Row = {
+  trip: Trip; departure: Departure; day: DayKey; price: number | null; open: boolean; tight: boolean; label: string;
+  /** This date's own sale and «Онцлох» (lib/dateDeals.ts), on dates that are still open. */
+  sale: ReturnType<typeof dateSale>; featured: boolean;
+};
 
 /** How far ahead the calendar can be paged, past the last scheduled departure. */
 const LOOKAHEAD_MONTHS = 2;
@@ -57,6 +62,8 @@ export default function DeparturesPageClient({ trips, today: renderedToday, now:
           open: seats.selectable,
           tight: seats.tone === "tight",
           label: seats.label,
+          sale: seats.selectable && hasKnownTripPrice(price) ? dateSale(departure) : null,
+          featured: seats.selectable && departure.isFeatured === true,
         });
       }
     }
@@ -322,6 +329,7 @@ export default function DeparturesPageClient({ trips, today: renderedToday, now:
                     <span className="min-w-0 flex-1">
                       {!selectedDay && <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-gold-text">{dayTitle(row.day)}</span>}
                       <span className="mt-0.5 line-clamp-2 block text-[14px] font-semibold leading-snug text-foreground group-hover:underline group-hover:decoration-gold group-hover:underline-offset-4">
+                        {row.featured && <FeaturedChip className="mr-1.5 align-[1px]" />}
                         {formatTripTitle(row.trip.title)}
                       </span>
                       <span className="mt-1 flex flex-wrap items-center gap-x-2 text-[12.5px] text-muted-foreground">
@@ -335,7 +343,13 @@ export default function DeparturesPageClient({ trips, today: renderedToday, now:
                       </span>
                     </span>
                     <span className="shrink-0 text-right">
-                      <span className="block text-[14px] font-bold tabular-nums text-foreground">{row.price ? formatMnt(row.price) : "Үнэ лавлах"}</span>
+                      {row.sale && (
+                        <span className="flex items-center justify-end gap-1.5">
+                          <WasPrice value={row.sale.original} className="text-[11.5px]" />
+                          <SaleChip percent={row.sale.percent} />
+                        </span>
+                      )}
+                      <span className={cn("block text-[14px] font-bold tabular-nums", row.sale ? "text-destructive" : "text-foreground")}>{row.price ? formatMnt(row.price) : "Үнэ лавлах"}</span>
                       {row.price && <span className="text-[11px] text-muted-foreground">том хүн</span>}
                     </span>
                   </Link>

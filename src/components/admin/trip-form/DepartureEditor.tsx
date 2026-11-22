@@ -5,6 +5,9 @@ import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Plus, Trash2 } fr
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/admin/ui";
+import { effectiveSale, salePercentOf } from "@/lib/dateDeals";
+import { formatMnt } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
 export type DepartureDraft = {
@@ -17,6 +20,10 @@ export type DepartureDraft = {
   childPrice: string;
   infantPrice: string;
   status: string;
+  /** This date's sale fares ("" = no sale) and «Онцлох» (lib/dateDeals.ts). */
+  salePrice: string;
+  saleChildPrice: string;
+  isFeatured: boolean;
 };
 
 const EMPTY_DEPARTURE: DepartureDraft = {
@@ -28,6 +35,9 @@ const EMPTY_DEPARTURE: DepartureDraft = {
   childPrice: "",
   infantPrice: "",
   status: "OPEN",
+  salePrice: "",
+  saleChildPrice: "",
+  isFeatured: false,
 };
 
 export { EMPTY_DEPARTURE };
@@ -321,6 +331,7 @@ export default function DepartureEditor({
               </p>
 
               <ExactSeatsOverride dep={dep} onChange={(patch) => update(index, patch)} />
+              <DateDealControls dep={dep} regularAdult={dep.price} regularChild={dep.childPrice} onChange={(patch) => update(index, patch)} />
             </div>
             </div>
           </details>
@@ -335,6 +346,92 @@ export default function DepartureEditor({
         <Plus className="h-4 w-4" />
         Гаралт нэмэх
       </button>
+    </div>
+  );
+}
+
+function typedFare(value: string): number | null {
+  const amount = value.trim() ? Number(value) : NaN;
+  return Number.isFinite(amount) && amount > 0 ? amount : null;
+}
+
+/** "3,290,000₮ → 2,990,000₮ (−9%)", or why the typed sale will not show on the site. */
+function SaleReadout({ who, regular, sale }: { who: string; regular: number | null; sale: number | null }) {
+  if (sale === null) return null;
+  if (regular === null) {
+    return <p role="status" className="mt-1 text-xs font-medium text-amber-700">{who} энгийн үнэ оруулаагүй тул хямдрал сайтад харагдахгүй.</p>;
+  }
+  if (!effectiveSale(regular, sale)) {
+    return (
+      <p role="alert" className="mt-1 text-xs font-medium text-destructive">
+        Хямдралтай үнэ ({formatMnt(sale)}) энгийн үнээс ({formatMnt(regular)}) бага байх ёстой — сайтад харагдахгүй.
+      </p>
+    );
+  }
+  const percent = salePercentOf(regular, sale);
+  return (
+    <>
+      <p className="mt-1 text-xs tabular-nums text-muted-foreground">
+        <s>{formatMnt(regular)}</s> → <b className="text-destructive">{formatMnt(sale)}</b> (−{percent}%)
+      </p>
+      {percent >= 50 && <p role="status" className="mt-0.5 text-xs font-medium text-amber-700">Хямдрал {percent}% байна — тоогоо шалгана уу.</p>}
+    </>
+  );
+}
+
+/**
+ * «Хямдралтай үнэ» and «Онцлох» for ONE date, next to its status. The regular fares stay as
+ * they are: the site shows them struck through beside the sale (lib/dateDeals.ts), and
+ * emptying the sale brings the regular fare straight back. `regularAdult`/`regularChild`
+ * are the date's own fares as typed, falling back to the trip's when the date has none.
+ */
+export function DateDealControls({
+  dep,
+  regularAdult,
+  regularChild,
+  onChange,
+}: {
+  dep: DepartureDraft;
+  regularAdult: string;
+  regularChild: string;
+  onChange: (patch: Partial<DepartureDraft>) => void;
+}) {
+  const adult = typedFare(regularAdult);
+  const child = typedFare(regularChild);
+  const sale = typedFare(dep.salePrice);
+  const childSale = typedFare(dep.saleChildPrice);
+  const day = dep.startDate || "энэ";
+  return (
+    <div className="mt-3 rounded-md border border-border p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-medium">Хямдрал, онцлох <span className="font-normal text-muted-foreground">· зөвхөн {day} өдөр</span></p>
+        <label className="flex items-center gap-2 text-sm">
+          <Switch checked={dep.isFeatured} onCheckedChange={(isFeatured) => onChange({ isFeatured })} label={`${day} өдрийг онцлох`} />
+          Онцлох
+        </label>
+      </div>
+      <div className="mt-2 grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs text-muted-foreground">
+          Хямдралтай үнэ (том хүн, ₮)
+          <Input className="mt-1" aria-label={`${day} өдрийн хямдралтай үнэ`} type="number" min={0} inputMode="numeric" value={dep.salePrice}
+            placeholder="Хямдралгүй" onChange={(e) => onChange({ salePrice: e.target.value })} />
+          <SaleReadout who="Том хүний" regular={adult} sale={sale} />
+        </label>
+        <label className="block text-xs text-muted-foreground">
+          Хүүхдийн хямдралтай үнэ (₮, заавал биш)
+          <Input className="mt-1" aria-label={`${day} өдрийн хүүхдийн хямдралтай үнэ`} type="number" min={0} inputMode="numeric" value={dep.saleChildPrice}
+            placeholder="Хямдралгүй" onChange={(e) => onChange({ saleChildPrice: e.target.value })} />
+          <SaleReadout who="Хүүхдийн" regular={child} sale={childSale} />
+        </label>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[11px] text-muted-foreground">Сайтад энгийн үнэ дарагдаж, хямдралтай үнэ, хувь нь хажууд харагдана. Захиалга, үнийн тооцоо хямдралтай үнээр бодогдоно.</p>
+        {(dep.salePrice || dep.saleChildPrice) && (
+          <button type="button" onClick={() => onChange({ salePrice: "", saleChildPrice: "" })} className="text-[11px] font-medium text-muted-foreground underline-offset-2 hover:text-destructive hover:underline">
+            Хямдрал арилгах
+          </button>
+        )}
+      </div>
     </div>
   );
 }

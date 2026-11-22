@@ -438,6 +438,9 @@ function tripToForm(trip: Trip): FormState {
         childPrice: dep.childPrice !== null ? String(dep.childPrice) : fares.child !== null ? String(fares.child) : "",
         infantPrice: dep.infantPrice !== null ? String(dep.infantPrice) : fares.infant !== null ? String(fares.infant) : "",
         status: dep.status,
+        salePrice: typeof dep.salePrice === "number" ? String(dep.salePrice) : "",
+        saleChildPrice: typeof dep.saleChildPrice === "number" ? String(dep.saleChildPrice) : "",
+        isFeatured: dep.isFeatured === true,
       };
     }),
   };
@@ -602,6 +605,10 @@ function buildPayload(form: FormState) {
         childPrice: nullableNumber(dep.childPrice),
         infantPrice: nullableNumber(dep.infantPrice),
         status: dep.status,
+        // This date's sale and «Онцлох» (lib/dateDeals.ts); null clears the sale.
+        salePrice: nullableNumber(dep.salePrice),
+        saleChildPrice: nullableNumber(dep.saleChildPrice),
+        isFeatured: dep.isFeatured,
       })),
   };
 }
@@ -737,6 +744,20 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
       const payload = originalForm.current
         ? { ...changedTripFields(buildPayload(originalForm.current), fullPayload), expectedUpdatedAt: originalUpdatedAt.current }
         : fullPayload;
+      // A date whose sale/«Онцлох» this editor did not touch sends none of them: the chatbot admin
+      // or assistant may have set one since this page loaded, and the server keeps an absent value.
+      if (originalForm.current && Array.isArray((payload as { departures?: unknown }).departures)) {
+        const loaded = new Map(buildPayload(originalForm.current).departures.map((dep) => [dep.startDate, dep]));
+        (payload as { departures: Array<Record<string, unknown>> }).departures = (payload as { departures: Array<Record<string, unknown>> }).departures.map((dep) => {
+          const was = loaded.get(String(dep.startDate));
+          if (!was || was.salePrice !== dep.salePrice || was.saleChildPrice !== dep.saleChildPrice || was.isFeatured !== dep.isFeatured) return dep;
+          const rest = { ...dep };
+          delete rest.salePrice;
+          delete rest.saleChildPrice;
+          delete rest.isFeatured;
+          return rest;
+        });
+      }
       // Resolving a shown conflict: save straight onto the version it was shown
       // for, with this editor's values where the two disagreed.
       if (keepMine && conflict) {
@@ -752,7 +773,7 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
         return data as Trip;
       } catch (error) {
         if (!originalForm.current || !axios.isAxiosError(error) || error.response?.status !== 409) throw error;
-        const latest = (await api.get(`/trips/${tripId}`)).data as Trip;
+        const latest = (await api.get(`/trips/${tripId}`, { params: { admin: "1" } })).data as Trip;
         return saveOnto(latest, fullPayload, false);
       }
     },
@@ -1222,6 +1243,7 @@ export default function TripForm({ mode, tripId }: { mode: "create" | "edit"; tr
           metadata={form.sourceMetadata}
           departures={form.departures}
           defaultPrice={form.price}
+          defaultChildPrice={form.childPrice}
           defaultRows={cleanPassengerRows(form.passengerPrices)}
           adultPriceMissing={missingField === "price"}
           onChange={(sourceMetadata, departures) => {

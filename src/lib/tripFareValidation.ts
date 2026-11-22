@@ -16,7 +16,10 @@ const TRIP_FARES: Record<string, string> = {
   infantPrice: "Нярайн үнэ",
   singleSupplement: "Ганц хүний нэмэгдэл",
 };
-const DEPARTURE_FARES: Record<string, string> = { price: "том хүний үнэ", childPrice: "хүүхдийн үнэ", infantPrice: "нярайн үнэ" };
+const DEPARTURE_FARES: Record<string, string> = {
+  price: "том хүний үнэ", childPrice: "хүүхдийн үнэ", infantPrice: "нярайн үнэ",
+  salePrice: "хямдралтай үнэ", saleChildPrice: "хүүхдийн хямдралтай үнэ",
+};
 const GROUP_FARES: Record<string, string> = { adult_price: "том хүний үнэ", child_price: "хүүхдийн үнэ", infant_price: "нярайн үнэ" };
 
 function negative(value: unknown): boolean {

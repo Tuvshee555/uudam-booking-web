@@ -33,7 +33,7 @@ export const GET = handler(async (req: Request, ctx: Ctx) => {
 
   const { id } = await ctx.params;
   const trip = await withPrismaRetry(() =>
-    prisma.trip.findFirst({ where: { OR: [{ id }, { slug: id }], isPublished: true }, select: { id: true, slug: true } }),
+    prisma.trip.findFirst({ where: { OR: [{ id }, { slug: id }], isPublished: true }, select: { id: true, slug: true, price: true, childPrice: true } }),
   );
   if (!trip) throw httpError(404, "Аялал олдсонгүй");
 
@@ -41,8 +41,11 @@ export const GET = handler(async (req: Request, ctx: Ctx) => {
   const { seatChanges } = BRAND.isPrimary ? await expireStaleHolds({ tripId: trip.id }) : { seatChanges: [] };
   revalidateSeatChanges(seatChanges);
 
-  // The same fares the page shows (lib/brandTrip.ts), so the digest matches the page's.
+  // The same fares the page shows (lib/brandTrip.ts), so the digest matches the page's. The trip's
+  // own fares go along: a date on sale with no fare of its own is compared with them (lib/dateDeals.ts).
   const departures = brandPublicTrip({
+    price: trip.price,
+    childPrice: trip.childPrice,
     departures: JSON.parse(JSON.stringify(
       await withPrismaRetry(() => prisma.departure.findMany({ where: { tripId: trip.id }, orderBy: { startDate: "asc" } })),
     )),

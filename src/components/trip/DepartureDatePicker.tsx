@@ -7,7 +7,9 @@ import { availability, formatDepartureDate } from "@/lib/departures";
 import { departureDateKey } from "@/lib/departureDate";
 import { dayTitle, monthTitle, WEEKDAYS_MN } from "@/lib/calendar";
 import type { Departure } from "@/types/trip";
+import { formatMnt } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
+import { FeaturedChip, SaleChip, WasPrice, dateSale } from "./DateDeal";
 
 function monthKey(value: string) { return departureDateKey(value).slice(0, 7); }
 function shortPrice(value: number) {
@@ -49,6 +51,11 @@ export default function DepartureDatePicker({
   // the trip as a whole.
   const selectedSeats = selected ? availability(selected) : null;
   const hasTight = departures.some((departure) => availability(departure).tone === "tight");
+  // A date's own sale and «Онцлох» (lib/dateDeals.ts), only on dates that can still be picked.
+  const open = departures.filter((departure) => availability(departure).selectable);
+  const hasSale = open.some((departure) => dateSale(departure));
+  const hasFeatured = open.some((departure) => departure.isFeatured === true);
+  const selectedSale = selected && selectedSeats?.selectable ? dateSale(selected) : null;
   const byDay = new Map(departures.filter((departure) => monthKey(departure.startDate) === current)
     .map((departure) => [Number(departureDateKey(departure.startDate).slice(8, 10)), departure]));
 
@@ -78,23 +85,31 @@ export default function DepartureDatePicker({
           const price = departure?.price ?? basePrice;
           const active = departure?.id === selectedId;
           const full = departure && !seats?.selectable;
+          const sale = departure && !full ? dateSale(departure) : null;
+          const featured = Boolean(departure && !full && departure.isFeatured === true);
           return departure ? (
             <button key={day} type="button" disabled={!seats?.selectable} onClick={() => onSelect(departure)}
               aria-pressed={active}
               className={cn("relative flex h-11 flex-col items-center justify-center rounded-lg border text-[12px] leading-tight transition-colors focus-ring",
                 active ? "border-primary bg-primary font-semibold text-primary-foreground" : "border-border bg-card text-foreground hover:border-foreground/40",
+                featured && !active && "border-gold ring-1 ring-inset ring-gold/60",
                 full && "cursor-not-allowed border-transparent bg-secondary/60 text-muted-foreground line-through hover:border-transparent")}
             >
               {seats?.tone === "tight" && (
                 <span aria-hidden="true" className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-warning" />
               )}
+              {sale && sale.percent > 0 && (
+                <span aria-hidden="true" className={cn("absolute left-0.5 top-0.5 text-[8px] font-bold leading-none tabular-nums", active ? "text-primary-foreground" : "text-destructive")}>
+                  −{sale.percent}%
+                </span>
+              )}
               <span className="font-semibold">{day}</span>
-              <span className={cn("text-[9.5px] tabular-nums", active ? "text-primary-foreground/85" : "text-muted-foreground")}>
+              <span className={cn("text-[9.5px] tabular-nums", active ? "text-primary-foreground/85" : sale ? "font-semibold text-destructive" : "text-muted-foreground")}>
                 {full ? "Дүүрсэн" : price > 0 ? shortPrice(price) : "—"}
               </span>
               {/* The spoken name keeps the visible day and adds what the cell abbreviates. */}
               <span className="sr-only">
-                {`, ${dayTitle(`${current}-${String(day).padStart(2, "0")}`)}, ${seats?.label}${price > 0 ? `, нэг том хүн ${price.toLocaleString("en-US")}₮` : ""}`}
+                {`, ${dayTitle(`${current}-${String(day).padStart(2, "0")}`)}, ${seats?.label}${price > 0 ? `, нэг том хүн ${price.toLocaleString("en-US")}₮` : ""}${sale ? `, хямдрал, хуучин үнэ ${sale.original.toLocaleString("en-US")}₮` : ""}${featured ? ", онцлох огноо" : ""}`}
               </span>
             </button>
           ) : <span key={day} className="flex h-11 items-center justify-center text-[12px] text-muted-foreground/45">{day}</span>;
@@ -105,7 +120,26 @@ export default function DepartureDatePicker({
         {hasTight && (
           <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-warning" /> Цөөн суудалтай</span>
         )}
+        {hasSale && (
+          <span className="flex items-center gap-1.5"><span aria-hidden="true" className="text-[10px] font-bold text-destructive">−%</span> Хямдралтай</span>
+        )}
+        {hasFeatured && (
+          <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-2.5 w-2.5 rounded-[3px] border border-gold ring-1 ring-inset ring-gold/60" /> Онцлох огноо</span>
+        )}
       </p>
+      {selected && selectedSeats?.selectable && (selectedSale || selected.isFeatured === true) && (
+        <p role="status" className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-destructive/5 px-3 py-2 text-[12.5px] text-foreground">
+          <span className="font-semibold">{formatDepartureDate(selected.startDate)}</span>
+          {selected.isFeatured === true && <FeaturedChip />}
+          {selectedSale && (
+            <>
+              <WasPrice value={selectedSale.original} />
+              <span className="font-bold tabular-nums text-destructive">{formatMnt(selected.price)}</span>
+              <SaleChip percent={selectedSale.percent} />
+            </>
+          )}
+        </p>
+      )}
       {selected && selectedSeats?.tone === "tight" && (
         <p role="status" className="mt-2 rounded-lg bg-warning/10 px-3 py-2 text-[12.5px] font-semibold text-warning">
           {formatDepartureDate(selected.startDate)} — цөөн суудал үлдсэн.

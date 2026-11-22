@@ -55,7 +55,8 @@ export function useTrip(idOrSlug?: string, initialData?: Trip, options?: { admin
     queryKey: ["trip", idOrSlug],
     enabled: Boolean(idOrSlug),
     queryFn: async () => {
-      const { data } = await api.get<Trip>(`/trips/${idOrSlug}`);
+      // The editor reads the stored trip; every other screen the public one (api/trips/[id]).
+      const { data } = await api.get<Trip>(`/trips/${idOrSlug}`, options?.admin ? { params: { admin: "1" } } : undefined);
       return data;
     },
     initialData,

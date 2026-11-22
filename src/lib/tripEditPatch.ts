@@ -77,6 +77,7 @@ const LEAF_TEXT: Record<string, string> = {
   childPrice: "хүүхдийн үнэ", child_price: "хүүхдийн үнэ", child_age: "хүүхдийн нас",
   infantPrice: "нярайн үнэ", infant_price: "нярайн үнэ", infant_age: "нярайн нас",
   passenger_prices: "зорчигчдын үнэ", status: "захиалгын төлөв", seatsLeft: "үлдсэн суудал", seatsTotal: "нийт суудал",
+  salePrice: "хямдралтай үнэ", saleChildPrice: "хүүхдийн хямдралтай үнэ",
   endDate: "буцах огноо", startDate: "гарах огноо", label: "нэр", hotel: "буудал", package_id: "аяллын төрөл", note: "тэмдэглэл",
   title: "Аяллын нэр", summary: "Товч танилцуулга", description: "Дэлгэрэнгүй тайлбар", slug: "Холбоосын хаяг",
   oldPrice: "Хямдрахаас өмнөх үнэ", discount: "Хямдрал", singleSupplement: "Ганц хүний нэмэгдэл",

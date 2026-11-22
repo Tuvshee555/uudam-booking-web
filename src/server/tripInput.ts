@@ -4,6 +4,7 @@ import { httpError } from "./http";
 import { extractUrl, parseMediaItems } from "@/lib/media";
 import { findNegativeFare } from "@/lib/tripFareValidation";
 import { departureDateKey } from "@/lib/departureDate.js";
+import { dateDealInput } from "@/lib/dateDeals";
 
 /**
  * Parsing + validation for the trip payloads the admin panel sends.
@@ -179,6 +180,14 @@ export type DepartureInput = {
   childPrice: number | null;
   infantPrice: number | null;
   status: "OPEN" | "ALMOST_FULL" | "SOLD_OUT" | "PAUSED" | "CANCELLED" | "DEPARTED";
+  /**
+   * This date's sale fares and «Онцлох» (lib/dateDeals.ts). Absent from the payload
+   * (undefined) leaves the stored value as it is — a save from an older editor, or a
+   * row the chatbot's assistant gave a sale, keeps it; null clears it.
+   */
+  salePrice?: number | null;
+  saleChildPrice?: number | null;
+  isFeatured?: boolean;
 };
 
 const DEPARTURE_STATUSES = new Set([
@@ -236,6 +245,7 @@ export function normalizeDepartures(value: unknown): DepartureInput[] {
         childPrice: toOptionalNumber(dep?.childPrice) ?? null,
         infantPrice: toOptionalNumber(dep?.infantPrice) ?? null,
         status: (DEPARTURE_STATUSES.has(status) ? status : "OPEN") as DepartureInput["status"],
+        ...dateDealInput(dep),
       } satisfies DepartureInput;
     })
     .filter((dep): dep is DepartureInput => dep !== null)

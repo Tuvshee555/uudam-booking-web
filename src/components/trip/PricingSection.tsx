@@ -14,6 +14,9 @@ import type { Trip } from "@/types/trip";
 import { cn } from "@/lib/utils";
 import PriceTable from "./PriceTable";
 import InfantFareAsk from "./InfantFareAsk";
+import { FeaturedChip, SaleChip, WasPrice, dateChildSale, dateSale } from "./DateDeal";
+import { salePercentOf } from "@/lib/dateDeals";
+import type { DatePriceOption } from "@/lib/tripPriceOptions";
 
 const INITIAL_ROWS = 8;
 
@@ -32,6 +35,25 @@ function packageNotes(trip: Trip): Array<{ label: string; note: string }> {
 function dateRowNotes(trip: Trip, departure: Parameters<typeof datePriceOptions>[1]): string[] {
   const lines = datePriceOptions(trip, departure).flatMap((option) => [option.rowLabel, option.note]).filter(Boolean);
   return [...new Set(lines)];
+}
+
+/** A fare with the date's regular fare struck through beside it and the percent off. */
+function SaleFare({ value, original, percent }: { value: ReactNode; original: number; percent: number }) {
+  return (
+    <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+      <span className="text-destructive">{value}</span>
+      <WasPrice value={original} className="text-[12.5px]" />
+      <SaleChip percent={percent} className="self-center" />
+    </span>
+  );
+}
+
+/** The cheapest option row of a date that is on sale, when it is the one quoted. */
+function saleOption(options: DatePriceOption[], quoted: number | null | undefined) {
+  const option = options.find((item) => item.adult === quoted && typeof item.originalAdult === "number");
+  return option && typeof option.originalAdult === "number" && option.adult != null
+    ? { original: option.originalAdult, percent: salePercentOf(option.originalAdult, option.adult) }
+    : null;
 }
 
 function InfoList({ icon: Icon, title, items }: { icon: typeof ReceiptText; title: string; items: string[] }) {
@@ -89,14 +111,23 @@ export default function PricingSection({
   // An infant fare given by no price row of the date: the «Тодруулж мэдээлэл аваарай» button beside the adult fare.
   const infantGiven = typeof prices.infant === "number"
     || options.some((option) => typeof option.infant === "number" || option.passengers.some((passenger) => /нярай|infant/i.test(passenger.label)));
+  // The selected date's own sale (lib/dateDeals.ts): its fare, the regular one struck through.
+  const byOption = variable && optionAdults.length > 0;
+  const adultSale = byOption ? saleOption(options, optionAdults.length === 1 ? optionAdults[0] : null) : dateSale(selected);
+  const childSale = byOption ? null : dateChildSale(selected);
+  const adultText = variable && optionAdults.length
+    ? optionAdults.length > 1 ? `${formatMnt(Math.min(...optionAdults))}–${formatMnt(Math.max(...optionAdults))}` : formatMnt(optionAdults[0])
+    : hasKnownTripPrice(prices.adult) ? formatMnt(prices.adult) : "Үнэ лавлах";
+  const adultValue: ReactNode = adultSale ? <SaleFare value={adultText} original={adultSale.original} percent={adultSale.percent} /> : adultText;
+  const childText = passengerFareLabel(trip.sourceMetadata, "child", prices.child);
   const fares: Array<{ label: string; band: string; value: ReactNode }> = variable && optionAdults.length
     ? [
-        { label: "Том хүн", band: ageBands.adult, value: optionAdults.length > 1 ? `${formatMnt(Math.min(...optionAdults))}–${formatMnt(Math.max(...optionAdults))}` : formatMnt(optionAdults[0]) },
+        { label: "Том хүн", band: ageBands.adult, value: adultValue },
         ...(infantGiven ? [] : [{ label: "Нярай", band: ageBands.infant, value: <InfantFareAsk sourceMetadata={trip.sourceMetadata} price={null} tripId={trip.id} from="price-section" /> }]),
       ]
     : [
-        { label: "Том хүн", band: ageBands.adult, value: hasKnownTripPrice(prices.adult) ? formatMnt(prices.adult) : "Үнэ лавлах" },
-        { label: "Хүүхэд", band: ageBands.child, value: passengerFareLabel(trip.sourceMetadata, "child", prices.child) },
+        { label: "Том хүн", band: ageBands.adult, value: adultValue },
+        { label: "Хүүхэд", band: ageBands.child, value: childSale ? <SaleFare value={childText} original={childSale.original} percent={0} /> : childText },
         // Not given: a «Тодруулж мэдээлэл аваарай» button, not "Тодруулна уу" text (InfantFareAsk.tsx).
         { label: "Нярай", band: ageBands.infant, value: <InfantFareAsk sourceMetadata={trip.sourceMetadata} price={prices.infant} tripId={trip.id} from="price-section" /> },
       ];
@@ -180,10 +211,13 @@ export default function PricingSection({
               const seats = availability(departure);
               const key = departureDateKey(departure.startDate);
               // A trip priced by hotel or package: the cheapest option on this date, as a "from" price.
-              const optionPrices = variable
-                ? datePriceOptions(trip, departure).map((option) => option.adult).filter((value): value is number => hasKnownTripPrice(value))
-                : [];
+              const dateOptions = variable ? datePriceOptions(trip, departure) : [];
+              const optionPrices = dateOptions.map((option) => option.adult).filter((value): value is number => hasKnownTripPrice(value));
               const price = optionPrices.length ? Math.min(...optionPrices) : departure.price ?? trip.price;
+              const sale = seats.selectable && hasKnownTripPrice(price)
+                ? optionPrices.length ? saleOption(dateOptions, price) : dateSale(departure)
+                : null;
+              const featured = seats.selectable && departure.isFeatured === true;
               const active = selected?.id === departure.id;
               // A variable-priced trip shows its notes in the table above; a plain one shows them here.
               const rowNotes = variable ? [] : dateRowNotes(trip, departure);
@@ -193,6 +227,7 @@ export default function PricingSection({
                     <p className={cn("text-[14.5px] font-semibold text-foreground", !seats.selectable && "line-through")}>
                       {dayTitle(key)}
                       {departure.endDate && <span className="font-normal text-muted-foreground"> — {dayTitle(departureDateKey(departure.endDate)).split(",")[0]}</span>}
+                      {featured && <FeaturedChip className="ml-2 align-middle" />}
                     </p>
                     <p className={cn("mt-0.5 flex items-center gap-1.5 text-[12.5px] font-medium", !seats.selectable ? "text-destructive" : seats.tone === "tight" ? "text-warning" : "text-success")}>
                       <span className={cn("h-1.5 w-1.5 rounded-full", !seats.selectable ? "bg-destructive" : seats.tone === "tight" ? "bg-warning" : "bg-success")} aria-hidden="true" />
@@ -203,7 +238,13 @@ export default function PricingSection({
                     ))}
                   </div>
                   <p className="text-right">
-                    <span className="block text-[15px] font-bold tabular-nums text-foreground">{hasKnownTripPrice(price) ? `${formatMnt(price)}${variable ? "-с" : ""}` : "Үнэ лавлах"}</span>
+                    {sale && (
+                      <span className="flex items-center justify-end gap-1.5">
+                        <WasPrice value={sale.original} className="text-[12px]" />
+                        <SaleChip percent={sale.percent} />
+                      </span>
+                    )}
+                    <span className={cn("block text-[15px] font-bold tabular-nums", sale ? "text-destructive" : "text-foreground")}>{hasKnownTripPrice(price) ? `${formatMnt(price)}${variable ? "-с" : ""}` : "Үнэ лавлах"}</span>
                     {hasKnownTripPrice(price) && <span className="text-[11.5px] text-muted-foreground">{variable ? "том хүн · сонголтоос хамаарна" : "том хүн"}</span>}
                   </p>
                   {seats.selectable ? (

@@ -36,8 +36,8 @@ export type PriceTableBlock = {
 function rowSignature(row: DatePriceOption): unknown[] {
   return [
     row.hotel, row.packageId, row.rowLabel, row.note, row.available,
-    row.adult, row.adultMax, row.singleSupplement,
-    row.passengers.map((band) => [band.key, band.label, band.price, band.priceMax, band.free]),
+    row.adult, row.adultMax, row.singleSupplement, row.originalAdult ?? null,
+    row.passengers.map((band) => [band.key, band.label, band.price, band.priceMax, band.free, band.originalPrice ?? null]),
   ];
 }
 

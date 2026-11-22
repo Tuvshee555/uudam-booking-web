@@ -83,11 +83,12 @@ async function loadSummaries(where: Prisma.TripWhereInput): Promise<Trip[]> {
         // the fare, and whether it is still bookable (availability() in
         // lib/departures). End dates, child and infant fares and seat totals
         // belong to the trip page, which loads the full trip; carrying them
-        // here sent every list page all 239 dates in full.
+        // here sent every list page all 239 dates in full. A date's sale and
+        // «Онцлох» flag (lib/dateDeals.ts) set the card's price and badges.
         departures: {
           where: { startDate: { gte: cutoff }, status: { notIn: ["CANCELLED", "DEPARTED"] } },
           orderBy: { startDate: "asc" },
-          select: { id: true, startDate: true, price: true, status: true, seatsLeft: true },
+          select: { id: true, startDate: true, price: true, status: true, seatsLeft: true, salePrice: true, isFeatured: true },
         },
       },
       orderBy: { createdAt: "desc" },

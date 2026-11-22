@@ -34,7 +34,8 @@ export async function loadSearchableTrips(): Promise<SearchableTrip[]> {
         departures: {
           where: { startDate: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }, status: { notIn: ["CANCELLED", "DEPARTED"] } },
           orderBy: { startDate: "asc" },
-          select: { id: true, startDate: true, price: true, status: true, seatsLeft: true },
+          // salePrice: the advisor quotes a date's sale fare, as the pages do (lib/dateDeals.ts).
+          select: { id: true, startDate: true, price: true, status: true, seatsLeft: true, salePrice: true, isFeatured: true },
         },
       },
     }).then((trips) => trips.map(brandPublicTrip)),

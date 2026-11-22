@@ -186,6 +186,14 @@ model Departure {
   childPrice  Float?
   infantPrice Float?
 
+  /// Sale fare for THIS date only (2026-11-22): the customer pays it, the regular
+  /// fare (price, or the trip's) shows struck through with the percent. Set by staff
+  /// in either admin or by the chatbot's assistant; the chatbot sync never writes it.
+  salePrice      Float?
+  saleChildPrice Float?
+  /// «Онцлох» on this date only: the trip is featured while it has such a date ahead.
+  isFeatured     Boolean @default(false)
+
   status DepartureStatus @default(OPEN)
 
   trip      Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)

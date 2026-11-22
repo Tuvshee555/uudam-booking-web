@@ -1,7 +1,7 @@
 import type { Departure } from "@/types/trip";
 
 type DigestDeparture = Pick<Departure, "id" | "startDate" | "status"> &
-  Partial<Pick<Departure, "endDate" | "label" | "seatsTotal" | "seatsLeft" | "price" | "childPrice" | "infantPrice">>;
+  Partial<Pick<Departure, "endDate" | "label" | "seatsTotal" | "seatsLeft" | "price" | "childPrice" | "infantPrice" | "isFeatured" | "originalPrice" | "originalChildPrice">>;
 
 /**
  * A short fingerprint of a trip's dates exactly as its page carries them:
@@ -12,6 +12,10 @@ type DigestDeparture = Pick<Departure, "id" | "startDate" | "status"> &
  * /api/trips/[id]/availability, which compares it with the database: a
  * mismatch means the cached page is behind — a change that did not refresh it,
  * such as one the chatbot wrote straight into the database.
+ *
+ * A date's deal (lib/dateDeals.ts: «Онцлох», and a sale's regular fare — the
+ * sale itself is already the price) is added only when the date has one, so
+ * the fingerprint of a date without a deal is the same as it always was.
  *
  * FNV-1a, 32 bits: a cheap change detector, not a security measure.
  */
@@ -30,6 +34,9 @@ export function departureDigest(departures: DigestDeparture[]): string {
         departure.price ?? null,
         departure.childPrice ?? null,
         departure.infantPrice ?? null,
+        ...(departure.isFeatured === true || departure.originalPrice != null || departure.originalChildPrice != null
+          ? [departure.isFeatured === true, departure.originalPrice ?? null, departure.originalChildPrice ?? null]
+          : []),
       ]),
     )
     .join("\n");

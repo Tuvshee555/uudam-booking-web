@@ -64,7 +64,9 @@ export const GET = handler(async (req: Request, ctx: Ctx) => {
     return json(trip);
   }
 
-  if (await optionalAdmin(req)) return json(trip);
+  // The stored trip only for the editor, which asks for it (?admin=1). A colleague signed in on
+  // the public page sees what customers see: date sales, «Онцлох» dates, this brand's fares.
+  if (new URL(req.url).searchParams.get("admin") === "1" && await optionalAdmin(req)) return json(trip);
   return publicCache(NextResponse.json(publicTrip(trip)));
 });
 

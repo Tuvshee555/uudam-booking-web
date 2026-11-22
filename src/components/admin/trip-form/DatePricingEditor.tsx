@@ -7,7 +7,7 @@ import { pricingDateRows, pricingDates, patchPricingDate, renamePricingDate, pas
 import { formatMnt } from "@/lib/pricing";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { CalendarDatePicker, ExactSeatsOverride, STATUS_OPTIONS, EMPTY_DEPARTURE, type DepartureDraft } from "./DepartureEditor";
+import { CalendarDatePicker, DateDealControls, ExactSeatsOverride, STATUS_OPTIONS, EMPTY_DEPARTURE, type DepartureDraft } from "./DepartureEditor";
 import { cn } from "@/lib/utils";
 import { useConfirm } from "@/components/admin/ui";
 
@@ -15,6 +15,8 @@ type Props = {
   metadata: Record<string, unknown>;
   departures: DepartureDraft[];
   defaultPrice: string;
+  /** The trip's own child fare: a date on sale with no child fare of its own is compared with it. */
+  defaultChildPrice?: string;
   defaultRows: PricingGroup[];
   adultPriceMissing?: boolean;
   onChange: (metadata: Record<string, unknown>, departures: DepartureDraft[]) => void;
@@ -27,7 +29,7 @@ const fare = (value: string) => value.trim() && Number.isFinite(Number(value)) &
 const STATUS_TEXT = Object.fromEntries(STATUS_OPTIONS.map((option) => [option.value, option.label]));
 const infant = (row: PricingGroup) => /нярай|infant|сар|month|\b0\s*[-–]\s*2\b/i.test(`${row.label} ${row.age_range}`);
 
-export default function DatePricingEditor({ metadata, departures, defaultPrice, defaultRows, adultPriceMissing, onChange }: Props) {
+export default function DatePricingEditor({ metadata, departures, defaultPrice, defaultChildPrice = "", defaultRows, adultPriceMissing, onChange }: Props) {
   const [selection, setSelection] = useState("");
   const [search, setSearch] = useState("");
   const confirm = useConfirm();
@@ -52,8 +54,10 @@ export default function DatePricingEditor({ metadata, departures, defaultPrice, 
   // "Цуцлагдсан", "Дүүрсэн"… next to a date in the list, so a closed date is
   // tellable apart from an open one without selecting it.
   const statusOf = (date: string) => {
-    const status = departures.find((dep) => dep.startDate === date)?.status;
-    return status && status !== "OPEN" ? STATUS_TEXT[status] ?? status : "";
+    const dep = departures.find((entry) => entry.startDate === date);
+    const status = dep?.status && dep.status !== "OPEN" ? STATUS_TEXT[dep.status] ?? dep.status : "";
+    // A date's sale and «Онцлох» show in the list too, so staff see which dates carry one.
+    return [status, dep?.salePrice ? "Хямдралтай" : "", dep?.isFeatured ? "Онцлох" : ""].filter(Boolean).join(" · ");
   };
   const visible = rows.filter((row) => [row.date, groups[row.groupIndex].hotel, groups[row.groupIndex].package_id, groups[row.groupIndex].note].join(" ").toLowerCase().includes(search.toLowerCase()));
   const selected = rows.find((row) => key(row) === selection) || rows[0];
@@ -204,6 +208,11 @@ export default function DatePricingEditor({ metadata, departures, defaultPrice, 
         <CalendarDatePicker label="Буцах огноо" value={departure.endDate} onChange={(endDate) => updateDeparture({ endDate })} allowClear />
         <label className="text-sm">Захиалгын төлөв<select aria-label="Захиалгын төлөв" value={departure.status} onChange={(e) => updateDeparture({ status: e.target.value })} className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">{STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
         <div className="sm:col-span-2"><ExactSeatsOverride dep={departure} onChange={updateDeparture} /></div>
+        <div className="sm:col-span-2">
+          <DateDealControls dep={departure} onChange={updateDeparture}
+            regularAdult={departure.price || (basePrice ? String(basePrice) : "")}
+            regularChild={departure.childPrice || defaultChildPrice} />
+        </div>
       </div>}
       <details className="mt-4 border-t border-border pt-3"><summary className="cursor-pointer text-sm text-muted-foreground">Багц, буудал, нэмэлт мэдээлэл</summary>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">{[["label", "Үнийн нэр"], ["package_id", "Аяллын төрөл"], ["hotel", "Буудал"], ["note", "Тэмдэглэл"]].map(([field, label]) => <label key={field} className="text-xs text-muted-foreground">{label}<Input aria-label={label} value={String(group[field] || "")} onChange={(e) => update({ [field]: e.target.value })} /></label>)}</div>

@@ -31,6 +31,7 @@ import { useTripHealth } from "@/hooks/useTripHealth";
 import { Button } from "@/components/ui/button";
 import { departureDateKey } from "@/lib/departureDate";
 import { nextBookableDeparture, startingPrice, upcomingDepartures } from "@/lib/departures";
+import { applyDateDeals } from "@/lib/dateDeals";
 import { dateFromKey, formatDate, formatMoney, formatNumber } from "@/lib/adminFormat";
 import type { CategoryNode, Trip } from "@/types/trip";
 import { cn } from "@/lib/utils";
@@ -57,7 +58,14 @@ function describe(trip: Trip, now: number) {
   const bookable = nextBookableDeparture(trip, now);
   const next = bookable ?? upcoming[0] ?? null;
   const price = startingPrice(trip, now);
+  // Per-date sales and «Онцлох» dates still ahead, as the site shows them (lib/dateDeals.ts).
+  const dealt = applyDateDeals(trip, new Date(now));
+  const saleDates = dealt.departures.filter((departure) => typeof departure.salePercent === "number" && departure.salePercent > 0
+    && upcomingDepartures(dealt, now).includes(departure));
   return {
+    saleDates: saleDates.length,
+    deepestSale: saleDates.length ? Math.max(...saleDates.map((departure) => departure.salePercent ?? 0)) : 0,
+    featuredDates: dealt.featuredDates?.length ?? 0,
     upcomingCount: upcoming.length,
     // Dates exist but every one is sold out or paused — customers can't book any of them.
     allClosed: upcoming.length > 0 && !bookable,
@@ -400,6 +408,8 @@ export default function TripsClient() {
                               {trip.isPublished ? "Сайтад харагдана" : "Ноорог"}
                             </StatusBadge>
                             {trip.isFeatured && <StatusBadge tone="brand">Онцлох</StatusBadge>}
+                            {!trip.isFeatured && info.featuredDates > 0 && <StatusBadge tone="brand">Онцлох огноо: {info.featuredDates}</StatusBadge>}
+                            {info.saleDates > 0 && <StatusBadge tone="warning">Хямдрал: {info.saleDates} огноо · −{info.deepestSale}% хүртэл</StatusBadge>}
                             {issues?.errors ? (
                               <Link href={`${admin}/health`}>
                                 <StatusBadge tone="danger">{issues.errors} алдаа</StatusBadge>

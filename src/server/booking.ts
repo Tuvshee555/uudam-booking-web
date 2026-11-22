@@ -4,6 +4,7 @@ import { prisma, withPrismaRetry } from "@/server/prisma";
 import { checkInvoice } from "@/server/qpay";
 import { availability } from "@/lib/departures";
 import { hasMissingPassengerFare, lineTotal, resolvePrices, totalHeadcount } from "@/lib/pricing";
+import { dealDeparture } from "@/lib/dateDeals";
 import { hasVariablePricing } from "@/lib/tripPriceOptions";
 import type { Departure } from "@/types/trip";
 
@@ -252,6 +253,8 @@ export async function createBooking(input: CreateBookingInput) {
         price: true,
         childPrice: true,
         infantPrice: true,
+        salePrice: true,
+        saleChildPrice: true,
         status: true,
         startDate: true,
         seatsLeft: true,
@@ -282,7 +285,9 @@ export async function createBooking(input: CreateBookingInput) {
       throw new BookingError("Энэ аяллын үнэ буудал, огнооноос хамаарна. Үнийн санал авах хүсэлт илгээнэ үү", 409);
     }
 
-    const prices = resolvePrices(trip, departure);
+    // A date on sale is charged its sale fare, exactly as the page quoted it (lib/dateDeals.ts);
+    // any other date its regular fare. Same rule, same function as every public read.
+    const prices = resolvePrices(trip, dealDeparture(departure, trip));
     if (hasMissingPassengerFare(input, prices)) {
       throw new BookingError("Хүүхэд эсвэл нярайн үнэ баталгаажаагүй байна. Ажилтнаас үнийн санал авна уу", 409);
     }
