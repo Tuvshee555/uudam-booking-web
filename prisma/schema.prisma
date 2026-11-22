@@ -539,6 +539,14 @@ model SiteSettings {
   trustFacts     Json?
   trustPhoneText String?
 
+  /// The agency's main phone number: the header, every call and WhatsApp button, the footer and
+  /// the contact page. Editable in admin Settings since 2026-11-22; null falls back to
+  /// NEXT_PUBLIC_PHONE (lib/contact.ts phonesFrom).
+  contactPhone String?
+  /// The other numbers listed in the footer and on the contact page (string[]); null falls back to
+  /// the poster numbers in lib/contact.ts.
+  contactOtherPhones Json?
+
   /// The "dates don't work" escape hatch — appears twice: a short teaser CTA
   /// on the homepage (homeCustomCta*) and the full header on its own page
   /// (customTrip*). Two fields because the two spots wanted different

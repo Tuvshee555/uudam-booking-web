@@ -31,7 +31,7 @@ export const CONTACT = {
    * The other numbers on the agency's trip posters (the office line first).
    * The main number above stays the one every button calls.
    */
-  otherPhones: ["7713 6633", "8913 6633", "9924 8000"],
+  otherPhones: ["7713 6633", "8913 6633", "9924 8000"] as string[],
 
   email: process.env.NEXT_PUBLIC_EMAIL || "",
 
@@ -77,4 +77,39 @@ export function formatPhone(value: string): string {
 
 export function telHref(value: string): string {
   return `tel:${value.replace(/[^\d+]/g, "")}`;
+}
+
+/**
+ * The phone numbers staff change in admin Settings (SiteSettings.contactPhone / contactOtherPhones,
+ * since 2026-11-22). Every number on the site comes from here: the server reads it with
+ * getContactPhones (server/contactPhones.ts), the browser from ContactProvider. Unset falls back to
+ * NEXT_PUBLIC_PHONE and the poster numbers above, so nothing changes until someone saves one.
+ */
+export type ContactPhones = { phone: string; otherPhones: string[] };
+
+export const DEFAULT_PHONES: ContactPhones = { phone: CONTACT.phone, otherPhones: CONTACT.otherPhones };
+
+export function phonesFrom(row: { contactPhone?: string | null; contactOtherPhones?: unknown } | null | undefined): ContactPhones {
+  const phone = typeof row?.contactPhone === "string" && row.contactPhone.trim() ? row.contactPhone.trim() : DEFAULT_PHONES.phone;
+  const others = Array.isArray(row?.contactOtherPhones)
+    ? row.contactOtherPhones.filter((value): value is string => typeof value === "string").map((value) => value.trim()).filter(Boolean).slice(0, 6)
+    : null;
+  return { phone, otherPhones: others ?? DEFAULT_PHONES.otherPhones };
+}
+
+/** wa.me for a number: NEXT_PUBLIC_WHATSAPP (already international) wins; a local 8-digit number gets 976. */
+export function whatsappHref(phone: string): string {
+  const digits = (process.env.NEXT_PUBLIC_WHATSAPP || phone || "").replace(/[^\d]/g, "");
+  if (!digits) return "";
+  return `https://wa.me/${digits.startsWith("976") ? digits : `976${digits}`}`;
+}
+/** A number as staff type it ("9117 2769", "+976 9117-2769"): 6–15 digits. Null when empty, false when not a number. */
+export function cleanPhoneInput(value: unknown): string | null | false {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== "string") return false;
+  const trimmed = value.trim().replace(/\s+/g, " ");
+  if (!trimmed) return null;
+  if (/[^\d\s+()-]/.test(trimmed)) return false;
+  const digits = trimmed.replace(/\D/g, "").length;
+  return digits >= 6 && digits <= 15 ? trimmed : false;
 }

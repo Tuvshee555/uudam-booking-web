@@ -18,7 +18,8 @@ import {
 import { countryCount } from "@/lib/destinations";
 import { heroSlides } from "@/lib/homeSections";
 import { CONTACT } from "@/lib/contact";
-import { CHANNELS } from "@/lib/channels";
+import { buildChannels } from "@/lib/channels";
+import { getContactPhones } from "@/server/contactPhones";
 import { canonicalPath } from "@/lib/locales";
 import { destinationHref } from "@/lib/siteNav";
 import { shareMetadata } from "@/lib/seo";
@@ -33,6 +34,7 @@ export const metadata: Metadata = {
 export const revalidate = 86400;
 
 export default async function AboutPage() {
+  const channels = buildChannels(await getContactPhones());
   const [settings, trips, categories] = await Promise.all([getSiteSettings(), getTripSummaries(), getCategoryTree()]);
   const nav = siteNavFrom(trips, categories);
 
@@ -123,7 +125,7 @@ export default async function AboutPage() {
       <HowBookingWorks />
 
       <section aria-labelledby="about-contact" className="site-container py-20 lg:py-28">
-        <div className={`grid overflow-hidden rounded-xl surface-night ${CHANNELS.length ? "lg:grid-cols-[1.2fr_1fr]" : ""}`}>
+        <div className={`grid overflow-hidden rounded-xl surface-night ${channels.length ? "lg:grid-cols-[1.2fr_1fr]" : ""}`}>
           <div className="p-8 sm:p-12">
             <p className="eyebrow eyebrow-on-dark">Холбоо барих</p>
             <h2 id="about-contact" className="display-2 mt-4 text-white">Манай оффист ирж эсвэл утсаар уулзаарай</h2>
@@ -135,8 +137,8 @@ export default async function AboutPage() {
               Бүх холбоо барих хэлбэр <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           </div>
-          {CHANNELS.length > 0 && <ul className="grid content-center gap-px border-t border-white/10 bg-white/10 lg:border-l lg:border-t-0">
-            {CHANNELS.filter((entry) => ["phone", "messenger", "whatsapp", "email"].includes(entry.key)).map((entry) => (
+          {channels.length > 0 && <ul className="grid content-center gap-px border-t border-white/10 bg-white/10 lg:border-l lg:border-t-0">
+            {channels.filter((entry) => ["phone", "messenger", "whatsapp", "email"].includes(entry.key)).map((entry) => (
               <li key={entry.key} className="bg-[hsl(var(--uudam-night))]">
                 <ChannelLink channelKey={entry.key} from="about" className="group flex items-center gap-4 px-8 py-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold">
                   <entry.icon className="h-5 w-5 text-gold" />

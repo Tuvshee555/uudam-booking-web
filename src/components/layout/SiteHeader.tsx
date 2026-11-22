@@ -7,7 +7,8 @@ import * as NavigationMenu from "@radix-ui/react-navigation-menu";
 import { ArrowRight, CalendarDays, ChevronDown, Phone, Search } from "lucide-react";
 
 import { canonicalPath } from "@/lib/locales";
-import { CONTACT, formatPhone, hasLink } from "@/lib/contact";
+import { formatPhone, hasLink, telHref } from "@/lib/contact";
+import { useContactPhones } from "@/components/site/ContactProvider";
 import { track } from "@/lib/analytics";
 import { categoryHref, destinationHref, GUIDE_LINKS as GUIDES, PRIMARY_LINKS, type SiteNav } from "@/lib/siteNav";
 import SearchDialog from "@/components/site/SearchDialog";
@@ -17,6 +18,8 @@ import { cn } from "@/lib/utils";
 
 export default function SiteHeader({ nav, overlay }: { nav: SiteNav; overlay: boolean }) {
   const pathname = usePathname() ?? "";
+  // The number saved in admin Settings (ContactProvider).
+  const { phone } = useContactPhones();
   const [scrolled, setScrolled] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -208,16 +211,16 @@ export default function SiteHeader({ nav, overlay }: { nav: SiteNav; overlay: bo
             <span className="hidden text-[13px] font-medium xl:inline">Хайх</span>
           </button>
 
-          {hasLink(CONTACT.phone) && (
+          {hasLink(phone) && (
             <a
-              href={CONTACT.phoneHref}
+              href={telHref(phone)}
               onClick={() => track("phone_click", { properties: { from: "header" } })}
-              aria-label={`Залгах: ${formatPhone(CONTACT.phone)}`}
+              aria-label={`Залгах: ${formatPhone(phone)}`}
               className="flex h-10 items-center gap-2 rounded-full bg-gold px-3 text-sm font-semibold text-navy-night shadow-sm transition-colors hover:bg-[hsl(41_88%_55%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-4"
             >
               <Phone className="h-4 w-4" aria-hidden="true" />
               {/* Beside the full menu (1024–1279px) the pill is just the icon; the number is in its label. */}
-              <span className="hidden whitespace-nowrap tabular-nums sm:inline lg:hidden xl:inline">{formatPhone(CONTACT.phone)}</span>
+              <span className="hidden whitespace-nowrap tabular-nums sm:inline lg:hidden xl:inline">{formatPhone(phone)}</span>
             </a>
           )}
         </div>

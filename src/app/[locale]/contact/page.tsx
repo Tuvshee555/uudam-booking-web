@@ -4,7 +4,8 @@ import { Clock, ExternalLink, MapPin } from "lucide-react";
 import PageHero from "@/components/site/PageHero";
 import ContactForm from "@/components/lead/ContactForm";
 import { ChannelLink } from "@/components/site/channels";
-import { CHANNELS } from "@/lib/channels";
+import { buildChannels } from "@/lib/channels";
+import { getContactPhones } from "@/server/contactPhones";
 import { CONTACT, telHref } from "@/lib/contact";
 import { canonicalPath } from "@/lib/locales";
 import { shareMetadata } from "@/lib/seo";
@@ -27,7 +28,10 @@ const HINTS: Record<string, string> = {
   instagram: "Аяллын зураг, бичлэг",
 };
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  // The numbers saved in admin Settings (server/contactPhones.ts).
+  const phones = await getContactPhones();
+  const channels = buildChannels(phones);
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(CONTACT.address)}`;
 
   return (
@@ -43,7 +47,7 @@ export default function ContactPage() {
       <div className="site-container grid gap-12 pb-20 pt-12 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-16 lg:pt-16">
         <div>
           <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {CHANNELS.map((entry) => (
+            {channels.map((entry) => (
               <li key={entry.key} className={entry.key === "phone" ? "sm:col-span-2" : undefined}>
                 <ChannelLink
                   channelKey={entry.key}
@@ -64,11 +68,11 @@ export default function ContactPage() {
             ))}
           </ul>
 
-          {CONTACT.otherPhones.length > 0 && (
+          {phones.otherPhones.length > 0 && (
             <div className="mt-3 rounded-xl border border-border bg-card p-5">
               <p className="text-[12.5px] text-muted-foreground">Бусад утас</p>
               <ul className="mt-2 flex flex-wrap gap-x-5 gap-y-2">
-                {CONTACT.otherPhones.map((number) => (
+                {phones.otherPhones.map((number) => (
                   <li key={number}>
                     <a href={telHref(number)} className="link-draw text-[16px] font-semibold tabular-nums text-foreground">{number}</a>
                   </li>

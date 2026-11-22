@@ -5,7 +5,7 @@ import { Phone } from "lucide-react";
 import MessengerIcon from "@/components/icons/MessengerIcon";
 import { ChannelLink } from "@/components/site/channels";
 import { useTypingFocus } from "@/components/layout/MobileActionBar";
-import { channel } from "@/lib/channels";
+import { useChannel } from "@/components/site/ContactProvider";
 import { formatMnt } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +27,8 @@ export default function MobileTripBar({
   tripSlug: string;
 }) {
   const typing = useTypingFocus();
+  const phoneChannel = useChannel("phone");
+  const messengerChannel = useChannel("messenger");
   const goToBooking = () => {
     const target = document.getElementById("booking");
     target?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -52,12 +54,12 @@ export default function MobileTripBar({
             <p className="text-[14px] font-semibold text-foreground">Үнэ лавлах</p>
           )}
         </div>
-        {channel("phone") && (
+        {phoneChannel && (
           <ChannelLink channelKey="phone" tripId={tripId} from="trip-bar" ariaLabel="Залгах" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-foreground focus-ring">
             <Phone className="h-[18px] w-[18px]" aria-hidden="true" />
           </ChannelLink>
         )}
-        {channel("messenger") && (
+        {messengerChannel && (
           <ChannelLink channelKey="messenger" tripId={tripId} from="trip-bar" ariaLabel={`Messenger · ${tripSlug}`} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-foreground focus-ring">
             <MessengerIcon className="h-[18px] w-[18px]" />
           </ChannelLink>

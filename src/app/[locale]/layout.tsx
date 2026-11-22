@@ -9,6 +9,8 @@ import AppShellClient from "@/components/AppShellClient";
 import ErrorReporter from "@/components/ErrorReporter";
 import SiteFooter from "@/components/layout/SiteFooter";
 import { getCachedSiteNav } from "@/server/siteNavCache";
+import { getContactPhones } from "@/server/contactPhones";
+import { ContactProvider } from "@/components/site/ContactProvider";
 import { LOCALES } from "@/lib/locales";
 
 export function generateStaticParams() {
@@ -46,6 +48,8 @@ export default async function LocaleLayout({
   }
 
   const nav = await getCachedSiteNav();
+  // The phone numbers saved in admin Settings, for every call / WhatsApp button and the footer.
+  const phones = await getContactPhones();
 
   return (
     <QueryProvider>
@@ -53,9 +57,11 @@ export default async function LocaleLayout({
       <ClientI18nProvider locale={locale} messages={messages}>
         <AuthProvider>
           <Providers>
-            <AppShellClient nav={nav} footer={<SiteFooter nav={nav} />}>
-              {children}
-            </AppShellClient>
+            <ContactProvider phones={phones}>
+              <AppShellClient nav={nav} footer={<SiteFooter nav={nav} phones={phones} />}>
+                {children}
+              </AppShellClient>
+            </ContactProvider>
           </Providers>
         </AuthProvider>
       </ClientI18nProvider>

@@ -4,7 +4,7 @@ import { Facebook, Instagram, Mail, Phone } from "lucide-react";
 import MessengerIcon from "@/components/icons/MessengerIcon";
 import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
 import type { TrackedEvent } from "@/lib/analytics";
-import { CONTACT, formatPhone, hasLink } from "@/lib/contact";
+import { CONTACT, DEFAULT_PHONES, formatPhone, hasLink, telHref, whatsappHref, type ContactPhones } from "@/lib/contact";
 
 export type ChannelKey = "phone" | "messenger" | "whatsapp" | "email" | "facebook" | "instagram";
 
@@ -26,14 +26,18 @@ function handle(url: string): string {
 /**
  * Every way to reach a person at the agency, in the order customers use them.
  * Only channels with a real configured address are listed — no dead buttons.
+ * The phone and WhatsApp follow the number saved in admin Settings (ContactPhones); the server
+ * builds them from getContactPhones, the browser through ContactProvider's useChannels.
  */
-export const CHANNELS: Channel[] = (
+export function buildChannels(phones: ContactPhones = DEFAULT_PHONES): Channel[] {
+  const whatsapp = whatsappHref(phones.phone);
+  return (
   [
-    hasLink(CONTACT.phone) && {
+    hasLink(phones.phone) && {
       key: "phone",
       label: "Утас",
-      value: formatPhone(CONTACT.phone),
-      href: CONTACT.phoneHref,
+      value: formatPhone(phones.phone),
+      href: telHref(phones.phone),
       external: false,
       icon: Phone,
       event: "phone_click",
@@ -47,11 +51,11 @@ export const CHANNELS: Channel[] = (
       icon: MessengerIcon,
       event: "messenger_click",
     },
-    hasLink(CONTACT.whatsapp) && {
+    hasLink(whatsapp) && {
       key: "whatsapp",
       label: "WhatsApp",
-      value: formatPhone(CONTACT.phone) || handle(CONTACT.whatsapp),
-      href: CONTACT.whatsapp,
+      value: formatPhone(phones.phone) || handle(whatsapp),
+      href: whatsapp,
       external: true,
       icon: WhatsAppIcon,
       event: "whatsapp_click",
@@ -82,8 +86,12 @@ export const CHANNELS: Channel[] = (
       icon: Instagram,
     },
   ] as (Channel | false)[]
-).filter((entry): entry is Channel => Boolean(entry));
+  ).filter((entry): entry is Channel => Boolean(entry));
+}
 
-export function channel(key: ChannelKey): Channel | undefined {
-  return CHANNELS.find((entry) => entry.key === key);
+/** The channels with the default numbers (env); pages and components use the saved ones (buildChannels). */
+export const CHANNELS: Channel[] = buildChannels();
+
+export function channel(key: ChannelKey, list: Channel[] = CHANNELS): Channel | undefined {
+  return list.find((entry) => entry.key === key);
 }

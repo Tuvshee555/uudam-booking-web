@@ -14,7 +14,7 @@ import { saleBadgeLabel } from "@/lib/tripMarketing";
 import { datePriceOptions, formatAdultOption } from "@/lib/tripPriceOptions";
 import { formatPhoneInput, nameError, phoneError } from "@/lib/formValidation";
 import { canonicalPath } from "@/lib/locales";
-import { channel } from "@/lib/channels";
+import { useChannel } from "@/components/site/ContactProvider";
 import DepartureDatePicker from "./DepartureDatePicker";
 import { Counter } from "./BookingPanel";
 import { departureDateKey } from "@/lib/departureDate";
@@ -47,6 +47,7 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
   const [adults, setAdults] = useState(initialSelection?.adults ?? 2);
   const [children, setChildren] = useState(initialSelection?.children ?? 0);
   const [infants, setInfants] = useState(initialSelection?.infants ?? 0);
+  const phoneChannel = useChannel("phone");
 
   const [firstName, setFirstName] = useState("");
   const [phone, setPhone] = useState("");
@@ -126,7 +127,6 @@ export default function EnquiryPanel({ trip, initialSelection, variablePricing =
   };
 
   if (sentReference) {
-    const phoneChannel = channel("phone");
     return (
       <div ref={revealConfirmation} className="scroll-mt-24 rounded-xl border border-border bg-card p-6 shadow-panel">
         <span className="flex h-12 w-12 items-center justify-center rounded-full bg-success/10 text-success">

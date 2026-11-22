@@ -24,7 +24,7 @@ import QpayPayButton, { QpayPaidBadge } from "./QpayPayButton";
 import FormField, { inputClass, revealConfirmation, useSubmitGuard } from "@/components/site/FormField";
 import Honeypot from "@/components/site/Honeypot";
 import { ChannelLink } from "@/components/site/channels";
-import { channel } from "@/lib/channels";
+import { useChannel } from "@/components/site/ContactProvider";
 import { cn } from "@/lib/utils";
 import type { Departure, Trip } from "@/types/trip";
 
@@ -183,6 +183,7 @@ export default function BookingPanel({
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
   const [infants, setInfants] = useState(0);
+  const phoneChannel = useChannel("phone");
   const [selectedOptionKey, setSelectedOptionKey] = useState("");
   const [tierCounts, setTierCounts] = useState<Record<string, number>>({});
 
@@ -298,7 +299,6 @@ export default function BookingPanel({
   }
 
   if (step === "done" && result) {
-    const phoneChannel = channel("phone");
     return (
       <div ref={revealConfirmation} className="scroll-mt-24 rounded-xl border border-border bg-card p-6 shadow-panel">
         <span className="flex h-12 w-12 items-center justify-center rounded-full bg-success/10 text-success">

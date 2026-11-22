@@ -6,7 +6,7 @@ import { MessageSquareText, Phone, Search } from "lucide-react";
 
 import MessengerIcon from "@/components/icons/MessengerIcon";
 import { ChannelLink } from "@/components/site/channels";
-import { channel } from "@/lib/channels";
+import { useChannel } from "@/components/site/ContactProvider";
 import { canonicalPath } from "@/lib/locales";
 import { useAdvisorChat } from "@/lib/chatStore";
 import { cn } from "@/lib/utils";
@@ -48,8 +48,8 @@ export function BarIconLink({ children, label }: { children: ReactNode; label: s
 export default function MobileActionBar() {
   const typing = useTypingFocus();
   const toggleChat = useAdvisorChat((state) => state.toggle);
-  const hasPhone = Boolean(channel("phone"));
-  const hasMessenger = Boolean(channel("messenger"));
+  const hasPhone = Boolean(useChannel("phone"));
+  const hasMessenger = Boolean(useChannel("messenger"));
 
   return (
     <nav

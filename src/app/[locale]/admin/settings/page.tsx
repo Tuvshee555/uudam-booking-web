@@ -6,6 +6,7 @@ import { ArrowDown, ArrowUp, ExternalLink, Loader2, Plus, Save, Trash2, Undo2 } 
 import { toast } from "sonner";
 
 import { api, apiErrorMessage } from "@/lib/api";
+import { DEFAULT_PHONES } from "@/lib/contact";
 import { useI18n } from "@/components/i18n/ClientI18nProvider";
 import {
   ABOUT_ICON_OPTIONS,
@@ -69,6 +70,8 @@ type SettingsResponse = {
   termsSections: TermsSection[] | null;
   trustFacts: TrustFact[] | null;
   trustPhoneText: string | null;
+  contactPhone: string | null;
+  contactOtherPhones: string[] | null;
 };
 
 const ICON_NAMES: Record<string, string> = {
@@ -85,6 +88,7 @@ const ICON_NAMES: Record<string, string> = {
 };
 
 const SECTIONS = [
+  { id: "phones", label: "Утасны дугаар" },
   { id: "trip-notice", label: "Бүх аялалд харагдах тэмдэглэл" },
   { id: "bank", label: "Банкны мэдээлэл" },
   { id: "home-hero", label: "Нүүр хуудас: дээд хэсэг" },
@@ -216,6 +220,8 @@ export default function AdminSettingsPage() {
 
   const [trustFactsDraft, setTrustFactsDraft] = useState<TrustFact[] | undefined>(undefined);
   const [trustPhoneTextDraft, setTrustPhoneTextDraft] = useState<string | undefined>(undefined);
+  const [phoneDraft, setPhoneDraft] = useState<string | undefined>(undefined);
+  const [otherPhonesDraft, setOtherPhonesDraft] = useState<string | undefined>(undefined);
 
   const [homeCtaTitleDraft, setHomeCtaTitleDraft] = useState<string | undefined>(undefined);
   const [homeCtaBodyDraft, setHomeCtaBodyDraft] = useState<string | undefined>(undefined);
@@ -232,7 +238,7 @@ export default function AdminSettingsPage() {
     homeEyebrowDraft, homeTitleDraft, homeAccentDraft, homeSubtitleDraft, homeImagesDraft,
     homePrimaryCtaDraft, homeSecondaryCtaDraft, homeBadgeDraft, trustFactsDraft, trustPhoneTextDraft,
     homeCtaTitleDraft, homeCtaBodyDraft, customTripTitleDraft, customTripBodyDraft, giftTitleDraft,
-    giftBodyDraft, faqsDraft, termsDraft,
+    giftBodyDraft, faqsDraft, termsDraft, phoneDraft, otherPhonesDraft,
   ];
   const dirty = drafts.some((draft) => draft !== undefined);
 
@@ -241,7 +247,7 @@ export default function AdminSettingsPage() {
       setTripNoticeDraft, setBankDetailsDraft, setAboutTitleDraft, setAboutSubtitleDraft, setHomeEyebrowDraft,
       setHomeTitleDraft, setHomeAccentDraft, setHomeSubtitleDraft, setHomePrimaryCtaDraft, setHomeSecondaryCtaDraft,
       setHomeBadgeDraft, setTrustPhoneTextDraft, setHomeCtaTitleDraft, setHomeCtaBodyDraft, setCustomTripTitleDraft,
-      setCustomTripBodyDraft, setGiftTitleDraft, setGiftBodyDraft,
+      setCustomTripBodyDraft, setGiftTitleDraft, setGiftBodyDraft, setPhoneDraft, setOtherPhonesDraft,
     ]) reset(undefined);
     setAboutValuesDraft(undefined);
     setHomeImagesDraft(undefined);
@@ -282,6 +288,11 @@ export default function AdminSettingsPage() {
   const trustFacts =
     trustFactsDraft ?? (data?.trustFacts && data.trustFacts.length > 0 ? data.trustFacts : DEFAULT_TRUST_FACTS);
   const trustPhoneText = trustPhoneTextDraft ?? data?.trustPhoneText ?? DEFAULT_TRUST_PHONE_TEXT;
+  // The numbers on the whole site (lib/contact.ts): what is saved, else today's defaults, so the
+  // form always shows the numbers customers see now.
+  const contactPhone = phoneDraft ?? data?.contactPhone ?? DEFAULT_PHONES.phone;
+  const otherPhonesText = otherPhonesDraft ?? (data?.contactOtherPhones ?? DEFAULT_PHONES.otherPhones).join("\n");
+  const otherPhones = otherPhonesText.split(/[\n,;]/).map((value) => value.trim()).filter(Boolean);
 
   const homeCtaTitle = homeCtaTitleDraft ?? data?.homeCustomCtaTitle ?? DEFAULT_HOME_CUSTOM_CTA_TITLE;
   const homeCtaBody = homeCtaBodyDraft ?? data?.homeCustomCtaBody ?? DEFAULT_HOME_CUSTOM_CTA_BODY;
@@ -333,6 +344,8 @@ export default function AdminSettingsPage() {
           giftBody: giftBody.trim() || null,
           faqs,
           termsSections: terms,
+          contactPhone: contactPhone.trim() || null,
+          contactOtherPhones: otherPhones,
         })
       ).data,
     onSuccess: (saved) => {
@@ -417,6 +430,21 @@ export default function AdminSettingsPage() {
               ))}
             </select>
           </label>
+
+          <Section
+            id="phones"
+            title="Утасны дугаар"
+            hint="Сайтын дээд талын шар товч, «Залгах», WhatsApp товчнууд, хөл хэсэг, «Холбоо барих» хуудсанд харагдана. Хадгалсны дараа бүх хуудсанд шууд солигдоно."
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField label="Үндсэн дугаар" hint="Бүх «Залгах» болон WhatsApp товч энэ дугаар руу залгана. Хоосон үлдээвэл анхны дугаар буцна.">
+                <Input value={contactPhone} onChange={(event) => setPhoneDraft(event.target.value)} inputMode="tel" placeholder="ж: 9117 2769" />
+              </FormField>
+              <FormField label="Нэмэлт дугаарууд" hint="Хөл хэсэг болон «Холбоо барих» хуудсанд жагсаана. Мөр бүрт нэг дугаар (6 хүртэл).">
+                <Textarea value={otherPhonesText} onChange={(event) => setOtherPhonesDraft(event.target.value)} rows={3} placeholder={"ж:\n7713 6633\n8913 6633"} />
+              </FormField>
+            </div>
+          </Section>
 
           <Section id="trip-notice" title="Бүх аялалд харагдах чухал тэмдэглэл" hint="Аялал бүрийн хуудсан дахь шар «Чухал тэмдэглэл» хайрцагт харагдана.">
             <FormField

@@ -5,7 +5,8 @@ import FaqList from "@/components/site/FaqList";
 import JsonLd from "@/components/content/JsonLd";
 import { ChannelLink } from "@/components/site/channels";
 import { getSiteSettings } from "@/server/siteSettings";
-import { CHANNELS } from "@/lib/channels";
+import { buildChannels } from "@/lib/channels";
+import { getContactPhones } from "@/server/contactPhones";
 import { canonicalPath } from "@/lib/locales";
 import { DEFAULT_FAQS, parseFaqs, type FaqItem } from "@/lib/siteContent";
 import { shareMetadata } from "@/lib/seo";
@@ -22,6 +23,7 @@ export const revalidate = 86400;
 const OTHER = "Бусад";
 
 export default async function FaqPage() {
+  const channels = buildChannels(await getContactPhones());
   const settings = await getSiteSettings();
   const parsed = parseFaqs(settings?.faqs);
   const faqs: FaqItem[] = parsed && parsed.length > 0 ? parsed : DEFAULT_FAQS;
@@ -84,7 +86,7 @@ export default async function FaqPage() {
           <p className="eyebrow">Хариулт олдсонгүй юу</p>
           <p className="mt-3 text-[15px] font-semibold text-foreground">Ажилтанаас шууд асуугаарай</p>
           <ul className="mt-4 space-y-2">
-            {CHANNELS.filter((entry) => ["phone", "messenger", "whatsapp"].includes(entry.key)).map((entry) => (
+            {channels.filter((entry) => ["phone", "messenger", "whatsapp"].includes(entry.key)).map((entry) => (
               <li key={entry.key}>
                 <ChannelLink channelKey={entry.key} from="faq" className="flex h-11 items-center gap-3 rounded-full border border-border px-4 text-[14px] font-semibold text-foreground focus-ring hover:border-foreground/35">
                   <entry.icon className="h-4 w-4 text-gold-text" />

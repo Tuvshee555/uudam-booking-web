@@ -3,7 +3,8 @@
 import type { ReactNode } from "react";
 
 import { track } from "@/lib/analytics";
-import { channel as findChannel, type ChannelKey } from "@/lib/channels";
+import type { ChannelKey } from "@/lib/channels";
+import { useChannel } from "@/components/site/ContactProvider";
 
 /**
  * An anchor for one contact channel that records which channel was used
@@ -26,7 +27,8 @@ export function ChannelLink({
   /** Where on the site the tap happened, for the funnel report. */
   from?: string;
 }) {
-  const entry = findChannel(channelKey);
+  // The numbers saved in admin Settings (ContactProvider).
+  const entry = useChannel(channelKey);
   if (!entry) return null;
   return (
     <a

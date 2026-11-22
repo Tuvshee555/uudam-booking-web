@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/server/prisma";
 import { requireAdmin } from "@/server/auth";
-import { handler, json, publicCache, readJson, safeText } from "@/server/http";
+import { handler, httpError, json, publicCache, readJson, safeText } from "@/server/http";
+import { cleanPhoneInput } from "@/lib/contact";
 import { cached, invalidate } from "@/server/cache";
 import { revalidateStorefront } from "@/server/revalidate";
 import { parseAboutValues } from "@/lib/aboutContent";
@@ -38,6 +39,8 @@ export const GET = handler(async () => {
       termsSections: row?.termsSections ?? null,
       trustFacts: row?.trustFacts ?? null,
       trustPhoneText: row?.trustPhoneText ?? null,
+      contactPhone: row?.contactPhone ?? null,
+      contactOtherPhones: row?.contactOtherPhones ?? null,
     };
   });
 
@@ -84,6 +87,19 @@ export const PUT = handler(async (req: Request) => {
     body.trustFacts === undefined ? undefined : (parseTrustFacts(body.trustFacts) ?? Prisma.JsonNull);
   const trustPhoneText = safeText(body.trustPhoneText, 300);
 
+  // The phone numbers (lib/contact.ts): the main one (empty = back to the default) and the others
+  // (what is saved is what the site lists, up to six). A number that is not a number is refused.
+  const contactPhone = cleanPhoneInput(body.contactPhone);
+  if (contactPhone === false) throw httpError(400, "Утасны дугаар буруу байна (ж: 9117 2769).", "invalid_phone");
+  let contactOtherPhones: string[] | undefined;
+  if (body.contactOtherPhones !== undefined) {
+    const raw: unknown[] = Array.isArray(body.contactOtherPhones) ? body.contactOtherPhones
+      : typeof body.contactOtherPhones === "string" ? body.contactOtherPhones.split(/[\n,;]/) : [];
+    const cleaned = raw.map(cleanPhoneInput);
+    if (cleaned.some((value) => value === false)) throw httpError(400, "Нэмэлт дугааруудын нэг нь буруу байна (ж: 7713 6633).", "invalid_phone");
+    contactOtherPhones = cleaned.filter((value): value is string => typeof value === "string").slice(0, 6);
+  }
+
   const fields = {
     tripNotice,
     bankDetails,
@@ -108,6 +124,8 @@ export const PUT = handler(async (req: Request) => {
     termsSections,
     trustFacts,
     trustPhoneText,
+    contactPhone,
+    contactOtherPhones,
   };
 
   // Only what the request actually sent is written. A field the caller left
@@ -153,5 +171,7 @@ export const PUT = handler(async (req: Request) => {
     termsSections: row.termsSections,
     trustFacts: row.trustFacts,
     trustPhoneText: row.trustPhoneText,
+    contactPhone: row.contactPhone,
+    contactOtherPhones: row.contactOtherPhones,
   });
 });

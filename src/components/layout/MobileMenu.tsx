@@ -7,7 +7,7 @@ import { ArrowUpRight, Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import ThemeToggle from "@/components/theme/ThemeToggle";
 import { ChannelLink } from "@/components/site/channels";
-import { CHANNELS } from "@/lib/channels";
+import { useChannels } from "@/components/site/ContactProvider";
 import { canonicalPath } from "@/lib/locales";
 import { categoryHref, destinationHref, GUIDE_LINKS, PRIMARY_LINKS, type SiteNav } from "@/lib/siteNav";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,7 @@ import Wordmark from "@/components/site/Wordmark";
 export default function MobileMenu({ nav, tone }: { nav: SiteNav; tone: "light" | "dark" }) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
+  const channels = useChannels();
 
   const links = [
     { href: canonicalPath("/trips"), label: "Бүх аялал", meta: nav.tripCount ? String(nav.tripCount) : undefined },
@@ -116,7 +117,7 @@ export default function MobileMenu({ nav, tone }: { nav: SiteNav; tone: "light" 
         )}
 
         <section className="mt-auto space-y-2 px-5 pb-8 pt-8" aria-label="Холбоо барих">
-          {CHANNELS.filter((entry) => ["phone", "messenger", "whatsapp"].includes(entry.key)).map((entry) => (
+          {channels.filter((entry) => ["phone", "messenger", "whatsapp"].includes(entry.key)).map((entry) => (
             <ChannelLink
               key={entry.key}
               channelKey={entry.key}

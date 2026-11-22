@@ -3,14 +3,15 @@ import { Clock } from "lucide-react";
 import FaqList from "@/components/site/FaqList";
 import SectionHeading, { ArrowLink } from "@/components/site/SectionHeading";
 import { ChannelLink } from "@/components/site/channels";
-import { CHANNELS } from "@/lib/channels";
+import { buildChannels } from "@/lib/channels";
+import { getContactPhones } from "@/server/contactPhones";
 import { CONTACT } from "@/lib/contact";
 import { canonicalPath } from "@/lib/locales";
 import type { FaqItem } from "@/lib/siteContent";
 
 /** The questions people ask before booking, and the ways to ask anything else. */
-export default function HomeFaq({ faqs }: { faqs: FaqItem[] }) {
-  const reachable = CHANNELS.filter((entry) => ["phone", "messenger", "whatsapp", "email"].includes(entry.key));
+export default async function HomeFaq({ faqs }: { faqs: FaqItem[] }) {
+  const reachable = buildChannels(await getContactPhones()).filter((entry) => ["phone", "messenger", "whatsapp", "email"].includes(entry.key));
 
   return (
     <section aria-labelledby="faq-title" className="site-container pb-6 pt-20 lg:pt-28">

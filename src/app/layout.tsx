@@ -4,6 +4,7 @@ import { preconnect } from "react-dom";
 import "./globals.css";
 import JsonLd from "@/components/content/JsonLd";
 import { CONTACT, hasLink } from "@/lib/contact";
+import { getContactPhones } from "@/server/contactPhones";
 import { DEFAULT_SHARE_IMAGE } from "@/lib/seo";
 import { SITE_URL } from "@/lib/siteUrl";
 
@@ -83,19 +84,22 @@ const businessJsonLd = {
     addressLocality: "Улаанбаатар",
     addressCountry: "MN",
   },
-  ...(hasLink(CONTACT.phone) ? { telephone: CONTACT.phone } : {}),
+  // The telephone is added per render from admin Settings (RootLayout below).
   ...(hasLink(CONTACT.email) ? { email: CONTACT.email } : {}),
   sameAs: [CONTACT.facebook, CONTACT.instagram].filter((url) => hasLink(url)),
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // The number saved in admin Settings (server/contactPhones.ts), not only the env default.
+  const { phone } = await getContactPhones();
+  const agencyJsonLd = hasLink(phone) ? { ...businessJsonLd, telephone: phone } : businessJsonLd;
   // Every page leads with a Cloudinary photo: open that connection while the
   // HTML is still arriving, not after the image tag is parsed.
   preconnect("https://res.cloudinary.com");
   return (
     <html lang="mn" suppressHydrationWarning>
       <body className={`${manrope.variable} ${displaySerif.variable} font-sans antialiased`}>
-        <JsonLd id="business-json-ld" data={businessJsonLd} />
+        <JsonLd id="business-json-ld" data={agencyJsonLd} />
         {children}
       </body>
     </html>

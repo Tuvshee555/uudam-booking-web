@@ -5,8 +5,8 @@ import ThemeToggle from "@/components/theme/ThemeToggle";
 import Wordmark from "@/components/site/Wordmark";
 import { HorizonArcs } from "@/components/site/SunMark";
 import { ChannelLink } from "@/components/site/channels";
-import { CHANNELS } from "@/lib/channels";
-import { CONTACT } from "@/lib/contact";
+import { buildChannels } from "@/lib/channels";
+import { CONTACT, DEFAULT_PHONES, type ContactPhones } from "@/lib/contact";
 import { canonicalPath } from "@/lib/locales";
 import { categoryHref, destinationHref, GUIDE_LINKS, type SiteNav } from "@/lib/siteNav";
 
@@ -28,10 +28,12 @@ function Column({ title, links }: { title: string; links: { href: string; label:
   );
 }
 
-export default function SiteFooter({ nav }: { nav: SiteNav }) {
+export default function SiteFooter({ nav, phones = DEFAULT_PHONES }: { nav: SiteNav; phones?: ContactPhones }) {
+  // The numbers saved in admin Settings (server/contactPhones.ts), passed by the layout.
+  const channels = buildChannels(phones);
   const year = new Date().getFullYear();
-  const phone = CHANNELS.find((entry) => entry.key === "phone");
-  const social = CHANNELS.filter((entry) => entry.key !== "phone");
+  const phone = channels.find((entry) => entry.key === "phone");
+  const social = channels.filter((entry) => entry.key !== "phone");
 
   return (
     <footer className="relative isolate overflow-hidden surface-night" data-print="hide">
@@ -63,8 +65,8 @@ export default function SiteFooter({ nav }: { nav: SiteNav }) {
                 <span className="mt-2 block font-display text-[2.4rem] leading-none text-white transition-colors group-hover:text-gold">{phone.value}</span>
               </ChannelLink>
             )}
-            {CONTACT.otherPhones.length > 0 && (
-              <p className="mt-3 text-sm tabular-nums text-white/60">{CONTACT.otherPhones.join(" · ")}</p>
+            {phones.otherPhones.length > 0 && (
+              <p className="mt-3 text-sm tabular-nums text-white/60">{phones.otherPhones.join(" · ")}</p>
             )}
             <ul className="mt-8 space-y-4 text-[14px] leading-relaxed text-white/75">
               <li className="flex gap-3">

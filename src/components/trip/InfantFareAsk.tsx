@@ -10,7 +10,7 @@
 import { MessageCircle, Phone } from "lucide-react";
 
 import { ChannelLink } from "@/components/site/channels";
-import { channel } from "@/lib/channels";
+import { useChannel } from "@/components/site/ContactProvider";
 import { INFANT_FARE_ASK, infantFareUnknown, passengerFareLabel } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
@@ -28,8 +28,10 @@ export default function InfantFareAsk({
   from: string;
   className?: string;
 }) {
+  const messenger = useChannel("messenger");
+  const phone = useChannel("phone");
   if (!infantFareUnknown(sourceMetadata, price)) return <>{passengerFareLabel(sourceMetadata, "infant", price)}</>;
-  const key = channel("messenger") ? "messenger" : channel("phone") ? "phone" : null;
+  const key = messenger ? "messenger" : phone ? "phone" : null;
   if (!key) return <>{INFANT_FARE_ASK}</>;
   const Icon = key === "messenger" ? MessageCircle : Phone;
   return (

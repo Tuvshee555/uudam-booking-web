@@ -3,15 +3,16 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 import { ChannelLink } from "@/components/site/channels";
-import { channel } from "@/lib/channels";
+import { buildChannels, channel } from "@/lib/channels";
+import { getContactPhones } from "@/server/contactPhones";
 import { canonicalPath } from "@/lib/locales";
 
 /**
  * The route for a visitor whose dates fit nothing on offer: a request for a
  * trip arranged around them. Photographed with a real trip's photo.
  */
-export default function CustomTripBand({ title, body, image }: { title: string; body: string; image: string | null }) {
-  const phone = channel("phone");
+export default async function CustomTripBand({ title, body, image }: { title: string; body: string; image: string | null }) {
+  const phone = channel("phone", buildChannels(await getContactPhones()));
   return (
     <section aria-labelledby="custom-title" className="site-container pt-20 lg:pt-28">
       <div className="grid overflow-hidden rounded-xl border border-border bg-card lg:grid-cols-2">

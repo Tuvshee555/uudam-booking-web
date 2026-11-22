@@ -1,7 +1,8 @@
 import { CalendarCheck, Globe2 } from "lucide-react";
 
 import { aboutIcon } from "@/lib/aboutContent";
-import { CONTACT, formatPhone, hasLink } from "@/lib/contact";
+import { formatPhone, hasLink } from "@/lib/contact";
+import { getContactPhones } from "@/server/contactPhones";
 import {
   DEFAULT_TRUST_FACTS,
   DEFAULT_TRUST_PHONE_TEXT,
@@ -15,7 +16,7 @@ import {
  * default to things the site itself shows. No years in business, traveller
  * counts or awards — none of those are documented anywhere this site can check.
  */
-export default function TrustStrip({
+export default async function TrustStrip({
   tripCount,
   destinationCount,
   countryCount,
@@ -30,8 +31,10 @@ export default function TrustStrip({
   facts?: TrustFact[];
   phoneText?: string | null;
 }) {
-  const phoneLine = (hasLink(CONTACT.phone) ? phoneText || DEFAULT_TRUST_PHONE_TEXT : DEFAULT_TRUST_PHONE_TEXT_NO_PHONE)
-    .replace("{{phone}}", formatPhone(CONTACT.phone));
+  // The number saved in admin Settings (server/contactPhones.ts).
+  const { phone } = await getContactPhones();
+  const phoneLine = (hasLink(phone) ? phoneText || DEFAULT_TRUST_PHONE_TEXT : DEFAULT_TRUST_PHONE_TEXT_NO_PHONE)
+    .replace("{{phone}}", formatPhone(phone));
   const statements = (facts && facts.length ? facts : DEFAULT_TRUST_FACTS)
     .slice(0, 2)
     .map((fact) => ({ ...fact, text: fact.text.includes("{{phone}}") ? phoneLine : fact.text }));
