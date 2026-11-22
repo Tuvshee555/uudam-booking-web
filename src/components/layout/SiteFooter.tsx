@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Clock, MapPin } from "lucide-react";
 
@@ -38,9 +39,19 @@ export default function SiteFooter({ nav, phones = DEFAULT_PHONES }: { nav: Site
 
   return (
     <footer className="relative isolate overflow-hidden surface-night" data-print="hide">
-      <HorizonArcs className="absolute -bottom-10 left-1/2 -z-10 h-[420px] w-[1100px] -translate-x-1/2 opacity-40" />
+      {BRAND.key === "magnai" ? (
+        <svg aria-hidden="true" viewBox="0 0 1440 90" preserveAspectRatio="none" className="absolute inset-x-0 top-0 -z-10 h-16 w-full text-[hsl(var(--uudam-gold)/0.45)]">
+          <path d="M0 2 L200 2 L300 60 L420 18 L560 74 L720 8 L880 70 L1020 22 L1140 58 L1240 2 L1440 2" fill="none" stroke="currentColor" strokeWidth="1.5" />
+        </svg>
+      ) : (
+        <HorizonArcs className="absolute -bottom-10 left-1/2 -z-10 h-[420px] w-[1100px] -translate-x-1/2 opacity-40" />
+      )}
 
       <div className="site-container pt-16 md:pt-24">
+        {BRAND.key === "magnai" ? (
+          <MagnaiFooterIntro phone={phone} social={social} otherPhones={phones.otherPhones} />
+        ) : (
+          <>
         <div className="grid gap-12 border-b border-white/10 pb-14 lg:grid-cols-[1.3fr_1fr] lg:gap-20 lg:pb-20">
           <div>
             <p className="eyebrow eyebrow-on-dark">{BRAND.name}</p>
@@ -96,6 +107,8 @@ export default function SiteFooter({ nav, phones = DEFAULT_PHONES }: { nav: Site
           </address>
         </div>
 
+          </>
+        )}
         <div className="grid grid-cols-2 gap-10 py-14 md:grid-cols-4">
           <Column
             title="Аялал"
@@ -134,5 +147,72 @@ export default function SiteFooter({ nav, phones = DEFAULT_PHONES }: { nav: Site
         </div>
       </div>
     </footer>
+  );
+}
+
+type FooterChannel = ReturnType<typeof buildChannels>[number];
+
+/**
+ * Magnai's footer head (lib/brand.ts): the round logo centred over the invitation, then the phone,
+ * the office and the channels side by side under a gold mountain line. Same links and numbers as
+ * Uudam's footer.
+ */
+function MagnaiFooterIntro({ phone, social, otherPhones }: { phone: FooterChannel | undefined; social: FooterChannel[]; otherPhones: string[] }) {
+  return (
+    <div className="border-b border-white/10 pb-14 lg:pb-16">
+      <div className="mx-auto flex max-w-2xl flex-col items-center text-center">
+        <Image src={BRAND.logo} alt="" width={96} height={96} className="h-20 w-20 rounded-full ring-1 ring-[hsl(var(--uudam-gold)/0.5)] lg:h-24 lg:w-24" />
+        <p className="eyebrow eyebrow-on-dark mt-6">{BRAND.name}</p>
+        <p className="display-1 mt-4 text-balance text-white">Дараагийн аяллаа хамтдаа төлөвлөе.</p>
+        <p className="mt-4 max-w-lg text-base leading-relaxed text-white/70">
+          Хөтөлбөр, үнэ, хөдлөх огноог сайтаас харж, захиалгаа онлайнаар үлдээгээрэй. Нөхцөлийг манай ажилтан утсаар баталгаажуулна.
+        </p>
+        <div className="mt-7 flex flex-wrap justify-center gap-3">
+          <Link href={canonicalPath("/trips")} className="inline-flex h-12 items-center gap-2 rounded-md bg-gold px-7 text-[15px] font-semibold text-navy-night transition-colors hover:bg-[hsl(41_88%_55%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
+            Аялал сонгох
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
+          <Link href={canonicalPath("/contact")} className="inline-flex h-12 items-center rounded-md border border-[hsl(var(--uudam-gold)/0.55)] px-7 text-[15px] font-semibold text-white transition-colors hover:bg-[hsl(var(--uudam-gold)/0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">
+            Холбоо барих
+          </Link>
+        </div>
+      </div>
+
+      <address className="mt-12 grid gap-8 border-t border-white/10 pt-10 not-italic sm:grid-cols-3 sm:gap-6">
+        <div>
+          {phone && (
+            <ChannelLink channelKey="phone" from="footer" className="group block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">Утсаар</span>
+              <span className="mt-2 block font-display text-[2rem] leading-none text-white transition-colors group-hover:text-gold">{phone.value}</span>
+            </ChannelLink>
+          )}
+          {otherPhones.length > 0 && <p className="mt-3 text-sm tabular-nums text-white/60">{otherPhones.join(" · ")}</p>}
+        </div>
+        <ul className="space-y-4 text-[14px] leading-relaxed text-white/75">
+          <li className="flex gap-3">
+            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gold" aria-hidden="true" />
+            {CONTACT.address}
+          </li>
+          <li className="flex gap-3">
+            <Clock className="mt-0.5 h-4 w-4 shrink-0 text-gold" aria-hidden="true" />
+            {CONTACT.workingHours}
+          </li>
+        </ul>
+        <ul className="flex flex-wrap content-start gap-2 sm:justify-end" aria-label="Сошиал сүлжээ ба мессеж">
+          {social.map((entry) => (
+            <li key={entry.key}>
+              <ChannelLink
+                channelKey={entry.key}
+                from="footer"
+                ariaLabel={entry.label}
+                className="flex h-11 w-11 items-center justify-center rounded-md border border-white/20 text-white/80 transition-colors hover:border-gold hover:bg-gold hover:text-navy-night focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+              >
+                <entry.icon className="h-[18px] w-[18px]" />
+              </ChannelLink>
+            </li>
+          ))}
+        </ul>
+      </address>
+    </div>
   );
 }

@@ -606,10 +606,10 @@
   --ring: 37 70% 55%;
 }
 
-/* Montserrat (layout.tsx --font-brand) takes both the text and the display slot. */
+/* Montserrat (layout.tsx --font-brand) for text; Oswald (--font-brand-display) for headings. */
 :root[data-brand="magnai"] body {
   --font-manrope: var(--font-brand);
-  --font-display: var(--font-brand);
+  --font-display: var(--font-brand-display, var(--font-brand));
 }
 
 :root[data-brand="magnai"] .font-display,
@@ -619,16 +619,38 @@
 :root[data-brand="magnai"] .display-3,
 :root[data-brand="magnai"] .numeral {
   font-family: var(--font-display), system-ui, sans-serif;
-  font-weight: 650;
-  letter-spacing: -0.022em;
+  font-weight: 500;
+  letter-spacing: 0.004em;
 }
 
 :root[data-brand="magnai"] .surface-night {
   color: hsl(216 30% 96%);
 }
 
-/* Montserrat runs wider than the serif: a touch smaller so the hero keeps its two lines. */
+/* The hero headline is set like an expedition poster: condensed capitals. */
 :root[data-brand="magnai"] .display-hero {
-  font-size: clamp(2.35rem, 1.35rem + 3.5vw, 4.1rem);
-  line-height: 1.04;
+  font-size: clamp(2.6rem, 1.3rem + 4.4vw, 4.9rem);
+  font-weight: 600;
+  line-height: 1.02;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+/* Eyebrows carry a small gold diamond (the logo's compass star) instead of Uudam's rule. */
+:root[data-brand="magnai"] .eyebrow {
+  letter-spacing: 0.26em;
+}
+:root[data-brand="magnai"] .eyebrow::before {
+  width: 0.45rem;
+  height: 0.45rem;
+  opacity: 1;
+  transform: rotate(45deg);
+}
+
+/*
+ * Buttons are squared, not pills: every gold or outlined text button. Round icon buttons (they set a
+ * width, e.g. "w-10") stay round.
+ */
+:root[data-brand="magnai"] :is(a, button).rounded-full:is(.bg-gold, .bg-primary, .border):not([class*=" w-"]) {
+  border-radius: 0.3rem;
 }

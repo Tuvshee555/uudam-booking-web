@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Manrope, Montserrat, Noto_Serif_Display } from "next/font/google";
+import { Manrope, Montserrat, Noto_Serif_Display, Oswald } from "next/font/google";
 import { preconnect } from "react-dom";
 import "./globals.css";
 import JsonLd from "@/components/content/JsonLd";
@@ -41,6 +41,18 @@ const displaySerif = Noto_Serif_Display({
  */
 const brandSans = Montserrat({
   variable: "--font-brand",
+  subsets: ["latin", "cyrillic", "cyrillic-ext"],
+  display: "swap",
+  preload: false,
+});
+
+/**
+ * The secondary brand's display face: Oswald, a condensed expedition-poster sans, for headings
+ * only (globals.css). Has Ө and Ү in cyrillic-ext; not preloaded, so uudamtravel.mn never loads it.
+ */
+const brandDisplay = Oswald({
+  variable: "--font-brand-display",
+  weight: ["500", "600"],
   subsets: ["latin", "cyrillic", "cyrillic-ext"],
   display: "swap",
   preload: false,
@@ -110,7 +122,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   preconnect("https://res.cloudinary.com");
   return (
     <html lang="mn" suppressHydrationWarning {...(BRAND.isPrimary ? {} : { "data-brand": BRAND.key })}>
-      <body className={BRAND.isPrimary ? `${manrope.variable} ${displaySerif.variable} font-sans antialiased` : `${manrope.variable} ${displaySerif.variable} ${brandSans.variable} font-sans antialiased`}>
+      <body className={BRAND.isPrimary ? `${manrope.variable} ${displaySerif.variable} font-sans antialiased` : `${manrope.variable} ${displaySerif.variable} ${brandSans.variable} ${brandDisplay.variable} font-sans antialiased`}>
         <JsonLd id="business-json-ld" data={agencyJsonLd} />
         {children}
       </body>

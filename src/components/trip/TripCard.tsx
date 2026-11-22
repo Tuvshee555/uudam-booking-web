@@ -14,6 +14,7 @@ import { formatTripDuration, formatTripTitle, isAllCapsTitle } from "@/lib/tripD
 import { canonicalPath } from "@/lib/locales";
 import SaveButton from "@/components/trip/SaveButton";
 import { cn } from "@/lib/utils";
+import { BRAND } from "@/lib/brand";
 
 /**
  * A trip in a grid: photo, where it goes, the title, the next open date and
@@ -47,6 +48,15 @@ export default function TripCard({
   const title = formatTripTitle(trip.title);
   const duration = formatTripDuration(trip.durationDays, trip.durationNights);
   const Heading = headingLevel === 2 ? "h2" : "h3";
+
+  if (BRAND.key === "magnai") {
+    return (
+      <MagnaiTripCard
+        trip={trip} eager={eager} sizes={sizes} Heading={Heading} href={href} price={price} priced={priced}
+        status={status} places={places} saleLabel={saleLabel} hasVideo={hasVideo} title={title} duration={duration}
+      />
+    );
+  }
 
   return (
     <article className="group relative flex h-full flex-col">
@@ -152,6 +162,111 @@ export default function TripCard({
       </div>
 
       <SaveButton slug={trip.slug} className="absolute right-2.5 top-2.5 z-10 sm:right-3 sm:top-3" />
+    </article>
+  );
+}
+
+/**
+ * Magnai's card (lib/brand.ts): a boxed ticket rather than Uudam's borderless photo — a landscape
+ * photo, the facts on the card, and the price on a midnight strip in gold. Same link, save button,
+ * badges and data as Uudam's card.
+ */
+function MagnaiTripCard({
+  trip, eager, sizes, Heading, href, price, priced, status, places, saleLabel, hasVideo, title, duration,
+}: {
+  trip: Trip; eager: boolean; sizes: string; Heading: "h2" | "h3"; href: string; price: number; priced: boolean;
+  status: ReturnType<typeof tripStatus>; places: ReturnType<typeof tripDestinations>; saleLabel: string | null;
+  hasVideo: boolean; title: string; duration: string;
+}) {
+  return (
+    <article className="group relative flex h-full flex-col overflow-hidden rounded-md border border-border bg-card shadow-[0_1px_2px_rgba(1,28,58,0.06)] transition-shadow duration-300 hover:shadow-[0_18px_40px_-22px_rgba(1,28,58,0.45)]">
+      <div className="relative aspect-[4/3] overflow-hidden bg-sand">
+        {trip.image ? (
+          <Image
+            src={trip.image}
+            alt=""
+            fill
+            sizes={sizes}
+            quality={75}
+            priority={eager}
+            fetchPriority={eager ? "high" : undefined}
+            className="photo-zoom object-cover"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center text-xs text-muted-foreground">Зураг удахгүй</div>
+        )}
+        <div className="absolute left-2.5 top-2.5 flex flex-wrap gap-1.5">
+          {trip.isFeatured && (
+            <span className="rounded-sm bg-gold px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-navy-night">Онцлох</span>
+          )}
+          {saleLabel && (
+            <span className="rounded-sm bg-destructive px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white">{saleLabel}</span>
+          )}
+          {status.kind === "full" && (
+            <span className="rounded-sm bg-navy-night/85 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white backdrop-blur">Дүүрсэн</span>
+          )}
+        </div>
+        {hasVideo && (
+          <span className="absolute bottom-2.5 right-2.5 flex items-center gap-1 rounded-sm bg-black/60 px-2 py-1 text-[10.5px] font-semibold text-white backdrop-blur">
+            <Play className="h-3 w-3 fill-current" aria-hidden="true" />
+            Бичлэг
+          </span>
+        )}
+      </div>
+
+      <div className="flex flex-1 flex-col px-3.5 pb-3.5 pt-3 sm:px-4">
+        <div className="flex items-center justify-between gap-2 text-[10.5px] font-semibold uppercase tracking-[0.16em] sm:text-[11px]">
+          <span className="min-w-0 truncate text-gold-text">{places.slice(0, 2).map((place) => place.label).join(" · ")}</span>
+          {duration && <span className="shrink-0 text-muted-foreground">{duration}</span>}
+        </div>
+        <Heading
+          className={cn(
+            "mt-1.5 line-clamp-3 font-semibold leading-snug text-foreground sm:line-clamp-2",
+            isAllCapsTitle(title) ? "text-[13px] tracking-[0.015em] sm:text-[14px]" : "text-[14px] sm:text-[15.5px]",
+          )}
+        >
+          <Link href={href} className="rounded-sm focus-visible:outline-none after:absolute after:inset-0 after:rounded-md after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-offset-2 focus-visible:after:ring-offset-background">
+            {title}
+          </Link>
+        </Heading>
+        <p className="mt-2 flex items-center gap-1.5 text-[12px] text-muted-foreground sm:text-[13px]">
+          <span
+            aria-hidden="true"
+            className={cn(
+              "h-1.5 w-1.5 shrink-0 rotate-45",
+              status.kind === "open" ? (status.tight ? "bg-warning" : "bg-success") : status.kind === "full" ? "bg-destructive" : "bg-muted-foreground/50",
+            )}
+          />
+          <span className="truncate">
+            {status.kind === "open" && (
+              <>
+                {formatDepartureDate(status.departure.startDate)}
+                {status.tight ? <span className="font-semibold text-warning"> · Цөөн суудал</span> : status.openCount > 1 ? ` · +${status.openCount - 1} огноо` : ""}
+              </>
+            )}
+            {status.kind === "full" && "Бүх огноо дүүрсэн"}
+            {status.kind === "no-dates" && "Огноог ажилтнаас лавлана"}
+          </span>
+        </p>
+      </div>
+
+      <div className="mt-auto flex items-baseline justify-between gap-2 bg-[hsl(var(--uudam-navy-deep))] px-3.5 py-2.5 sm:px-4">
+        {priced ? (
+          <>
+            <span className="text-[11px] uppercase tracking-[0.14em] text-white/60">-с эхлэн</span>
+            <span className="text-right">
+              {trip.oldPrice && trip.oldPrice > price && (
+                <span className="mr-1.5 text-[11px] text-white/50 line-through">{formatMnt(trip.oldPrice)}</span>
+              )}
+              <span className="text-[15px] font-bold tabular-nums text-gold sm:text-[17px]">{formatMnt(price)}</span>
+            </span>
+          </>
+        ) : (
+          <span className="text-[13px] font-semibold text-white">Үнэ лавлах</span>
+        )}
+      </div>
+
+      <SaveButton slug={trip.slug} className="absolute right-2.5 top-2.5 z-10" />
     </article>
   );
 }

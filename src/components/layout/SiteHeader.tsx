@@ -44,18 +44,22 @@ export default function SiteHeader({ nav, overlay }: { nav: SiteNav; overlay: bo
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const transparent = overlay && !scrolled;
-  const tone = transparent ? "light" : "dark";
+  // Magnai (lib/brand.ts) wears a solid midnight header with a gold hairline on every page; Uudam's
+  // header is transparent over the photo until the page scrolls.
+  const solidDark = BRAND.key === "magnai";
+  const transparent = !solidDark && overlay && !scrolled;
+  const onDark = transparent || solidDark;
+  const tone = onDark ? "light" : "dark";
   const tripsHref = canonicalPath("/trips");
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   const linkClass = (active: boolean) =>
     cn(
       "relative inline-flex h-10 items-center whitespace-nowrap rounded-full px-2.5 text-[14px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 xl:px-3.5",
-      transparent
+      onDark
         ? "text-white/85 hover:text-white focus-visible:ring-white/70"
         : "text-foreground/75 hover:text-foreground focus-visible:ring-ring",
-      active && (transparent ? "text-white" : "text-foreground"),
+      active && (onDark ? "text-white" : "text-foreground"),
       active && "after:absolute after:inset-x-2.5 after:-bottom-0.5 after:h-px after:bg-gold xl:after:inset-x-3.5",
     );
 
@@ -63,9 +67,11 @@ export default function SiteHeader({ nav, overlay }: { nav: SiteNav; overlay: bo
     <header
       className={cn(
         "site-theme fixed inset-x-0 top-0 z-50 transition-[background-color,box-shadow,border-color] duration-300",
-        transparent
-          ? "border-b border-transparent bg-transparent"
-          : "border-b border-border/80 bg-background/90 backdrop-blur-md supports-[backdrop-filter]:bg-background/80",
+        solidDark
+          ? "border-b border-[hsl(var(--uudam-gold)/0.4)] bg-[hsl(var(--uudam-navy-deep))] shadow-[0_1px_0_hsl(var(--uudam-gold)/0.15)]"
+          : transparent
+            ? "border-b border-transparent bg-transparent"
+            : "border-b border-border/80 bg-background/90 backdrop-blur-md supports-[backdrop-filter]:bg-background/80",
       )}
     >
       {transparent && <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/45 to-transparent" />}
@@ -203,7 +209,7 @@ export default function SiteHeader({ nav, overlay }: { nav: SiteNav; overlay: bo
             aria-keyshortcuts="/"
             className={cn(
               "flex h-10 w-10 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 xl:w-auto xl:gap-2 xl:px-4",
-              transparent
+              onDark
                 ? "text-white hover:bg-white/10 focus-visible:ring-white/70 xl:border xl:border-white/30"
                 : "text-foreground hover:bg-secondary focus-visible:ring-ring xl:border xl:border-border",
             )}
