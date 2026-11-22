@@ -6,11 +6,12 @@ import { DEFAULT_TERMS_SECTIONS, parseTermsSections } from "@/lib/siteContent";
 import { fullDateTitle } from "@/lib/calendar";
 import { canonicalPath } from "@/lib/locales";
 import { shareMetadata } from "@/lib/seo";
+import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = {
   title: "Үйлчилгээний нөхцөл",
-  description: "Аяллын захиалга, төлбөр, цуцлалт, хувийн мэдээллийн нөхцөл — Uudam Travel Agency-ийн үйлчилгээний нөхцөл.",
-  ...shareMetadata("/terms", "Үйлчилгээний нөхцөл · Uudam Travel", "Аяллын захиалга, төлбөр, цуцлалт, хувийн мэдээллийн нөхцөл."),
+  description: `Аяллын захиалга, төлбөр, цуцлалт, хувийн мэдээллийн нөхцөл — ${BRAND.name}-ийн үйлчилгээний нөхцөл.`,
+  ...shareMetadata("/terms", `Үйлчилгээний нөхцөл · ${BRAND.shortName}`, "Аяллын захиалга, төлбөр, цуцлалт, хувийн мэдээллийн нөхцөл."),
 };
 
 export const revalidate = 86400;

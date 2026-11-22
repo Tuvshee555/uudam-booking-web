@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 
 import { canonicalPath } from "@/lib/locales";
+import { BRAND } from "@/lib/brand";
 
-const SITE_NAME = "Uudam Travel Agency";
+const SITE_NAME = BRAND.name;
 
 /**
  * Share image (1200×630) for every page with no photo of its own. A page that
  * sets its own `openGraph` replaces the site-wide one wholesale, which is how
  * nearly every page ended up with no preview image when shared on Facebook.
  */
-export const DEFAULT_SHARE_IMAGE = { url: "/og-default.jpg", width: 1200, height: 630, alt: SITE_NAME };
+export const DEFAULT_SHARE_IMAGE = { url: BRAND.ogImage, width: 1200, height: 630, alt: SITE_NAME };
 
 type ShareImage = { url: string; width?: number; height?: number; alt?: string };
 

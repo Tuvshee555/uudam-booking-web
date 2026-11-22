@@ -9,12 +9,13 @@ import { getContactPhones } from "@/server/contactPhones";
 import { CONTACT, telHref } from "@/lib/contact";
 import { canonicalPath } from "@/lib/locales";
 import { shareMetadata } from "@/lib/seo";
+import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = {
   title: "Холбоо барих",
   description:
-    "Uudam Travel Agency-тэй утас, Messenger, WhatsApp, и-мэйлээр холбогдож аяллын талаар асууж, захиалга өгнө үү. Оффисын хаяг, ажлын цаг.",
-  ...shareMetadata("/contact", "Холбоо барих · Uudam Travel", "Утас, Messenger, WhatsApp, и-мэйлээр холбогдож аяллын талаар асууж, захиалга өгнө үү."),
+    `${BRAND.name}-тэй утас, Messenger, WhatsApp, и-мэйлээр холбогдож аяллын талаар асууж, захиалга өгнө үү. Оффисын хаяг, ажлын цаг.`,
+  ...shareMetadata("/contact", `Холбоо барих · ${BRAND.shortName}`, "Утас, Messenger, WhatsApp, и-мэйлээр холбогдож аяллын талаар асууж, захиалга өгнө үү."),
 };
 
 export const revalidate = 86400;

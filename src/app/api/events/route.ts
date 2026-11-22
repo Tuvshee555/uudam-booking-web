@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { BRAND } from "@/lib/brand";
 import { prisma } from "@/server/prisma";
 import { handler, httpError, rateLimit, readJson, safeText } from "@/server/http";
 
@@ -35,6 +36,8 @@ const EVENT_NAMES = new Set([
  * throttle everyone behind it.
  */
 export const POST = handler(async (req: Request) => {
+  // Funnel rows feed the primary brand's admin reports: a secondary brand records none.
+  if (!BRAND.analytics) return NextResponse.json({ ok: true, skipped: "brand" });
   const body = await readJson(req);
 
   const name = typeof body.name === "string" ? body.name : "";

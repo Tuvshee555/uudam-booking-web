@@ -11,12 +11,13 @@ import { destinationCounts } from "@/lib/destinations";
 import { ulaanbaatarDay } from "@/lib/calendar";
 import { canonicalPath } from "@/lib/locales";
 import { shareMetadata } from "@/lib/seo";
+import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = {
   title: "Бүх аялал",
   description:
-    "Uudam Travel-ийн бүх аяллын багц нэг дороос. Чиглэл, хөдлөх сар, үнэ, хугацаагаар шүүж өөрт тохирох аяллаа олоорой.",
-  ...shareMetadata("/trips", "Бүх аялал · Uudam Travel", "Чиглэл, хөдлөх сар, үнэ, хугацаагаар шүүж өөрт тохирох аяллаа олоорой."),
+    `${BRAND.shortName}-ийн бүх аяллын багц нэг дороос. Чиглэл, хөдлөх сар, үнэ, хугацаагаар шүүж өөрт тохирох аяллаа олоорой.`,
+  ...shareMetadata("/trips", `Бүх аялал · ${BRAND.shortName}`, "Чиглэл, хөдлөх сар, үнэ, хугацаагаар шүүж өөрт тохирох аяллаа олоорой."),
 };
 
 /**

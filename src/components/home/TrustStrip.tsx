@@ -9,6 +9,7 @@ import {
   DEFAULT_TRUST_PHONE_TEXT_NO_PHONE,
   type TrustFact,
 } from "@/lib/siteContent";
+import { BRAND } from "@/lib/brand";
 
 /**
  * Facts, not claims. The two numbers are counted from the live catalogue at
@@ -46,7 +47,7 @@ export default async function TrustStrip({
   ];
 
   return (
-    <section aria-label="Uudam Travel товчхон" className="site-container pt-14 lg:pt-20">
+    <section aria-label={`${BRAND.shortName} товчхон`} className="site-container pt-14 lg:pt-20">
       <ul className="grid grid-cols-2 gap-x-6 gap-y-10 border-y border-border py-10 lg:grid-cols-4 lg:divide-x lg:divide-border lg:py-12">
         {items.map(({ icon: Icon, value, label, text, figure }) => (
           <li key={`${value}-${label}`} className="lg:px-8 lg:first:pl-0">

@@ -1,4 +1,7 @@
-const PRODUCTION_URL = "https://uudamtravel.mn";
+import { BRAND } from "@/lib/brand";
+
+/** uudamtravel.mn, or the secondary brand's address (lib/brand.ts). */
+const PRODUCTION_URL = BRAND.productionUrl;
 
 const LOCAL_HOST = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:|\/|$)/i;
 

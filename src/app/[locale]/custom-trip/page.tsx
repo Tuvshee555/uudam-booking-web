@@ -10,12 +10,13 @@ import { heroSlides } from "@/lib/homeSections";
 import { DEFAULT_CUSTOM_TRIP_BODY, DEFAULT_CUSTOM_TRIP_TITLE } from "@/lib/siteContent";
 import { canonicalPath } from "@/lib/locales";
 import { shareMetadata } from "@/lib/seo";
+import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = {
   title: "Захиалгат аялал",
   description:
     "Товлосон огноо тохирохгүй байна уу? Гэр бүл, найз нөхөд, хамт олондоо зориулж өөрийн огноо, чиглэлээр аялал захиалаарай.",
-  ...shareMetadata("/custom-trip", "Захиалгат аялал · Uudam Travel", "Өөрийн огноо, өөрийн хүмүүстэй аялал зохион байгуулна."),
+  ...shareMetadata("/custom-trip", `Захиалгат аялал · ${BRAND.shortName}`, "Өөрийн огноо, өөрийн хүмүүстэй аялал зохион байгуулна."),
 };
 
 export const revalidate = 86400;

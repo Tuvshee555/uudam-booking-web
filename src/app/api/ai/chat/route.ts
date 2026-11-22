@@ -4,6 +4,7 @@ import { asksToBook, describeOffer, questionMonth, STAFF_CONFIRM_LINE, tripOffer
 import { openaiJson } from "@/server/openai";
 import { formatMnt } from "@/lib/pricing";
 import { formatTripDuration } from "@/lib/tripDisplay";
+import { BRAND } from "@/lib/brand";
 
 type ChatItem = {
   id: string;
@@ -104,7 +105,7 @@ export const POST = handler(async (req: Request) => {
     })
     .join("\n");
 
-  const prompt = `Чи бол Uudam Travel аялалын агентлагийн вэбсайтын туслах. Зөвхөн доорх жагсаалтаас санал болго.
+  const prompt = `Чи бол ${BRAND.shortName} аялалын агентлагийн вэбсайтын туслах. Зөвхөн доорх жагсаалтаас санал болго.
 
 Ярианы түүх:
 ${history}

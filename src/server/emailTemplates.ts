@@ -1,4 +1,5 @@
 import { formatMnt } from "@/lib/pricing";
+import { BRAND } from "@/lib/brand";
 
 /**
  * Transactional email markup.
@@ -9,9 +10,9 @@ import { formatMnt } from "@/lib/pricing";
  * here is inline.
  */
 
-const NAVY = "#113e67";
-const GOLD = "#f2bd4a";
-const AGENCY = "Uudam Travel Agency";
+const NAVY = BRAND.navyHex;
+const GOLD = BRAND.goldHex;
+const AGENCY = BRAND.name;
 
 function escapeHtml(value: unknown) {
   return String(value ?? "")
@@ -35,8 +36,8 @@ function shell(title: string, body: string) {
 <div style="margin:0;padding:24px 12px;background:#f4f6f9;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f172a;">
   <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">
     <div style="background:${NAVY};padding:22px 26px;">
-      <div style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:.4px;">UUDAM</div>
-      <div style="color:${GOLD};font-size:11px;letter-spacing:2.4px;text-transform:uppercase;margin-top:3px;">Travel Agency</div>
+      <div style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:.4px;">${BRAND.wordmark}</div>
+      <div style="color:${GOLD};font-size:11px;letter-spacing:2.4px;text-transform:uppercase;margin-top:3px;">${BRAND.wordmarkTagline}</div>
     </div>
     <div style="padding:26px;">
       <h1 style="margin:0 0 14px;font-size:19px;line-height:1.35;color:${NAVY};">${escapeHtml(title)}</h1>

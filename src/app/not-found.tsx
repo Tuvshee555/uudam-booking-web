@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import { BRAND } from "@/lib/brand";
 
 // Without this a missing page carried the home page's title, so a browser tab
 // or a search result for a dead link read "Uudam Travel Agency — Аяллын захиалга".
@@ -21,7 +22,7 @@ export const metadata: Metadata = {
 export default function RootNotFound() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
-      <Image src="/uudam-logo.jpg" alt="Uudam Travel Agency" width={44} height={44} className="rounded-md" />
+      <Image src={BRAND.logo} alt={BRAND.name} width={44} height={44} className="rounded-md" />
       <p className="mt-6 text-[11px] font-bold uppercase tracking-[0.2em] text-[hsl(41,90%,30%)]">404</p>
       <h1 className="mt-2 text-2xl font-bold tracking-tight text-[hsl(209,45%,12%)] md:text-3xl">
         Хуудас олдсонгүй

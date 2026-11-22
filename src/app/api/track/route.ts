@@ -1,6 +1,7 @@
 import { prisma, withPrismaRetry } from "@/server/prisma";
 import { clientIp, handler, json, rateLimit, readJson, safeText } from "@/server/http";
 import { sweepStorefrontSoon } from "@/server/storefrontSweep";
+import { BRAND } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,9 @@ export const POST = handler(async (req: Request) => {
   // Expired holds and menu changes nobody announced are caught behind page
   // views (throttled, after the response): see storefrontSweep.
   sweepStorefrontSoon();
+
+  // TripView rows feed the primary brand's admin reports: a secondary brand records none.
+  if (!BRAND.analytics) return json({ ok: true, skipped: "brand" });
 
   const body = await readJson(req);
 
@@ -145,6 +149,7 @@ async function closeOutView(body: Record<string, unknown>) {
 
 /** PATCH /api/track — the non-beacon fallback path. */
 export const PATCH = handler(async (req: Request) => {
+  if (!BRAND.analytics) return json({ ok: true, skipped: "brand" });
   const body = await readJson(req);
   return closeOutView(body);
 });

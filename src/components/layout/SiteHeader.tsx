@@ -15,6 +15,7 @@ import SearchDialog from "@/components/site/SearchDialog";
 import Wordmark from "@/components/site/Wordmark";
 import MobileMenu from "@/components/layout/MobileMenu";
 import { cn } from "@/lib/utils";
+import { BRAND } from "@/lib/brand";
 
 export default function SiteHeader({ nav, overlay }: { nav: SiteNav; overlay: boolean }) {
   const pathname = usePathname() ?? "";
@@ -71,7 +72,7 @@ export default function SiteHeader({ nav, overlay }: { nav: SiteNav; overlay: bo
       <div className="site-container relative flex h-16 items-center gap-3 lg:h-[76px]">
         <MobileMenu nav={nav} tone={tone} />
 
-        <Link href={canonicalPath("")} aria-label="Uudam Travel Agency — нүүр хуудас" className="rounded-full focus-ring">
+        <Link href={canonicalPath("")} aria-label={`${BRAND.name} — нүүр хуудас`} className="rounded-full focus-ring">
           <Wordmark tone={tone} />
         </Link>
 

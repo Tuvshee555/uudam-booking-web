@@ -1,4 +1,5 @@
 import { after } from "next/server";
+import { BRAND } from "@/lib/brand";
 import { Prisma, type BookingStatus } from "@prisma/client";
 
 import { prisma } from "@/server/prisma";
@@ -104,6 +105,7 @@ export const GET = handler(async (req: Request) => {
  * cost the agency the sale. Rate limiting is the gate.
  */
 export const POST = handler(async (req: Request) => {
+  if (!BRAND.onlineBooking) throw httpError(403, "Онлайн захиалга хаалттай. Хүсэлт үлдээвэл ажилтан холбогдоно.");
   rateLimit(`booking:${clientIp(req)}`, { windowMs: 60 * 60 * 1000, max: 10 });
 
   const body = await readJson(req);
@@ -205,7 +207,7 @@ export const POST = handler(async (req: Request) => {
       if (customerEmail) {
         await sendEmail({
           to: customerEmail,
-          subject: `Захиалга ${booking.reference} — Uudam Travel`,
+          subject: `Захиалга ${booking.reference} — ${BRAND.shortName}`,
           html: bookingCustomerEmail(payload),
         }).catch((err) => console.error("Customer booking email failed:", err));
       }

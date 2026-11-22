@@ -6,12 +6,13 @@ import { getSiteSettings } from "@/server/siteSettings";
 import { DEFAULT_GIFT_BODY, DEFAULT_GIFT_TITLE } from "@/lib/siteContent";
 import { canonicalPath } from "@/lib/locales";
 import { shareMetadata } from "@/lib/seo";
+import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = {
   title: "Аяллын бэлгийн эрхийн бичиг",
   description:
     "Хайртай хүндээ аялал бэлэглээрэй. Тодорхой аяллаар эсвэл өөрийн сонгосон дүнгээр эрхийн бичиг захиалах хүсэлт илгээнэ.",
-  ...shareMetadata("/gift", "Аяллын бэлгийн эрхийн бичиг · Uudam Travel", "Хайртай хүндээ мартагдашгүй аялал бэлэглээрэй."),
+  ...shareMetadata("/gift", `Аяллын бэлгийн эрхийн бичиг · ${BRAND.shortName}`, "Хайртай хүндээ мартагдашгүй аялал бэлэглээрэй."),
 };
 
 export const revalidate = 86400;

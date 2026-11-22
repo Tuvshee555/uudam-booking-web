@@ -6,6 +6,7 @@ import type { Trip } from "@/types/trip";
 import { hasKnownTripPrice } from "@/lib/pricing";
 import { hasVariablePricing } from "@/lib/tripPriceOptions";
 import { cn } from "@/lib/utils";
+import { BRAND } from "@/lib/brand";
 
 import BookingPanel from "./BookingPanel";
 import EnquiryPanel from "./EnquiryPanel";
@@ -29,7 +30,8 @@ export default function TripSidebar({
   selectedDate?: string;
   onDepartureChange: (date: string) => void;
 }) {
-  const hasPrice = hasKnownTripPrice(trip.price);
+  // Online booking is the primary brand's (lib/brand.ts); elsewhere the enquiry form is the way in.
+  const hasPrice = BRAND.onlineBooking && hasKnownTripPrice(trip.price);
   const variablePricing = hasVariablePricing(trip);
   const [selectedMode, setSelectedMode] = useState<Mode>("book");
   const [selection, setSelection] = useState<{ departureId: string; message: string; adults: number; children: number; infants: number } | null>(null);

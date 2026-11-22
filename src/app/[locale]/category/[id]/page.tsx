@@ -13,6 +13,7 @@ import { ulaanbaatarDay } from "@/lib/calendar";
 import { canonicalPath } from "@/lib/locales";
 import { shareMetadata } from "@/lib/seo";
 import { formatCategoryName } from "@/lib/tripDisplay";
+import { BRAND } from "@/lib/brand";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -64,7 +65,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description,
     // An empty category is a thin page: keep it out of search results.
     ...(count === 0 ? { robots: { index: false, follow: true } } : {}),
-    ...shareMetadata(`/category/${category.slug ?? id}`, `${name} · Uudam Travel`, description, category.image ? { url: category.image, width: 1200, height: 630 } : undefined),
+    ...shareMetadata(`/category/${category.slug ?? id}`, `${name} · ${BRAND.shortName}`, description, category.image ? { url: category.image, width: 1200, height: 630 } : undefined),
   };
 }
 

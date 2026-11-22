@@ -543,3 +543,92 @@
 @page {
   margin: 14mm;
 }
+
+/*
+ * «Магнай Травел» — the secondary brand (NEXT_PUBLIC_BRAND=magnai, lib/brand.ts; layout.tsx sets
+ * data-brand on <html>). Same layout, its own colours from its logo: a midnight-navy field
+ * (#011c3a) and a warmer, bronze-leaning gold, on a cool silver-white paper instead of Uudam's
+ * warm cream; squarer corners; Montserrat for text and headings instead of Manrope and the serif.
+ * Every rule is scoped to [data-brand="magnai"], so uudamtravel.mn renders exactly as before.
+ */
+:root[data-brand="magnai"] {
+  --uudam-navy: 213 88% 17%; /* #052851 */
+  --uudam-navy-soft: 212 60% 29%;
+  --uudam-navy-deep: 212 97% 12%; /* #011c3a, the logo's field */
+  --uudam-gold: 37 70% 55%; /* #dd9f3c */
+  --uudam-gold-text: 33 86% 26%;
+  --uudam-gold-soft: 38 62% 90%;
+  --uudam-night: 213 96% 8%;
+  --paper: 216 33% 97%;
+  --sand: 216 24% 92%;
+  --ink: 214 72% 12%;
+  --ink-soft: 214 20% 32%;
+  --secondary-foreground: 213 88% 17%;
+  --ring: 213 88% 17%;
+  --chart-1: 213 88% 17%;
+  --chart-2: 37 70% 55%;
+  --radius: 0.5rem;
+}
+
+:root[data-brand="magnai"] .site-theme {
+  --background: 216 33% 97%;
+  --foreground: 214 72% 12%;
+  --card-foreground: 214 72% 12%;
+  --popover-foreground: 214 72% 12%;
+  --primary: 213 88% 17%;
+  --secondary: 216 26% 93%;
+  --secondary-foreground: 214 72% 12%;
+  --muted: 216 26% 94%;
+  --muted-foreground: 215 16% 38%;
+  --accent: 37 70% 55%;
+  --accent-foreground: 214 72% 10%;
+  --border: 216 22% 86%;
+  --input: 216 18% 78%;
+  --ring: 213 88% 17%;
+  --radius: 0.375rem;
+}
+
+:root[data-brand="magnai"].dark .site-theme {
+  --background: 213 60% 7%;
+  --foreground: 216 30% 94%;
+  --card: 213 55% 10%;
+  --card-foreground: 216 30% 94%;
+  --popover: 213 55% 10%;
+  --popover-foreground: 216 30% 94%;
+  --primary: 37 70% 55%;
+  --primary-foreground: 214 72% 10%;
+  --secondary: 213 40% 15%;
+  --secondary-foreground: 216 30% 94%;
+  --muted: 213 40% 13%;
+  --muted-foreground: 215 15% 70%;
+  --border: 213 35% 19%;
+  --input: 213 35% 25%;
+  --ring: 37 70% 55%;
+}
+
+/* Montserrat (layout.tsx --font-brand) takes both the text and the display slot. */
+:root[data-brand="magnai"] body {
+  --font-manrope: var(--font-brand);
+  --font-display: var(--font-brand);
+}
+
+:root[data-brand="magnai"] .font-display,
+:root[data-brand="magnai"] .display-hero,
+:root[data-brand="magnai"] .display-1,
+:root[data-brand="magnai"] .display-2,
+:root[data-brand="magnai"] .display-3,
+:root[data-brand="magnai"] .numeral {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 650;
+  letter-spacing: -0.022em;
+}
+
+:root[data-brand="magnai"] .surface-night {
+  color: hsl(216 30% 96%);
+}
+
+/* Montserrat runs wider than the serif: a touch smaller so the hero keeps its two lines. */
+:root[data-brand="magnai"] .display-hero {
+  font-size: clamp(2.35rem, 1.35rem + 3.5vw, 4.1rem);
+  line-height: 1.04;
+}

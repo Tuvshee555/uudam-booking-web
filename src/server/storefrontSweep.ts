@@ -1,4 +1,5 @@
 import { after } from "next/server";
+import { BRAND } from "@/lib/brand";
 
 import { expireStaleHolds } from "./booking";
 import { revalidateSeatChanges, revalidateStorefront } from "./revalidate";
@@ -25,8 +26,11 @@ export function sweepStorefrontSoon() {
   try {
     after(async () => {
       try {
-        const { seatChanges } = await expireStaleHolds();
-        revalidateSeatChanges(seatChanges);
+        // Releasing holds writes shared rows: only the primary brand's deployment does it.
+        if (BRAND.isPrimary) {
+          const { seatChanges } = await expireStaleHolds();
+          revalidateSeatChanges(seatChanges);
+        }
         if (await menuChangedSinceRender()) revalidateStorefront();
       } catch (error) {
         console.error("Storefront sweep failed", error);

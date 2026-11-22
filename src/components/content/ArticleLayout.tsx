@@ -11,6 +11,7 @@ import { tripDestinations } from "@/lib/destinations";
 import { canonicalPath } from "@/lib/locales";
 import { SITE_URL } from "@/lib/siteUrl";
 import type { Trip } from "@/types/trip";
+import { BRAND } from "@/lib/brand";
 
 export type ArticleContent = {
   title: string;
@@ -66,8 +67,8 @@ export default function ArticleLayout({
     inLanguage: "mn",
     mainEntityOfPage: url,
     url,
-    author: { "@type": "Organization", name: "Uudam Travel Agency", url: SITE_URL },
-    publisher: { "@type": "Organization", "@id": `${SITE_URL}/#agency`, name: "Uudam Travel Agency", logo: { "@type": "ImageObject", url: `${SITE_URL}/icon-512.png` } },
+    author: { "@type": "Organization", name: BRAND.name, url: SITE_URL },
+    publisher: { "@type": "Organization", "@id": `${SITE_URL}/#agency`, name: BRAND.name, logo: { "@type": "ImageObject", url: `${SITE_URL}${BRAND.icon512}` } },
   };
 
   return (

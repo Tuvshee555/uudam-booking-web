@@ -9,12 +9,13 @@ import { upcomingDepartures } from "@/lib/departures";
 import { canonicalPath } from "@/lib/locales";
 import { shareMetadata } from "@/lib/seo";
 import DeparturesPageClient from "./DeparturesPageClient";
+import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = {
   title: "Аяллын хуваарь",
   description:
-    "Uudam Travel-ийн ойрын хугацаанд хөдлөх бүх аялал хуанлиар. Хэзээ явахаа мэдэж байгаа бол өдрөө сонгоод тухайн өдөр гарах аяллуудыг харна уу.",
-  ...shareMetadata("/departures", "Аяллын хуваарь · Uudam Travel", "Ойрын хугацаанд хөдлөх аяллуудыг хуанлиар харна уу."),
+    `${BRAND.shortName}-ийн ойрын хугацаанд хөдлөх бүх аялал хуанлиар. Хэзээ явахаа мэдэж байгаа бол өдрөө сонгоод тухайн өдөр гарах аяллуудыг харна уу.`,
+  ...shareMetadata("/departures", `Аяллын хуваарь · ${BRAND.shortName}`, "Ойрын хугацаанд хөдлөх аяллуудыг хуанлиар харна уу."),
 };
 
 /**

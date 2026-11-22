@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { BRAND } from "@/lib/brand";
 
 import { confirmQpayInvoicePayment } from "@/server/booking";
 import { sendEmail } from "@/server/mail";
@@ -20,6 +21,7 @@ import { prisma } from "@/server/prisma";
  * webhook can't identify is not something retrying will fix.
  */
 export async function POST(req: Request) {
+  if (!BRAND.onlineBooking) return NextResponse.json({ ok: false }, { status: 404 });
   try {
     const body = await req.json().catch(() => ({}) as Record<string, unknown>);
 

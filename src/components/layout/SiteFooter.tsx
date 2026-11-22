@@ -9,6 +9,7 @@ import { buildChannels } from "@/lib/channels";
 import { CONTACT, DEFAULT_PHONES, type ContactPhones } from "@/lib/contact";
 import { canonicalPath } from "@/lib/locales";
 import { categoryHref, destinationHref, GUIDE_LINKS, type SiteNav } from "@/lib/siteNav";
+import { BRAND } from "@/lib/brand";
 
 function Column({ title, links }: { title: string; links: { href: string; label: string }[] }) {
   if (!links.length) return null;
@@ -42,7 +43,7 @@ export default function SiteFooter({ nav, phones = DEFAULT_PHONES }: { nav: Site
       <div className="site-container pt-16 md:pt-24">
         <div className="grid gap-12 border-b border-white/10 pb-14 lg:grid-cols-[1.3fr_1fr] lg:gap-20 lg:pb-20">
           <div>
-            <p className="eyebrow eyebrow-on-dark">Uudam Travel Agency</p>
+            <p className="eyebrow eyebrow-on-dark">{BRAND.name}</p>
             <p className="display-1 mt-5 max-w-xl text-balance text-white">Дараагийн аяллаа хамтдаа төлөвлөе.</p>
             <p className="mt-5 max-w-lg text-base leading-relaxed text-white/70">
               Хөтөлбөр, үнэ, хөдлөх огноог сайтаас харж, захиалгаа онлайнаар үлдээгээрэй. Нөхцөлийг манай ажилтан утсаар баталгаажуулна.
@@ -119,11 +120,11 @@ export default function SiteFooter({ nav, phones = DEFAULT_PHONES }: { nav: Site
         </div>
 
         <div className="flex flex-col gap-6 border-t border-white/10 py-8 md:flex-row md:items-center md:justify-between">
-          <Link href={canonicalPath("")} aria-label="Uudam Travel Agency — нүүр хуудас" className="w-fit rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">
+          <Link href={canonicalPath("")} aria-label={`${BRAND.name} — нүүр хуудас`} className="w-fit rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">
             <Wordmark tone="light" compact />
           </Link>
           <div className="flex flex-col gap-4 text-[13px] text-white/55 md:flex-row md:items-center md:gap-6">
-            <span>© {year} Uudam Travel Agency</span>
+            <span>© {year} {BRAND.name}</span>
             <Link href={canonicalPath("/terms")} className="link-draw w-fit hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">Үйлчилгээний нөхцөл</Link>
             <Link href={canonicalPath("/data-deletion")} className="link-draw w-fit hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">Хувийн мэдээлэл устгах</Link>
             <span className="flex items-center gap-2 text-white/70 [&_button]:text-white/80 [&_button:hover]:bg-white/10">

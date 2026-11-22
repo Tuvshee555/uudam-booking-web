@@ -17,6 +17,8 @@ import { isBotSubmission } from "@/server/spam";
 import { sendEmail } from "@/server/mail";
 import { enquiryReceivedEmail, enquiryStaffEmail } from "@/server/emailTemplates";
 import { lineTotal, resolvePrices } from "@/lib/pricing";
+import { BRAND, brandLeadSource } from "@/lib/brand";
+import { brandPublicTrip } from "@/lib/brandTrip";
 
 /** Mongolian mobile numbers are 8 digits; allow a country code and separators. */
 function normalizePhone(raw: unknown): string | null {
@@ -76,6 +78,7 @@ export const POST = handler(async (req: Request) => {
 
   // Look the trip up rather than trusting anything the form sent about it, so
   // the estimate staff see always matches the published catalogue.
+  // brandPublicTrip: the estimate uses the fares this brand's pages showed (lib/brandTrip.ts).
   const trip = tripId
     ? await prisma.trip.findUnique({
         where: { id: tripId },
@@ -100,7 +103,7 @@ export const POST = handler(async (req: Request) => {
             },
           },
         },
-      })
+      }).then((row) => (row ? brandPublicTrip(row) : null))
     : null;
 
   // A hidden trip reads as "not found" here too — the same rule as the direct
@@ -160,7 +163,7 @@ export const POST = handler(async (req: Request) => {
       budgetPerPerson: kind === "CUSTOM" ? positiveAmount(body.budgetPerPerson) : null,
       giftAmount: kind === "GIFT" ? positiveAmount(body.giftAmount) : null,
       giftRecipient: kind === "GIFT" ? safeText(body.giftRecipient, 120) : null,
-      source: safeText(body.source, 120),
+      source: brandLeadSource(safeText(body.source, 120)),
       visitorId: safeText(body.visitorId, 64),
       referrer: safeText(body.referrer, 200),
     },
@@ -190,12 +193,12 @@ export const POST = handler(async (req: Request) => {
     if (office) {
       await sendEmail({
         to: office,
-        subject:
+        subject: (BRAND.isPrimary ? "" : `[${BRAND.name}] `) + (
           kind === "CUSTOM"
             ? `Захиалгат аялал ${enquiry.reference} — ${safeText(body.destination, 200) ?? "чиглэл заагаагүй"}`
             : kind === "GIFT"
               ? `Бэлгийн эрхийн бичиг ${enquiry.reference}`
-              : `Шинэ хүсэлт ${enquiry.reference} — ${trip?.title ?? "Аялал"}`,
+              : `Шинэ хүсэлт ${enquiry.reference} — ${trip?.title ?? "Аялал"}`),
         html: enquiryStaffEmail(payload),
       }).catch((err) => console.error("Staff enquiry email failed:", err));
     }

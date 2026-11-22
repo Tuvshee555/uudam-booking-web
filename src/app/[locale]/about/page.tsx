@@ -23,12 +23,13 @@ import { getContactPhones } from "@/server/contactPhones";
 import { canonicalPath } from "@/lib/locales";
 import { destinationHref } from "@/lib/siteNav";
 import { shareMetadata } from "@/lib/seo";
+import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = {
   title: "Бидний тухай",
   description:
-    "Uudam Travel Agency — Улаанбаатарт байрладаг аялал жуулчлалын компани. Аяллын багц, хөдлөх хуваарь, онлайн захиалга, ажилтны баталгаажуулалт.",
-  ...shareMetadata("/about", "Бидний тухай · Uudam Travel", "Аяллын багцаа нэг дор: нислэг, буудал, өдөр тутмын хөтөлбөр."),
+    `${BRAND.name} — Улаанбаатарт байрладаг аялал жуулчлалын компани. Аяллын багц, хөдлөх хуваарь, онлайн захиалга, ажилтны баталгаажуулалт.`,
+  ...shareMetadata("/about", `Бидний тухай · ${BRAND.shortName}`, "Аяллын багцаа нэг дор: нислэг, буудал, өдөр тутмын хөтөлбөр."),
 };
 
 export const revalidate = 86400;
@@ -49,7 +50,7 @@ export default async function AboutPage() {
     <>
       <PageHero
         crumbs={[{ label: "Нүүр", href: canonicalPath("") }, { label: "Бидний тухай" }]}
-        eyebrow="Uudam Travel Agency"
+        eyebrow={BRAND.name}
         title={heroTitle}
         lede={heroSubtitle}
         image={image}
@@ -62,7 +63,7 @@ export default async function AboutPage() {
         </div>
         <div className="space-y-5 text-[16px] leading-[1.8] text-ink-soft">
           <p>
-            Uudam Travel Agency нь Улаанбаатарт байрладаг аялал жуулчлалын компани. Бид нислэг, зочид буудал, өдөр тутмын хөтөлбөрийг
+            {BRAND.name} нь Улаанбаатарт байрладаг аялал жуулчлалын компани. Бид нислэг, зочид буудал, өдөр тутмын хөтөлбөрийг
             нэг багц болгон зохион байгуулдаг.
           </p>
           <p>

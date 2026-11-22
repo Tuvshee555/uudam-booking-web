@@ -5,6 +5,8 @@ import { expireStaleHolds } from "@/server/booking";
 import { clientIp, handler, httpError, rateLimit } from "@/server/http";
 import { revalidateSeatChanges, revalidateTrips } from "@/server/revalidate";
 import { departureDigest } from "@/lib/departureDigest";
+import { BRAND } from "@/lib/brand";
+import { brandPublicTrip } from "@/lib/brandTrip";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -35,12 +37,16 @@ export const GET = handler(async (req: Request, ctx: Ctx) => {
   );
   if (!trip) throw httpError(404, "Аялал олдсонгүй");
 
-  const { seatChanges } = await expireStaleHolds({ tripId: trip.id });
+  // Releasing expired holds writes shared rows: only the primary brand's deployment does it.
+  const { seatChanges } = BRAND.isPrimary ? await expireStaleHolds({ tripId: trip.id }) : { seatChanges: [] };
   revalidateSeatChanges(seatChanges);
 
-  const departures = JSON.parse(JSON.stringify(
-    await withPrismaRetry(() => prisma.departure.findMany({ where: { tripId: trip.id }, orderBy: { startDate: "asc" } })),
-  ));
+  // The same fares the page shows (lib/brandTrip.ts), so the digest matches the page's.
+  const departures = brandPublicTrip({
+    departures: JSON.parse(JSON.stringify(
+      await withPrismaRetry(() => prisma.departure.findMany({ where: { tripId: trip.id }, orderBy: { startDate: "asc" } })),
+    )),
+  }).departures;
   const digest = departureDigest(departures);
 
   const seen = new URL(req.url).searchParams.get("seen");

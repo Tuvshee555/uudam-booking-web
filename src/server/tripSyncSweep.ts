@@ -1,4 +1,5 @@
 import { after } from "next/server";
+import { BRAND } from "@/lib/brand";
 import { retryDueTripSyncs } from "./tripSyncQueue";
 import { requestChatbotFlush } from "./chatbotTripSync";
 
@@ -14,6 +15,8 @@ let lastSweep = 0;
  * next save or its daily cron.
  */
 export function sweepTripSyncSoon() {
+  // The queue holds the primary brand's admin edits for the primary brand's chatbot.
+  if (!BRAND.isPrimary) return;
   if (Date.now() - lastSweep < SWEEP_EVERY_MS) return;
   lastSweep = Date.now();
   try {

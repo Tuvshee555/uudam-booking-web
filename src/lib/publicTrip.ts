@@ -1,3 +1,5 @@
+import { brandPublicTrip } from "@/lib/brandTrip";
+
 /**
  * Delivery payloads and review history belong to staff, not the public API.
  * `canonicalOffers` (the chatbot's pre-computed offers, ~40 KB per trip), the
@@ -13,7 +15,8 @@ export function publicTrip<T extends { sourceMetadata: unknown }>(trip: T): T {
   // only by /api/trips/[id]/weather straight from the database, never by a page.
   const rest = { ...trip, sourceMetadata: metadata } as T & { weather?: unknown };
   delete rest.weather;
-  return rest;
+  // The secondary brand's fares and name (lib/brandTrip.ts); the same object on uudamtravel.mn.
+  return brandPublicTrip(rest);
 }
 
 /**

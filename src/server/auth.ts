@@ -1,5 +1,6 @@
 import { prisma } from "./prisma";
 import { httpError } from "./http";
+import { BRAND } from "@/lib/brand";
 import { signAccessToken, verifySessionToken } from "./session";
 
 import type { AuthUser } from "./session";
@@ -13,6 +14,9 @@ export function requireAuth(req: Request): AuthUser {
 }
 
 function requireSession(req: Request) {
+  // Staff work in the primary brand's admin for both brands (lib/brand.ts): a secondary brand's
+  // deployment never accepts a staff session, so nothing shared can be edited from it.
+  if (!BRAND.isPrimary) throw httpError(403, `Админ ${BRAND.adminUrl} дээр ажиллана`);
   const auth = req.headers.get("authorization");
 
   if (!auth || !auth.startsWith("Bearer ")) {

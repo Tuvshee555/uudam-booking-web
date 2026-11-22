@@ -1,5 +1,7 @@
 "use client";
 
+import { BRAND } from "@/lib/brand";
+
 /**
  * Only fires for errors thrown in the root layout itself (outside every
  * `[locale]` segment) — those never reach `[locale]/error.tsx`. Next.js
@@ -17,7 +19,7 @@ export default function GlobalError({ reset }: { error: Error & { digest?: strin
           </p>
           <button
             onClick={reset}
-            style={{ marginTop: "2rem", borderRadius: "0.5rem", backgroundColor: "#113e67", padding: "0.625rem 1.25rem", fontSize: "0.875rem", fontWeight: 700, color: "#fff", border: "none", cursor: "pointer" }}
+            style={{ marginTop: "2rem", borderRadius: "0.5rem", backgroundColor: BRAND.navyHex, padding: "0.625rem 1.25rem", fontSize: "0.875rem", fontWeight: 700, color: "#fff", border: "none", cursor: "pointer" }}
           >
             Дахин оролдох
           </button>

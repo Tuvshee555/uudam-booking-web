@@ -17,6 +17,8 @@ import { shareMetadata } from "@/lib/seo";
 import { SITE_URL } from "@/lib/siteUrl";
 import { tripMetaDescription } from "@/lib/tripSeo";
 import { publicTrip } from "@/lib/publicTrip";
+import { brandPublicTrip } from "@/lib/brandTrip";
+import { BRAND } from "@/lib/brand";
 import { formatTripTitle } from "@/lib/tripDisplay";
 import type { Trip } from "@/types/trip";
 import TripDetailClient from "./TripDetailClient";
@@ -161,7 +163,8 @@ export default async function TripDetailPage({ params }: Props) {
   if (!row) notFound();
   const trip = serializeTrip(row);
   if (!trip.isPublished) {
-    return <InformationOnlyTrip trip={trip} sourceMetadata={row.sourceMetadata} />;
+    // Raw metadata (publicTrip strips the archive it reads), with this brand's fares applied.
+    return <InformationOnlyTrip trip={trip} sourceMetadata={brandPublicTrip(row).sourceMetadata} />;
   }
 
   const url = `${SITE_URL}/mn/trips/${slug}`;
@@ -182,7 +185,7 @@ export default async function TripDetailPage({ params }: Props) {
     description: tripMetaDescription({ ...trip, price: price ?? 0 }),
     image: tripGalleryImages(trip).slice(0, 5),
     url,
-    provider: { "@type": "TravelAgency", "@id": `${SITE_URL}/#agency`, name: "Uudam Travel Agency", url: SITE_URL },
+    provider: { "@type": "TravelAgency", "@id": `${SITE_URL}/#agency`, name: BRAND.name, url: SITE_URL },
     ...(trip.itinerary.length
       ? {
           itinerary: {

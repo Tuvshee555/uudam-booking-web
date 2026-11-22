@@ -10,11 +10,12 @@ import { GUIDE_SECTIONS, GUIDE_UPDATED } from "@/lib/guideContent";
 import { fullDateTitle } from "@/lib/calendar";
 import { canonicalPath } from "@/lib/locales";
 import { shareMetadata } from "@/lib/seo";
+import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = {
   title: "Аялалд бэлтгэх",
   description: "Бичиг баримт, мөнгө, ачаа тээш, хөдлөх өдөр — аялахаас өмнө шалгах зүйлсийн жагсаалт ба аяллын зөвлөгөө.",
-  ...shareMetadata("/guide", "Аялалд бэлтгэх · Uudam Travel", "Аялахаас өмнө шалгах зүйлсийн жагсаалт ба аяллын зөвлөгөө."),
+  ...shareMetadata("/guide", `Аялалд бэлтгэх · ${BRAND.shortName}`, "Аялахаас өмнө шалгах зүйлсийн жагсаалт ба аяллын зөвлөгөө."),
 };
 
 /** Saving a post refreshes this page at once (revalidateGuidePages in /api/posts). */

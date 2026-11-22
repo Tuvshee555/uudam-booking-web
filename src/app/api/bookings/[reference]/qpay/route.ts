@@ -3,6 +3,7 @@ import { handler, httpError, json } from "@/server/http";
 import { confirmQpayInvoicePayment, markAwaitingQpay } from "@/server/booking";
 import { createInvoice, qpayConfigured } from "@/server/qpay";
 import { SITE_URL } from "@/lib/siteUrl";
+import { BRAND } from "@/lib/brand";
 
 type Ctx = { params: Promise<{ reference: string }> };
 
@@ -15,6 +16,7 @@ type Ctx = { params: Promise<{ reference: string }> };
  * invoice rather than a new one piling up in the merchant account.
  */
 export const POST = handler(async (_req: Request, ctx: Ctx) => {
+  if (!BRAND.onlineBooking) throw httpError(403, "Онлайн төлбөр хаалттай");
   if (!qpayConfigured()) throw httpError(503, "Онлайн төлбөр түр ажиллахгүй байна");
 
   const { reference } = await ctx.params;

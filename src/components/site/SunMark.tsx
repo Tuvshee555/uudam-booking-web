@@ -33,12 +33,12 @@ export function HorizonArcs({ className }: { className?: string }) {
           cy="600"
           r={radius}
           fill="none"
-          stroke="hsl(41 87% 62%)"
+          stroke="hsl(var(--uudam-gold))"
           strokeOpacity={0.32 - index * 0.035}
           strokeWidth="1"
         />
       ))}
-      <circle cx="600" cy="600" r="46" fill="hsl(41 87% 62%)" fillOpacity="0.9" />
+      <circle cx="600" cy="600" r="46" fill="hsl(var(--uudam-gold))" fillOpacity="0.9" />
     </svg>
   );
 }

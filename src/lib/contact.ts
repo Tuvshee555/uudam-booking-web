@@ -17,23 +17,37 @@
 const OFFICE_ADDRESS = "Чингэлтэй дүүрэг, 4-р хороо, Анхарагийн гудамж-23, «Todtower» оффис, 701 тоот, Улаанбаатар";
 const SAMPLE_ADDRESS = "Улаанбаатар, Монгол";
 
+/**
+ * A secondary brand (lib/brand.ts) shares the primary brand's contact details unless it is given
+ * its own: NEXT_PUBLIC_BRAND_PHONE / _OTHER_PHONES (comma-separated) / _EMAIL / _ADDRESS win when
+ * set. Unset everywhere today, so both brands show the same numbers.
+ */
+const BRAND_PHONE = (process.env.NEXT_PUBLIC_BRAND_PHONE ?? "").trim();
+const BRAND_OTHER_PHONES = (process.env.NEXT_PUBLIC_BRAND_OTHER_PHONES ?? "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean)
+  .slice(0, 6);
+
 function configuredAddress(): string {
+  const own = (process.env.NEXT_PUBLIC_BRAND_ADDRESS ?? "").trim();
+  if (own) return own;
   const value = (process.env.NEXT_PUBLIC_ADDRESS ?? "").trim();
   return value && value !== SAMPLE_ADDRESS ? value : OFFICE_ADDRESS;
 }
 
 export const CONTACT = {
   /** Digits only where possible — used for the tel: link. */
-  phone: process.env.NEXT_PUBLIC_PHONE || "",
-  phoneHref: `tel:${(process.env.NEXT_PUBLIC_PHONE || "").replace(/[^\d+]/g, "")}`,
+  phone: BRAND_PHONE || process.env.NEXT_PUBLIC_PHONE || "",
+  phoneHref: `tel:${(BRAND_PHONE || process.env.NEXT_PUBLIC_PHONE || "").replace(/[^\d+]/g, "")}`,
 
   /**
    * The other numbers on the agency's trip posters (the office line first).
    * The main number above stays the one every button calls.
    */
-  otherPhones: ["7713 6633", "8913 6633", "9924 8000"] as string[],
+  otherPhones: (BRAND_OTHER_PHONES.length ? BRAND_OTHER_PHONES : ["7713 6633", "8913 6633", "9924 8000"]) as string[],
 
-  email: process.env.NEXT_PUBLIC_EMAIL || "",
+  email: process.env.NEXT_PUBLIC_BRAND_EMAIL || process.env.NEXT_PUBLIC_EMAIL || "",
 
   facebook: process.env.NEXT_PUBLIC_FACEBOOK_PAGE ?? "https://facebook.com",
   messenger: process.env.NEXT_PUBLIC_MESSENGER_URL ?? "https://m.me",
@@ -46,7 +60,7 @@ export const CONTACT = {
    * NEXT_PUBLIC_WHATSAPP can override with an already-international number.
    */
   whatsapp: (() => {
-    const raw = process.env.NEXT_PUBLIC_WHATSAPP || process.env.NEXT_PUBLIC_PHONE || "";
+    const raw = BRAND_PHONE || process.env.NEXT_PUBLIC_WHATSAPP || process.env.NEXT_PUBLIC_PHONE || "";
     const digits = raw.replace(/[^\d]/g, "");
     if (!digits) return "";
     const international = digits.startsWith("976") ? digits : `976${digits}`;
@@ -90,16 +104,20 @@ export type ContactPhones = { phone: string; otherPhones: string[] };
 export const DEFAULT_PHONES: ContactPhones = { phone: CONTACT.phone, otherPhones: CONTACT.otherPhones };
 
 export function phonesFrom(row: { contactPhone?: string | null; contactOtherPhones?: unknown } | null | undefined): ContactPhones {
-  const phone = typeof row?.contactPhone === "string" && row.contactPhone.trim() ? row.contactPhone.trim() : DEFAULT_PHONES.phone;
+  const saved = typeof row?.contactPhone === "string" && row.contactPhone.trim() ? row.contactPhone.trim() : null;
   const others = Array.isArray(row?.contactOtherPhones)
     ? row.contactOtherPhones.filter((value): value is string => typeof value === "string").map((value) => value.trim()).filter(Boolean).slice(0, 6)
     : null;
-  return { phone, otherPhones: others ?? DEFAULT_PHONES.otherPhones };
+  // A brand's own numbers (BRAND_PHONE / BRAND_OTHER_PHONES above) win over the shared Settings row.
+  return {
+    phone: BRAND_PHONE || saved || DEFAULT_PHONES.phone,
+    otherPhones: BRAND_OTHER_PHONES.length ? BRAND_OTHER_PHONES : others ?? DEFAULT_PHONES.otherPhones,
+  };
 }
 
 /** wa.me for a number: NEXT_PUBLIC_WHATSAPP (already international) wins; a local 8-digit number gets 976. */
 export function whatsappHref(phone: string): string {
-  const digits = (process.env.NEXT_PUBLIC_WHATSAPP || phone || "").replace(/[^\d]/g, "");
+  const digits = ((BRAND_PHONE ? phone : process.env.NEXT_PUBLIC_WHATSAPP || phone) || "").replace(/[^\d]/g, "");
   if (!digits) return "";
   return `https://wa.me/${digits.startsWith("976") ? digits : `976${digits}`}`;
 }

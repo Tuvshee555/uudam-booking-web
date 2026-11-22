@@ -68,6 +68,7 @@ import {
   totalPeople,
 } from "@/lib/adminFormat";
 import { cn } from "@/lib/utils";
+import { leadBrandOf } from "@/lib/brand";
 
 type Enquiry = {
   id: string;
@@ -424,6 +425,7 @@ export default function EnquiriesClient() {
                           <span className="truncate">{requestSummary(enquiry)}</span>
                         </p>
                         <p className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+                          {leadBrandOf(enquiry.source).brand && <BrandBadge name={leadBrandOf(enquiry.source).brand!.name} />}
                           <span className="inline-flex items-center gap-1">
                             <Users className="h-3 w-3" />
                             {totalPeople(enquiry)} хүн
@@ -588,7 +590,7 @@ function EnquiryDetail({
       title={enquiry ? fullName(enquiry.firstName, enquiry.lastName) : "Хүсэлт"}
       description={
         enquiry
-          ? `${ENQUIRY_KIND_INFO[enquiry.kind]?.label ?? "Хүсэлт"} · ${enquiry.reference} · ${formatRelative(enquiry.createdAt)}`
+          ? `${leadBrandOf(enquiry.source).brand ? `${leadBrandOf(enquiry.source).brand!.name} · ` : ""}${ENQUIRY_KIND_INFO[enquiry.kind]?.label ?? "Хүсэлт"} · ${enquiry.reference} · ${formatRelative(enquiry.createdAt)}`
           : undefined
       }
       footer={
@@ -794,13 +796,28 @@ function EnquiryDetail({
               <DetailRow label="Хариуцсан ажилтан">
                 {staffName(enquiry.handledBy) ?? <span className="font-normal text-muted-foreground">Хараахан аваагүй</span>}
               </DetailRow>
+              {leadBrandOf(enquiry.source).brand && (
+                <DetailRow label="Брэнд">
+                  <BrandBadge name={leadBrandOf(enquiry.source).brand!.name} />
+                  <span className="ml-2 font-normal text-muted-foreground">тэр сайтын үнээр (хямдралтай) тооцсон</span>
+                </DetailRow>
+              )}
               <DetailRow label="Хаанаас орж ирсэн">
-                {enquiry.referrer || enquiry.source || <span className="font-normal text-muted-foreground">Шууд орсон</span>}
+                {enquiry.referrer || leadBrandOf(enquiry.source).source || <span className="font-normal text-muted-foreground">Шууд орсон</span>}
               </DetailRow>
             </dl>
           </section>
         </div>
       )}
     </SidePanel>
+  );
+}
+
+/** A lead from the secondary brand's site (lib/brand.ts): call back under that name, at its price. */
+function BrandBadge({ name }: { name: string }) {
+  return (
+    <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-900 ring-1 ring-amber-300">
+      {name}
+    </span>
   );
 }

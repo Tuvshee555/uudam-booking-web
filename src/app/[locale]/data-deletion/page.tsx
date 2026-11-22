@@ -6,11 +6,12 @@ import PageHero from "@/components/site/PageHero";
 import { CONTACT, hasLink } from "@/lib/contact";
 import { canonicalPath } from "@/lib/locales";
 import { shareMetadata } from "@/lib/seo";
+import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = {
   title: "Хувийн мэдээлэл устгах",
-  description: "Uudam Travel-д үлдээсэн хувийн мэдээллээ (нэр, утас, и-мэйл) устгуулах заавар.",
-  ...shareMetadata("/data-deletion", "Хувийн мэдээлэл устгах · Uudam Travel", "Хувийн мэдээллээ устгуулах заавар."),
+  description: `${BRAND.shortName}-д үлдээсэн хувийн мэдээллээ (нэр, утас, и-мэйл) устгуулах заавар.`,
+  ...shareMetadata("/data-deletion", `Хувийн мэдээлэл устгах · ${BRAND.shortName}`, "Хувийн мэдээллээ устгуулах заавар."),
 };
 
 export default function DataDeletion() {

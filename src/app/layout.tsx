@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Manrope, Noto_Serif_Display } from "next/font/google";
+import { Manrope, Montserrat, Noto_Serif_Display } from "next/font/google";
 import { preconnect } from "react-dom";
 import "./globals.css";
 import JsonLd from "@/components/content/JsonLd";
@@ -7,6 +7,7 @@ import { CONTACT, hasLink } from "@/lib/contact";
 import { getContactPhones } from "@/server/contactPhones";
 import { DEFAULT_SHARE_IMAGE } from "@/lib/seo";
 import { SITE_URL } from "@/lib/siteUrl";
+import { BRAND } from "@/lib/brand";
 
 /**
  * cyrillic-ext is not optional here: Ө and Ү — which appear in ordinary
@@ -34,27 +35,38 @@ const displaySerif = Noto_Serif_Display({
   display: "swap",
 });
 
+/**
+ * The secondary brand's face (lib/brand.ts, globals.css [data-brand="magnai"]): Montserrat for
+ * text and headings. Not preloaded, so uudamtravel.mn never downloads it; cyrillic-ext for Ө/Ү.
+ */
+const brandSans = Montserrat({
+  variable: "--font-brand",
+  subsets: ["latin", "cyrillic", "cyrillic-ext"],
+  display: "swap",
+  preload: false,
+});
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Uudam Travel Agency — Аяллын захиалга",
-    template: "%s · Uudam Travel",
+    default: `${BRAND.name} — Аяллын захиалга`,
+    template: `%s · ${BRAND.shortName}`,
   },
   description:
-    "Uudam Travel Agency — аяллын багц: хөтөлбөр, үнэ, хөдлөх огноог шууд харж захиална.",
-  applicationName: "Uudam Travel",
+    `${BRAND.name} — аяллын багц: хөтөлбөр, үнэ, хөдлөх огноог шууд харж захиална.`,
+  applicationName: BRAND.shortName,
   icons: {
-    icon: "/favicon.ico",
-    apple: "/apple-icon.png",
+    icon: BRAND.favicon,
+    apple: BRAND.appleIcon,
   },
   // Pages that set their own openGraph (all the public ones) replace this
   // wholesale; it is the fallback for anything that doesn't, so a link to one
   // of those still unfurls with a picture.
   openGraph: {
-    title: "Uudam Travel Agency",
+    title: BRAND.name,
     description: "Аяллын багц: хөтөлбөр, үнэ, огноог шууд харна.",
     type: "website",
-    siteName: "Uudam Travel Agency",
+    siteName: BRAND.name,
     locale: "mn_MN",
     images: [DEFAULT_SHARE_IMAGE],
   },
@@ -62,7 +74,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0a2540",
+  themeColor: BRAND.themeColor,
 };
 
 /**
@@ -74,10 +86,10 @@ const businessJsonLd = {
   "@context": "https://schema.org",
   "@type": "TravelAgency",
   "@id": `${SITE_URL}/#agency`,
-  name: "Uudam Travel Agency",
+  name: BRAND.name,
   url: SITE_URL,
-  logo: `${SITE_URL}/icon-512.png`,
-  image: `${SITE_URL}/og-default.jpg`,
+  logo: `${SITE_URL}${BRAND.icon512}`,
+  image: `${SITE_URL}${BRAND.ogImage}`,
   address: {
     "@type": "PostalAddress",
     streetAddress: CONTACT.address,
@@ -97,8 +109,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // HTML is still arriving, not after the image tag is parsed.
   preconnect("https://res.cloudinary.com");
   return (
-    <html lang="mn" suppressHydrationWarning>
-      <body className={`${manrope.variable} ${displaySerif.variable} font-sans antialiased`}>
+    <html lang="mn" suppressHydrationWarning {...(BRAND.isPrimary ? {} : { "data-brand": BRAND.key })}>
+      <body className={BRAND.isPrimary ? `${manrope.variable} ${displaySerif.variable} font-sans antialiased` : `${manrope.variable} ${displaySerif.variable} ${brandSans.variable} font-sans antialiased`}>
         <JsonLd id="business-json-ld" data={agencyJsonLd} />
         {children}
       </body>

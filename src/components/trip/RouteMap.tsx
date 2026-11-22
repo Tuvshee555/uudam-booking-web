@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import "leaflet/dist/leaflet.css";
 
 import type { TripWeatherPlace } from "@/lib/weather";
+import { BRAND } from "@/lib/brand";
 
 export type RouteStop = TripWeatherPlace & {
   /** "1–3-р өдөр" — when the traveller is here, if known. */
@@ -40,12 +41,12 @@ export default function RouteMap({ stops }: { stops: RouteStop[] }) {
 
       const points = stops.map((s) => L.latLng(s.lat, s.lon));
       if (points.length > 1) {
-        L.polyline(points, { color: "#113e67", weight: 3, opacity: 0.75, dashArray: "8 8" }).addTo(map);
+        L.polyline(points, { color: BRAND.navyHex, weight: 3, opacity: 0.75, dashArray: "8 8" }).addTo(map);
       }
       stops.forEach((stop, index) => {
         const icon = L.divIcon({
           className: "",
-          html: `<div style="width:30px;height:30px;border-radius:9999px;background:#113e67;color:#fff;border:3px solid #f2bd4a;display:flex;align-items:center;justify-content:center;font:700 13px/1 Manrope,system-ui,sans-serif;box-shadow:0 4px 12px rgba(8,47,82,.35)">${index + 1}</div>`,
+          html: `<div style="width:30px;height:30px;border-radius:9999px;background:${BRAND.navyHex};color:#fff;border:3px solid ${BRAND.goldHex};display:flex;align-items:center;justify-content:center;font:700 13px/1 Manrope,system-ui,sans-serif;box-shadow:0 4px 12px rgba(8,47,82,.35)">${index + 1}</div>`,
           iconSize: [30, 30],
           iconAnchor: [15, 15],
         });

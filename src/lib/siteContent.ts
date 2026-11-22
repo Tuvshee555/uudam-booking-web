@@ -11,10 +11,12 @@
  * connection pressure on Neon's pooler to intermittently fail the build.
  */
 
+import { BRAND } from "@/lib/brand";
+
 export type FaqItem = { q: string; a: string; topic?: string };
 export type TermsSection = { title: string; body: string };
 
-export const DEFAULT_HOME_HERO_EYEBROW = "Uudam Travel Agency · Улаанбаатар";
+export const DEFAULT_HOME_HERO_EYEBROW = `${BRAND.name} · Улаанбаатар`;
 export const DEFAULT_HOME_HERO_TITLE = "Дараагийн аялалаа";
 export const DEFAULT_HOME_HERO_TITLE_ACCENT = "эндээс эхлүүл";
 export const DEFAULT_HOME_HERO_SUBTITLE =

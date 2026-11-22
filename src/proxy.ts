@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 
 import { resolveShortLink } from "@/lib/shortLink";
 import { DEFAULT_LOCALE, LOCALES } from "@/lib/locales";
+import { BRAND } from "@/lib/brand";
 
 const STATIC_PREFIXES = ["/_next/", "/favicon", "/images", "/api", "/public"];
 
@@ -44,6 +45,11 @@ export async function proxy(request: NextRequest) {
 
   if (!pathWithoutLocale.startsWith("/admin")) {
     return NextResponse.next();
+  }
+
+  // Staff manage both brands from the primary brand's admin (lib/brand.ts).
+  if (!BRAND.isPrimary) {
+    return NextResponse.redirect(BRAND.adminUrl, 307);
   }
 
   if (PUBLIC_ADMIN_PATHS.some((path) => pathWithoutLocale.startsWith(path))) {

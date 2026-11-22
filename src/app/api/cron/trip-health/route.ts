@@ -5,6 +5,7 @@ import { buildTripHealthReport } from "@/server/tripHealthReport";
 import { retryDueTripSyncs } from "@/server/tripSyncQueue";
 import { expireStaleHolds } from "@/server/booking";
 import { revalidateStorefront } from "@/server/revalidate";
+import { BRAND } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,13 @@ export const GET = handler(async (req: Request) => {
     throw httpError(401, "Unauthorized");
   }
   rateLimit("cron:trip-health", { windowMs: 3_600_000, max: 1 });
+
+  // A secondary brand only moves its own cached pages to today; the sync queue, holds and the
+  // health email are the primary brand's (one report, one owner of the shared rows).
+  if (!BRAND.isPrimary) {
+    revalidateStorefront();
+    return json({ brand: BRAND.key, refreshed: true });
+  }
 
   // Queued website edits are retried before the report, so it lists only real problems.
   const sync = await retryDueTripSyncs(10).catch((error) => { console.error("Trip sync retry failed", error); return null; });

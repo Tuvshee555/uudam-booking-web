@@ -1,5 +1,6 @@
 import { prisma } from "./prisma";
 import { cached } from "./cache";
+import { brandPublicTrip } from "@/lib/brandTrip";
 import type { SearchableTrip } from "@/lib/tripAdvisor";
 
 export type { SearchableTrip } from "@/lib/tripAdvisor";
@@ -36,6 +37,6 @@ export async function loadSearchableTrips(): Promise<SearchableTrip[]> {
           select: { id: true, startDate: true, price: true, status: true, seatsLeft: true },
         },
       },
-    }),
+    }).then((trips) => trips.map(brandPublicTrip)),
   );
 }

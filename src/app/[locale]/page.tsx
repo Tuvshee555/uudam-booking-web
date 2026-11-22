@@ -20,6 +20,7 @@ import CustomTripBand from "@/components/home/CustomTripBand";
 import HomeFaq from "@/components/home/HomeFaq";
 import ReviewsSection from "@/components/trust/ReviewsSection";
 import RecentlyViewedStrip from "@/components/trip/RecentlyViewedStrip";
+import { BRAND } from "@/lib/brand";
 
 /**
  * Rendered on the server from the live catalogue. A trip save, a booking that
@@ -29,12 +30,12 @@ import RecentlyViewedStrip from "@/components/trip/RecentlyViewedStrip";
 export const revalidate = 86400;
 
 export const metadata: Metadata = {
-  title: { absolute: "Uudam Travel Agency — Аяллын багц, хөдлөх хуваарь, онлайн захиалга" },
+  title: { absolute: `${BRAND.name} — Аяллын багц, хөдлөх хуваарь, онлайн захиалга` },
   description:
     "Хайнан, Тайланд, Япон, Бали, Бээжин болон бусад чиглэлийн аяллын багц. Өдөр тутмын хөтөлбөр, огноо бүрийн үнэ, багтсан зүйлсийг харж онлайнаар захиална.",
   ...shareMetadata(
     "",
-    "Uudam Travel Agency — Аяллын багц",
+    `${BRAND.name} — Аяллын багц`,
     "Өдөр тутмын хөтөлбөр, огноо бүрийн үнэ, багтсан зүйлсийг харж онлайнаар захиална.",
   ),
 };

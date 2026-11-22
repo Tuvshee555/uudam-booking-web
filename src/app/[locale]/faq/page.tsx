@@ -10,12 +10,13 @@ import { getContactPhones } from "@/server/contactPhones";
 import { canonicalPath } from "@/lib/locales";
 import { DEFAULT_FAQS, parseFaqs, type FaqItem } from "@/lib/siteContent";
 import { shareMetadata } from "@/lib/seo";
+import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = {
   title: "Түгээмэл асуулт",
   description:
-    "Захиалга хэрхэн явагдах, хэзээ баталгаажих, төлбөр, хүүхдийн үнэ, бичиг баримт, виз, ачаа, цуцлалт — Uudam Travel-ийн түгээмэл асуултын хариулт.",
-  ...shareMetadata("/faq", "Түгээмэл асуулт · Uudam Travel", "Захиалга, төлбөр, бичиг баримт, цуцлалтын талаарх түгээмэл асуултын хариулт."),
+    `Захиалга хэрхэн явагдах, хэзээ баталгаажих, төлбөр, хүүхдийн үнэ, бичиг баримт, виз, ачаа, цуцлалт — ${BRAND.shortName}-ийн түгээмэл асуултын хариулт.`,
+  ...shareMetadata("/faq", `Түгээмэл асуулт · ${BRAND.shortName}`, "Захиалга, төлбөр, бичиг баримт, цуцлалтын талаарх түгээмэл асуултын хариулт."),
 };
 
 export const revalidate = 86400;

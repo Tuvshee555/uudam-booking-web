@@ -11,11 +11,12 @@ import { fullDateTitle } from "@/lib/calendar";
 import { canonicalPath } from "@/lib/locales";
 import { destinationHref } from "@/lib/siteNav";
 import { shareMetadata } from "@/lib/seo";
+import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = {
   title: "Танин мэдэхүй",
-  description: "Аяллын чиглэлүүдийн түүх, сонирхолтой баримт, очих газрын тухай нийтлэл — Uudam Travel.",
-  ...shareMetadata("/discover", "Танин мэдэхүй · Uudam Travel", "Аяллын чиглэлүүдийн түүх, сонирхолтой баримт."),
+  description: `Аяллын чиглэлүүдийн түүх, сонирхолтой баримт, очих газрын тухай нийтлэл — ${BRAND.shortName}.`,
+  ...shareMetadata("/discover", `Танин мэдэхүй · ${BRAND.shortName}`, "Аяллын чиглэлүүдийн түүх, сонирхолтой баримт."),
 };
 
 /** Saving an article refreshes this page at once (revalidateDiscoverPages in /api/knowledge). */

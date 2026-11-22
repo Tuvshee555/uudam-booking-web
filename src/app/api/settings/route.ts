@@ -1,3 +1,4 @@
+import { brandSettings } from "@/server/siteSettings";
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/server/prisma";
@@ -14,7 +15,7 @@ import { parseFaqs, parseHeroImages, parseTermsSections, parseTrustFacts } from 
  */
 export const GET = handler(async () => {
   const settings = await cached("settings:default", 30_000, async () => {
-    const row = await prisma.siteSettings.findUnique({ where: { id: "default" } });
+    const row = brandSettings(await prisma.siteSettings.findUnique({ where: { id: "default" } }));
     return {
       tripNotice: row?.tripNotice ?? null,
       bankDetails: row?.bankDetails ?? null,

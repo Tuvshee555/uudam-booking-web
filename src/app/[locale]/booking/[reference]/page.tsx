@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
 import { getPublicBookingStatus } from "@/server/booking";
 import type { BookingStatus } from "./BookingStatusClient";
 import BookingStatusClient from "./BookingStatusClient";
+import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = {
   title: "Захиалгын дугаар",
@@ -17,6 +19,8 @@ export default async function BookingStatusPage({
 }: {
   params: Promise<{ reference: string }>;
 }) {
+  // Bookings are taken (and paid to) the primary brand only; its references are not shown here.
+  if (!BRAND.onlineBooking) notFound();
   const { reference } = await params;
 
   // Seeded here rather than left to the client fetch: without this, a

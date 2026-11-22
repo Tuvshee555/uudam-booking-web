@@ -1,5 +1,7 @@
 "use client";
 
+import { BRAND } from "@/lib/brand";
+
 /**
  * Browser side of the first-party analytics.
  *
@@ -144,7 +146,8 @@ export function track(
   name: TrackedEvent,
   options?: { tripId?: string; properties?: Record<string, unknown> },
 ) {
-  if (isStaffDevice()) return;
+  // Funnel events feed the primary brand's admin reports only (lib/brand.ts).
+  if (isStaffDevice() || !BRAND.analytics) return;
   try {
     const payload = JSON.stringify({
       name,

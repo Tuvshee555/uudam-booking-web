@@ -7,6 +7,9 @@ import { tripCountsByCategory } from "@/server/categoryCounts";
 import { cached } from "@/server/cache";
 import type { CategoryNode, Trip } from "@/types/trip";
 import { summaryFields } from "@/lib/publicTrip";
+import { brandPublicTrip } from "@/lib/brandTrip";
+import { brandSettings } from "@/server/siteSettings";
+import { BRAND } from "@/lib/brand";
 import { destinationCounts } from "@/lib/destinations";
 import { formatCategoryName } from "@/lib/tripDisplay";
 import { EMPTY_NAV, type SiteNav } from "@/lib/siteNav";
@@ -108,7 +111,8 @@ async function loadSummaries(where: Prisma.TripWhereInput): Promise<Trip[]> {
   );
   const metadata = new Map(metadataRows.map((row) => [row.id, row.metadata]));
 
-  return JSON.parse(JSON.stringify(rows.map((row) => summaryFields(row, metadata.get(row.id) ?? null)))) as Trip[];
+  // brandPublicTrip: the secondary brand's fares and name; the same object on uudamtravel.mn.
+  return JSON.parse(JSON.stringify(rows.map((row) => brandPublicTrip(summaryFields(row, metadata.get(row.id) ?? null))))) as Trip[];
 }
 
 /**
@@ -194,6 +198,8 @@ export async function getCategoryWithTrips(
  * trust signal, not an archive.
  */
 export async function getPublishedTestimonials(limit = 9) {
+  // Reviews were written about the primary brand: a secondary brand shows none (lib/brand.ts).
+  if (!BRAND.testimonials) return [];
   const rows = await prisma.testimonial.findMany({
     where: { isPublished: true },
     orderBy: { createdAt: "desc" },
@@ -218,7 +224,7 @@ export async function getSiteSettings(): Promise<{
   tripNotice: string | null;
   bankDetails: string | null;
 }> {
-  const row = await prisma.siteSettings.findUnique({ where: { id: "default" } });
+  const row = brandSettings(await prisma.siteSettings.findUnique({ where: { id: "default" } }));
   return { tripNotice: row?.tripNotice ?? null, bankDetails: row?.bankDetails ?? null };
 }
 
