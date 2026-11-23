@@ -343,3 +343,24 @@ test("hotel and package choices carry a ranged row's high end, so the button pri
   const packages = priceDimensionOptions(options, "package", ranged);
   assert.deepEqual(packages.map((item) => [item.label, formatAdultOption(item)]), [["Хөтөлбөртэй", "1,666,666₮"], ["Хөтөлбөргүй", "1,111,111₮–1,555,555₮"]]);
 });
+
+test("a date reopened after «Дүүрсэн» is priced again: rows that all still say sold out are a stale copy", () => {
+  // 2026-11-23: 1/28 set back to «Нээлттэй» read «Дүүрсэн» and «Үнэ лавлах» until the trip was saved again.
+  const trip = { sourceMetadata: { price_groups: [
+    { dates: ["2099-01-28"], date_keys: ["2099-01-28"], adult_price: 3100000, availability: { status: "sold_out", seatsLeft: 0 } },
+    { dates: ["2099-02-04"], date_keys: ["2099-02-04"], adult_price: 3200000, availability: { status: "open" } },
+  ] } };
+  const reopened = datePriceOptions(trip, { startDate: "2099-01-28T00:00:00.000Z", status: "OPEN" });
+  assert.deepEqual(reopened.map((option) => [option.adult, option.available]), [[3100000, true]]);
+  // Still sold out on the departure itself: no price to book.
+  assert.deepEqual(datePriceOptions(trip, { startDate: "2099-01-28T00:00:00.000Z", status: "SOLD_OUT" }), []);
+});
+
+test("one hotel full and another open on an open date stays a per-hotel state", () => {
+  const trip = { sourceMetadata: { price_groups: [
+    { hotel: "Example Bay", dates: ["2099-06-12"], adult_price: 2100000, availability: { status: "sold_out" } },
+    { hotel: "Example Garden", dates: ["2099-06-12"], adult_price: 2600000, availability: { status: "open" } },
+  ] } };
+  const options = datePriceOptions(trip, { startDate: "2099-06-12T00:00:00.000Z", status: "OPEN" }, { includeUnavailable: true });
+  assert.deepEqual(options.map((option) => [option.hotel, option.available]), [["Example Bay", false], ["Example Garden", true]]);
+});

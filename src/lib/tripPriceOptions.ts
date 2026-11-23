@@ -208,7 +208,7 @@ type DateOptionsSettings = {
   includeUnavailable?: boolean;
 };
 
-type SaleDeparture = Pick<Departure, "startDate"> & Partial<Pick<Departure, "price" | "childPrice" | "originalPrice" | "originalChildPrice">>;
+type SaleDeparture = Pick<Departure, "startDate"> & Partial<Pick<Departure, "price" | "childPrice" | "originalPrice" | "originalChildPrice" | "status">>;
 
 const INFANT_BAND = /нярай|infant/i;
 
@@ -260,10 +260,24 @@ export function datePriceOptions(
   const ageRule = (kind: "child" | "infant") =>
     typeof ageRules[kind] === "string" ? ageRules[kind].trim() : "";
   const day = departureDateKey(departure.startDate);
+  const groupOpen = (group: Record<string, unknown>) => {
+    const status = object(group.availability);
+    return !UNAVAILABLE_STATUSES.includes(text(status.status).toLowerCase()) && status.seatsLeft !== 0;
+  };
+  const onDay = (group: Record<string, unknown>) => {
+    const keys = Array.isArray(group.date_keys) ? group.date_keys : Array.isArray(group.dates) ? group.dates : [];
+    return keys.length === 0 || keys.includes(day);
+  };
+  // The chatbot copies a date's seat state into its price rows when it sends the trip. A date reopened since
+  // («Дүүрсэн» → «Нээлттэй», in either admin) kept rows that all said sold out: the open date read «Дүүрсэн» and
+  // «Үнэ лавлах» (2026-11-23). When the departure is open and none of its rows is, the rows are that stale copy;
+  // rows that differ among themselves (one hotel full, another open) are a real per-hotel state and stay.
+  const departureOpen = departure.status === "OPEN" || departure.status === "ALMOST_FULL";
+  const dayGroups = groups.map(object).filter(onDay);
+  const staleClosed = departureOpen && dayGroups.length > 0 && !dayGroups.some(groupOpen);
   const options = groups.flatMap((value): DatePriceOption[] => {
     const group = object(value);
-    const status = object(group.availability);
-    const available = !UNAVAILABLE_STATUSES.includes(text(status.status).toLowerCase()) && status.seatsLeft !== 0;
+    const available = staleClosed || groupOpen(group);
     if (!available && !settings.includeUnavailable) return [];
     const keys = Array.isArray(group.date_keys) ? group.date_keys : Array.isArray(group.dates) ? group.dates : [];
     if (keys.length > 0 && !keys.includes(day)) return [];
