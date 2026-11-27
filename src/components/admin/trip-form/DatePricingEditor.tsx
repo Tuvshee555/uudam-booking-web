@@ -7,6 +7,7 @@ import { pricingDateRows, pricingDates, patchPricingDate, renamePricingDate, pas
 import { formatMnt } from "@/lib/pricing";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { seatsAfterStatus } from "@/lib/dateSeats";
 import { CalendarDatePicker, DateDealControls, ExactSeatsOverride, STATUS_OPTIONS, EMPTY_DEPARTURE, type DepartureDraft } from "./DepartureEditor";
 import { cn } from "@/lib/utils";
 import { useConfirm } from "@/components/admin/ui";
@@ -206,7 +207,7 @@ export default function DatePricingEditor({ metadata, departures, defaultPrice, 
           onChange({ ...metadata, price_groups: next }, departures.map((dep, index) => index === depIndex ? { ...dep, startDate: date } : dep));
         }} />
         <CalendarDatePicker label="Буцах огноо" value={departure.endDate} onChange={(endDate) => updateDeparture({ endDate })} allowClear />
-        <label className="text-sm">Захиалгын төлөв<select aria-label="Захиалгын төлөв" value={departure.status} onChange={(e) => updateDeparture({ status: e.target.value })} className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">{STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+        <label className="text-sm">Захиалгын төлөв<select aria-label="Захиалгын төлөв" value={departure.status} onChange={(e) => updateDeparture({ status: e.target.value, seatsLeft: seatsAfterStatus(e.target.value, departure.seatsLeft) })} className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">{STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
         <div className="sm:col-span-2"><ExactSeatsOverride dep={departure} onChange={updateDeparture} /></div>
         <div className="sm:col-span-2">
           <DateDealControls dep={departure} onChange={updateDeparture}

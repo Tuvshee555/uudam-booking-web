@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/admin/ui";
 import { effectiveSale, salePercentOf } from "@/lib/dateDeals";
+import { seatsAfterStatus, seatsOverTotal, statusAfterSeats } from "@/lib/dateSeats";
 import { formatMnt } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
@@ -317,7 +318,7 @@ export default function DepartureEditor({
                 <select
                   aria-label="Захиалгын төлөв"
                   value={dep.status}
-                  onChange={(e) => update(index, { status: e.target.value })}
+                  onChange={(e) => update(index, { status: e.target.value, seatsLeft: seatsAfterStatus(e.target.value, dep.seatsLeft) })}
                   className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
                 >
                   {STATUS_OPTIONS.map((opt) => (
@@ -436,6 +437,7 @@ export function DateDealControls({
   );
 }
 
+/** One date's seat count: how many seats it has and how many are left. Always shown, beside the status. */
 export function ExactSeatsOverride({
   dep,
   onChange,
@@ -443,30 +445,32 @@ export function ExactSeatsOverride({
   dep: DepartureDraft;
   onChange: (patch: Partial<DepartureDraft>) => void;
 }) {
-  const [open, setOpen] = useState(false);
-
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="mt-2 text-[11px] font-medium text-muted-foreground underline-offset-2 hover:text-primary hover:underline"
-      >
-        Суудлын тоо (зөвхөн тоо; «Цөөн суудал»-ыг төлвөөс сонгоно)
-      </button>
-    );
-  }
-
+  const over = seatsOverTotal(dep.seatsTotal, dep.seatsLeft);
   return (
-    <div className="mt-2 grid gap-3 sm:grid-cols-2">
-      <div>
-        <Label>Нийт суудал</Label>
-        <Input type="number" min={0} value={dep.seatsTotal} onChange={(e) => onChange({ seatsTotal: e.target.value })} />
+    <div className="mt-3">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <Label>Нийт суудал</Label>
+          <Input type="number" min={0} inputMode="numeric" value={dep.seatsTotal} placeholder="жишээ: 40" onChange={(e) => onChange({ seatsTotal: e.target.value })} />
+        </div>
+        <div>
+          <Label>Үлдсэн суудал</Label>
+          <Input
+            type="number"
+            min={0}
+            inputMode="numeric"
+            value={dep.seatsLeft}
+            placeholder="жишээ: 12"
+            aria-invalid={over || undefined}
+            onChange={(e) => onChange({ seatsLeft: e.target.value, status: statusAfterSeats(dep.status, e.target.value) })}
+          />
+        </div>
       </div>
-      <div>
-        <Label>Үлдсэн суудал</Label>
-        <Input type="number" min={0} value={dep.seatsLeft} onChange={(e) => onChange({ seatsLeft: e.target.value })} />
-      </div>
+      <p className={cn("mt-1.5 max-w-lg text-xs", over ? "font-medium text-destructive" : "text-muted-foreground")}>
+        {over
+          ? "Үлдсэн суудал нийт суудлаас их байна."
+          : "Үлдсэн суудал 0 бол энэ өдөр «Дүүрсэн» болно, суудал тавивал дахин нээгдэнэ. Сайтаас захиалга ирэх бүрд тоо автоматаар хасагдана. Сайт тоог нь харуулахгүй — «Цөөн суудал»-ыг төлвөөс сонгоно."}
+      </p>
     </div>
   );
 }
