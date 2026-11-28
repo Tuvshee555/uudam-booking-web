@@ -136,7 +136,7 @@ export default function TripCard({
             {status.kind === "open" && (
               <>
                 {formatDepartureDate(status.departure.startDate)}
-                {status.tight ? <span className="font-semibold text-warning"> · Цөөн суудал</span> : status.openCount > 1 ? ` · +${status.openCount - 1} огноо` : ""}
+                {status.tight ? <span className="font-semibold text-warning"> · {status.label}</span> : status.openCount > 1 ? ` · +${status.openCount - 1} огноо` : ""}
               </>
             )}
             {status.kind === "full" && "Бүх огноо дүүрсэн"}
@@ -241,7 +241,7 @@ function MagnaiTripCard({
             {status.kind === "open" && (
               <>
                 {formatDepartureDate(status.departure.startDate)}
-                {status.tight ? <span className="font-semibold text-warning"> · Цөөн суудал</span> : status.openCount > 1 ? ` · +${status.openCount - 1} огноо` : ""}
+                {status.tight ? <span className="font-semibold text-warning"> · {status.label}</span> : status.openCount > 1 ? ` · +${status.openCount - 1} огноо` : ""}
               </>
             )}
             {status.kind === "full" && "Бүх огноо дүүрсэн"}

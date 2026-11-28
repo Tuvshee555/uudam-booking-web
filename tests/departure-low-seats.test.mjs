@@ -5,13 +5,21 @@ import { availability } from "../src/lib/departures.ts";
 
 const departure = (status, seatsLeft = null) => ({ id: "d", startDate: "2099-02-17T00:00:00.000Z", status, seatsLeft });
 
-test("few seats is the date's own status, never read from a typed count", () => {
+test("few seats is the date's own status: picked without any number it reads «Цөөн суудал»", () => {
   assert.equal(availability(departure("ALMOST_FULL")).label, "Цөөн суудал");
   assert.equal(availability(departure("ALMOST_FULL")).tone, "tight");
   assert.equal(availability(departure("ALMOST_FULL")).selectable, true);
-  // A typed count of 3 or 5 used to call the date low; counts are never decremented.
-  assert.equal(availability(departure("OPEN", 3)).tone, "open");
-  assert.equal(availability(departure("OPEN", 5)).label, "Захиалга нээлттэй");
+});
+
+test("a typed count of 10 or fewer is shown on that date; 11 or more is the admin's only (owner, 2026-11-28)", () => {
+  assert.deepEqual(availability(departure("OPEN", 3)), { label: "3 суудал үлдсэн", tone: "tight", selectable: true });
+  assert.equal(availability(departure("OPEN", 10)).label, "10 суудал үлдсэн");
+  assert.equal(availability(departure("ALMOST_FULL", 4)).label, "4 суудал үлдсэн", "a number is more exact than the flag");
+  assert.deepEqual(availability(departure("OPEN", 11)), { label: "Захиалга нээлттэй", tone: "open", selectable: true });
+  assert.equal(availability(departure("OPEN", 40)).label, "Захиалга нээлттэй");
+  assert.equal(availability(departure("ALMOST_FULL", 25)).label, "Цөөн суудал", "a big count never hides the flag staff picked");
+  assert.equal(availability(departure("PAUSED", 3)).selectable, false, "a closed date never shows a count");
+  assert.equal(availability(departure("SOLD_OUT", 3)).label, "Суудал дүүрсэн");
 });
 
 test("a date with no seats left is still closed", () => {

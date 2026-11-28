@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-import { availability, formatDepartureDate } from "@/lib/departures";
+import { availability, formatDepartureDate, shownSeatsLeft } from "@/lib/departures";
 import { departureDateKey } from "@/lib/departureDate";
 import { dayTitle, monthTitle, WEEKDAYS_MN } from "@/lib/calendar";
 import type { Departure } from "@/types/trip";
@@ -142,7 +142,7 @@ export default function DepartureDatePicker({
       )}
       {selected && selectedSeats?.tone === "tight" && (
         <p role="status" className="mt-2 rounded-lg bg-warning/10 px-3 py-2 text-[12.5px] font-semibold text-warning">
-          {formatDepartureDate(selected.startDate)} — цөөн суудал үлдсэн.
+          {formatDepartureDate(selected.startDate)} — {shownSeatsLeft(selected.seatsLeft) !== null ? `${shownSeatsLeft(selected.seatsLeft)} суудал үлдсэн` : "цөөн суудал үлдсэн"}.
         </p>
       )}
     </div>

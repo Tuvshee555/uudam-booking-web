@@ -63,14 +63,19 @@ export type Availability = {
   selectable: boolean;
 };
 
+/** A date shows its seat count to customers only at this many seats left or fewer (owner, 2026-11-28). */
+export const SHOW_SEATS_AT_MOST = 10;
+
+/** The seat count a customer may see for a date (1..SHOW_SEATS_AT_MOST), or null. */
+export function shownSeatsLeft(seatsLeft: number | null | undefined): number | null {
+  return typeof seatsLeft === "number" && Number.isInteger(seatsLeft) && seatsLeft > 0 && seatsLeft <= SHOW_SEATS_AT_MOST ? seatsLeft : null;
+}
+
 /**
- * Deliberately categorical rather than an exact "3 суудал үлдсэн".
- *
- * `seatsLeft` is typed in by staff and never decremented by the system —
- * bookings are closed on the phone and in Messenger. Publishing a precise
- * number that nobody updates after each sale is a promise the site cannot
- * keep, and on a ₮3-14m purchase a stale count costs more trust than the
- * urgency wins. Status carries the same signal honestly.
+ * What a customer sees for one date: closed states first; then "N суудал
+ * үлдсэн" when staff typed 1..10 seats left; then «Цөөн суудал» when staff
+ * picked that state (no number needed); otherwise open. A count above 10 is
+ * never shown: it is the admin's own tally.
  */
 export function availability(departure: Departure): Availability {
   const status: DepartureStatus = departure.status;
@@ -94,9 +99,16 @@ export function availability(departure: Departure): Availability {
     return { label: "Суудал дүүрсэн", tone: "closed", selectable: false };
   }
 
-  // "Few seats" belongs to ONE date and is something staff choose for it. It is
-  // never worked out from a typed seat count: counts are not decremented, so a
-  // stale "3" used to call a date low long after it had filled or emptied.
+  // Owner, 2026-11-28: a date with SHOW_SEATS_AT_MOST seats or fewer left shows
+  // the number ("4 суудал үлдсэн"); a bigger count is for staff only and the
+  // customer sees the date's state. Staff keep the number up to date in the
+  // admin (online bookings decrement it).
+  const shown = shownSeatsLeft(seatsLeft);
+  if (shown !== null) {
+    return { label: `${shown} суудал үлдсэн`, tone: "tight", selectable: true };
+  }
+
+  // "Few seats" without a number is something staff choose for ONE date.
   if (status === "ALMOST_FULL") {
     return { label: "Цөөн суудал", tone: "tight", selectable: true };
   }

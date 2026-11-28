@@ -36,7 +36,7 @@ export default function UpcomingDepartures({ rows }: { rows: DepartureRow[] }) {
         </div>
 
         <ol className="divide-y divide-border border-y border-border">
-          {rows.map(({ trip, departure, price, tight }) => {
+          {rows.map(({ trip, departure, price, tight, label }) => {
             const day = departureDateKey(departure.startDate);
             const [year, month, date] = day.split("-").map(Number);
             const weekday = WEEKDAYS[new Date(Date.UTC(year, month - 1, date)).getUTCDay()];
@@ -66,7 +66,7 @@ export default function UpcomingDepartures({ rows }: { rows: DepartureRow[] }) {
                       )}
                       <span className={cn("inline-flex items-center gap-1.5 font-medium", tight ? "text-warning" : "text-success")}>
                         <span className={cn("h-1.5 w-1.5 rounded-full", tight ? "bg-warning" : "bg-success")} aria-hidden="true" />
-                        {tight ? "Цөөн суудал" : "Захиалга нээлттэй"}
+                        {tight ? label : "Захиалга нээлттэй"}
                       </span>
                     </span>
                   </span>

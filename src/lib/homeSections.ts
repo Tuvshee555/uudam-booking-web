@@ -76,7 +76,7 @@ export function heroSlides(trips: Trip[], now: number, adminImages: string[] = [
   return chosen.map((trip) => slideFor(trip, now));
 }
 
-export type DepartureRow = { trip: Trip; departure: Departure; price: number | null; tight: boolean };
+export type DepartureRow = { trip: Trip; departure: Departure; price: number | null; tight: boolean; label: string };
 
 /** The next open date of each trip, soonest first — one row per trip so one busy route can't fill the list. */
 export function nextDeparturesByTrip(trips: Trip[], now: number, limit = 6): DepartureRow[] {
@@ -85,7 +85,8 @@ export function nextDeparturesByTrip(trips: Trip[], now: number, limit = 6): Dep
     const departure = upcomingDepartures(trip, now).find((candidate) => availability(candidate).selectable);
     if (!departure) continue;
     const price = departure.price ?? trip.price;
-    rows.push({ trip, departure, price: hasKnownTripPrice(price) ? price : null, tight: availability(departure).tone === "tight" });
+    const seats = availability(departure);
+    rows.push({ trip, departure, price: hasKnownTripPrice(price) ? price : null, tight: seats.tone === "tight", label: seats.label });
   }
   return rows
     .sort((a, b) => new Date(a.departure.startDate).getTime() - new Date(b.departure.startDate).getTime())

@@ -7,7 +7,7 @@ import { availability, upcomingDepartures } from "./departures";
  * that no date is scheduled (staff arrange one on request).
  */
 export type TripStatus =
-  | { kind: "open"; departure: Departure; tight: boolean; openCount: number }
+  | { kind: "open"; departure: Departure; tight: boolean; label: string; openCount: number }
   | { kind: "full" }
   | { kind: "no-dates" };
 
@@ -15,7 +15,8 @@ export function tripStatus(trip: Pick<Trip, "departures">, now: number = Date.no
   const upcoming = upcomingDepartures(trip as Trip, now);
   const open = upcoming.filter((departure) => availability(departure).selectable);
   if (open.length) {
-    return { kind: "open", departure: open[0], tight: availability(open[0]).tone === "tight", openCount: open.length };
+    const seats = availability(open[0]);
+    return { kind: "open", departure: open[0], tight: seats.tone === "tight", label: seats.label, openCount: open.length };
   }
   return upcoming.length ? { kind: "full" } : { kind: "no-dates" };
 }
