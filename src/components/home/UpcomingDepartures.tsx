@@ -66,7 +66,7 @@ export default function UpcomingDepartures({ rows }: { rows: DepartureRow[] }) {
                       )}
                       <span className={cn("inline-flex items-center gap-1.5 font-medium", tight ? "text-warning" : "text-success")}>
                         <span className={cn("h-1.5 w-1.5 rounded-full", tight ? "bg-warning" : "bg-success")} aria-hidden="true" />
-                        {tight ? label : "Захиалга нээлттэй"}
+                        {label}
                       </span>
                     </span>
                   </span>

@@ -63,19 +63,17 @@ export type Availability = {
   selectable: boolean;
 };
 
-/** A date shows its seat count to customers only at this many seats left or fewer (owner, 2026-11-28). */
-export const SHOW_SEATS_AT_MOST = 10;
-
-/** The seat count a customer may see for a date (1..SHOW_SEATS_AT_MOST), or null. */
+/**
+ * Owner, 2026-11-28 (second rule that day): every seat count staff type for a date is shown to customers.
+ * A date with no count shows no number. The state staff pick («Цөөн суудал») is shown next to the number.
+ */
 export function shownSeatsLeft(seatsLeft: number | null | undefined): number | null {
-  return typeof seatsLeft === "number" && Number.isInteger(seatsLeft) && seatsLeft > 0 && seatsLeft <= SHOW_SEATS_AT_MOST ? seatsLeft : null;
+  return typeof seatsLeft === "number" && Number.isInteger(seatsLeft) && seatsLeft > 0 ? seatsLeft : null;
 }
 
 /**
- * What a customer sees for one date: closed states first; then "N суудал
- * үлдсэн" when staff typed 1..10 seats left; then «Цөөн суудал» when staff
- * picked that state (no number needed); otherwise open. A count above 10 is
- * never shown: it is the admin's own tally.
+ * What a customer sees for one date: closed states first; otherwise the state staff picked («Цөөн суудал» or open)
+ * with the typed seat count beside it: «Цөөн суудал · 19 суудал үлдсэн», «12 суудал үлдсэн», «Захиалга нээлттэй».
  */
 export function availability(departure: Departure): Availability {
   const status: DepartureStatus = departure.status;
@@ -99,21 +97,14 @@ export function availability(departure: Departure): Availability {
     return { label: "Суудал дүүрсэн", tone: "closed", selectable: false };
   }
 
-  // Owner, 2026-11-28: a date with SHOW_SEATS_AT_MOST seats or fewer left shows
-  // the number ("4 суудал үлдсэн"); a bigger count is for staff only and the
-  // customer sees the date's state. Staff keep the number up to date in the
-  // admin (online bookings decrement it).
   const shown = shownSeatsLeft(seatsLeft);
-  if (shown !== null) {
-    return { label: `${shown} суудал үлдсэн`, tone: "tight", selectable: true };
-  }
-
-  // "Few seats" without a number is something staff choose for ONE date.
+  const count = shown !== null ? `${shown} суудал үлдсэн` : null;
+  // «Цөөн суудал» is a state staff pick for ONE date; a count never sets it, and it never hides the count.
   if (status === "ALMOST_FULL") {
-    return { label: "Цөөн суудал", tone: "tight", selectable: true };
+    return { label: count ? `Цөөн суудал · ${count}` : "Цөөн суудал", tone: "tight", selectable: true };
   }
 
-  return { label: "Захиалга нээлттэй", tone: "open", selectable: true };
+  return { label: count ?? "Захиалга нээлттэй", tone: "open", selectable: true };
 }
 
 /**
